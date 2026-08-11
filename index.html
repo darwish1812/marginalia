@@ -82,6 +82,14 @@
   .btn:hover{color:var(--paper); border-color:rgba(241,239,233,.4)}
   .btn[aria-pressed="true"]{background:var(--paper); color:var(--night); border-color:var(--paper)}
   .btn:focus-visible{outline:2px solid var(--ink-1); outline-offset:2px}
+  select.btn{
+    text-transform:none; letter-spacing:.02em; font-size:12.5px; max-width:210px;
+    appearance:none; -webkit-appearance:none; padding-right:29px;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%23F1EFE9' stroke-opacity='.55' stroke-width='1.6'/></svg>");
+    background-repeat:no-repeat; background-position:right 10px center;
+  }
+  select.btn option{background:var(--night-2); color:var(--paper)}
+  body.nosound #voice{display:none}
   .tally{font-family:"Archivo",sans-serif; font-size:11.5px; letter-spacing:.1em; color:var(--dim); margin-left:auto; white-space:nowrap}
   .tally b{color:var(--paper); font-weight:600}
 
@@ -287,6 +295,7 @@
         <button class="btn" id="study" aria-pressed="false">Study mode</button>
         <button class="btn" id="arabic" aria-pressed="false" lang="ar">العربية</button>
         <button class="btn" id="speed">Speed 0.9×</button>
+        <select class="btn" id="voice" aria-label="Reading voice"></select>
         <button class="btn" id="addbtn" aria-pressed="false">+ Add words</button>
         <button class="btn" id="reset">Reset marks</button>
         <span class="tally" id="tally"><b>0</b> learned</span>
@@ -350,15 +359,52 @@ const SPK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 5V4
 const TTS = 'speechSynthesis' in window;
 let voice = null, rate = 0.9, current = null;
 
+/* Voices differ per device — iOS lets you delete downloaded ones — so the
+   choice is remembered by name and quietly falls back if it disappears. */
+const VKEY='vocab-voice';
+const ACCENT={'en-GB':'British','en-US':'American','en-AU':'Australian','en-IE':'Irish',
+              'en-IN':'Indian','en-ZA':'South African','en-NZ':'New Zealand','en-CA':'Canadian'};
+const vSel = document.getElementById('voice');
+
+const enVoices = ()=> speechSynthesis.getVoices().filter(v=>/^en([-_]|$)/i.test(v.lang));
+
 function pickVoice(){
-  const vs = speechSynthesis.getVoices();
-  if(!vs.length) return;
-  const en = vs.filter(v=>/^en(-|_)?/i.test(v.lang));
-  voice = en.find(v=>/^en-GB/i.test(v.lang) && !/google/i.test(v.name))
+  const en = enVoices();
+  if(!en.length) return;
+  let saved=null; try{ saved = localStorage.getItem(VKEY); }catch(e){}
+  voice = (saved && en.find(v=>v.name===saved))
+       || en.find(v=>/^en-GB/i.test(v.lang) && !/google/i.test(v.name))
        || en.find(v=>/^en-GB/i.test(v.lang))
        || en.find(v=>/^en-US/i.test(v.lang))
-       || en[0] || vs[0];
+       || en[0];
+  fillVoices(en);
 }
+
+function fillVoices(en){
+  vSel.textContent='';
+  en.forEach(v=>{
+    const tag = v.lang.replace('_','-');
+    const o = document.createElement('option');
+    o.value = v.name;
+    o.textContent = `${v.name} — ${ACCENT[tag]||tag}`;
+    if(voice && v.name===voice.name) o.selected = true;
+    vSel.appendChild(o);
+  });
+  vSel.style.display = en.length>1 ? '' : 'none';
+}
+
+if(vSel) vSel.addEventListener('change',()=>{
+  const en = enVoices();
+  voice = en.find(v=>v.name===vSel.value) || voice;
+  if(!voice) return;
+  try{ localStorage.setItem(VKEY, voice.name); }catch(e){}
+  speechSynthesis.cancel();
+  if(current){ current.classList.remove('speaking'); current=null; }
+  const u = new SpeechSynthesisUtterance('marginalia');   // hear it, don't guess from the name
+  u.voice = voice; u.lang = voice.lang; u.rate = rate;
+  speechSynthesis.speak(u);
+});
+
 if(TTS){ pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
 else document.body.classList.add('nosound');
 
