@@ -39,6 +39,7 @@
   }
   .wrap{max-width:1080px; margin:0 auto; padding:0 22px}
   @media(min-width:1180px){ .wrap{max-width:1380px} }
+  @media(min-width:1400px){ .wrap{max-width:1500px} }   /* wider gutter-to-gutter so three columns are not cramped */
   @media(min-width:1800px){ .wrap{max-width:1760px} }   /* room for a third column at full measure */
 
   /* ---------- cover ---------- */
@@ -104,12 +105,15 @@
   .sec-head .count{font-family:"Archivo",sans-serif; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--c); margin-left:auto; font-weight:600}
   .sec-note{font-size:15px; color:var(--dim); margin:-14px 0 26px; max-width:60ch; font-style:italic}
 
-  /* Columns are whatever fits while every card stays between 490 and 560px —
-     the band that holds the definition to roughly 45-60 characters a line.
-     Fixed column counts squeezed it to 36 on an iPad and 41 on a laptop. */
+  /* Columns are whatever fits while every card stays between 430 and 560px.
+     430 is the floor that keeps three columns on a 1440 laptop; the cap is
+     what stops a single column running long on an iPad. */
+  /* the max must stay flexible: auto-fit counts tracks off a definite maximum,
+     so a 560px cap here would hold the laptop at two columns. The cap lives on
+     .card instead, which keeps a lone column from running long. */
   .grid{
-    display:grid; gap:13px; justify-content:center;
-    grid-template-columns:repeat(auto-fit, minmax(min(100%,490px), 560px));
+    display:grid; gap:13px; justify-content:center; justify-items:center;
+    grid-template-columns:repeat(auto-fit, minmax(min(100%,430px), 1fr));
   }
   @media(min-width:900px){ .grid{gap:15px} }
 
