@@ -309,7 +309,7 @@
         <button class="btn" id="study" aria-pressed="false">Study mode</button>
         <button class="btn" id="arabic" aria-pressed="false" lang="ar">العربية</button>
         <button class="btn" id="speed">Speed 0.9×</button>
-        <select class="btn" id="voice" aria-label="Reading voice"></select>
+        <select class="btn" id="voice" aria-label="Reading voice" style="display:none"></select>
         <button class="btn" id="addbtn" aria-pressed="false">+ Add words</button>
         <button class="btn" id="reset">Reset marks</button>
         <span class="tally" id="tally"><b>0</b> learned</span>
@@ -380,14 +380,19 @@ const ACCENT={'en-GB':'British','en-US':'American','en-AU':'Australian','en-IE':
               'en-IN':'Indian','en-ZA':'South African','en-NZ':'New Zealand','en-CA':'Canadian'};
 const vSel = document.getElementById('voice');
 
-const enVoices = ()=> speechSynthesis.getVoices().filter(v=>/^en([-_]|$)/i.test(v.lang));
+/* Windows' built-in SAPI voices sound robotic beside the rest, so they never
+   reach the list. Absent on iOS, where this filter does nothing. */
+const HIDE = /^Microsoft (David|Mark|Zira)\b/i;
+const enVoices = ()=> speechSynthesis.getVoices()
+  .filter(v=>/^en([-_]|$)/i.test(v.lang) && !HIDE.test(v.name));
 
 function pickVoice(){
   const en = enVoices();
-  if(!en.length) return;
+  if(!en.length){ vSel.style.display='none'; return; }   // nothing left to choose from
   let saved=null; try{ saved = localStorage.getItem(VKEY); }catch(e){}
   voice = (saved && en.find(v=>v.name===saved))
-       || en.find(v=>/^en-GB/i.test(v.lang) && !/google/i.test(v.name))
+       || en.find(v=>/uk english female/i.test(v.name))   // Chrome's Google UK English Female
+       || en.find(v=>/^en-GB/i.test(v.lang) && /female/i.test(v.name))
        || en.find(v=>/^en-GB/i.test(v.lang))
        || en.find(v=>/^en-US/i.test(v.lang))
        || en[0];
