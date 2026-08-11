@@ -1,0 +1,711 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Marginalia — a vocabulary booklet</title>
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Marginalia">
+<meta name="theme-color" content="#141634">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..600&family=Archivo:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --night:#141634;
+    --night-2:#1C1F45;
+    --paper:#F1EFE9;
+    --paper-2:#E4E1D8;
+    --rule:rgba(241,239,233,.14);
+    --dim:rgba(241,239,233,.55);
+
+    --ink-1:#C9922F; /* feudal    — ochre     */
+    --ink-2:#3F9A85; /* faith     — verdigris */
+    --ink-3:#C4485C; /* conflict  — oxblood   */
+    --ink-4:#8C6FD4; /* rhetoric  — violet    */
+    --ink-5:#4E8AD6; /* character — steel     */
+    --ink-6:#C77FB0; /* mind      — mauve     */
+    --ink-7:#6E9E4E; /* body      — moss      */
+    --ink-8:#6E7899; /* hardship  — slate     */
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--night); color:var(--paper);
+    font-family:"Newsreader",Georgia,serif; font-size:17px; line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px; margin:0 auto; padding:0 22px}
+  @media(min-width:1180px){ .wrap{max-width:1380px} }
+
+  /* ---------- cover ---------- */
+  .cover{padding:74px 0 54px; border-bottom:1px solid var(--rule); position:relative; overflow:hidden}
+  .eyebrow{
+    font-family:"Archivo",system-ui,sans-serif; font-size:11px; font-weight:600;
+    letter-spacing:.22em; text-transform:uppercase; color:var(--dim);
+  }
+  .cover h1{
+    font-family:"Fraunces",Georgia,serif; font-weight:600; font-variation-settings:"SOFT" 40,"WONK" 1;
+    font-size:clamp(46px,10vw,104px); line-height:.92; letter-spacing:-.025em;
+    margin:16px 0 0; max-width:12ch;
+  }
+  .cover h1 em{font-style:italic; color:var(--ink-1); font-weight:400}
+  .lede{max-width:46ch; margin:22px 0 0; color:var(--dim); font-size:19px}
+  .swatches{display:flex; gap:8px; margin-top:34px; flex-wrap:wrap}
+  .swatch{
+    display:flex; flex-direction:column; gap:8px; min-width:104px; flex:1 1 104px;
+    background:none; border:0; padding:0; cursor:pointer; text-align:left; color:inherit;
+    font-family:"Archivo",system-ui,sans-serif;
+  }
+  .swatch .bar{height:7px; border-radius:99px; background:var(--c); transition:height .18s ease}
+  .swatch:hover .bar,.swatch:focus-visible .bar{height:14px}
+  .swatch .lbl{font-size:10.5px; letter-spacing:.11em; text-transform:uppercase; color:var(--dim); line-height:1.35}
+  .swatch .num{font-size:10.5px; color:var(--c); font-weight:600}
+  .swatch:focus-visible{outline:2px solid var(--paper); outline-offset:5px; border-radius:3px}
+
+  /* ---------- toolbar ---------- */
+  .bar-wrap{position:sticky; top:0; z-index:20; background:rgba(20,22,52,.93); backdrop-filter:blur(10px); border-bottom:1px solid var(--rule)}
+  .bar{display:flex; gap:12px; align-items:center; flex-wrap:wrap; padding:13px 0}
+  .search{
+    flex:1 1 210px; min-width:0; background:var(--night-2); border:1px solid var(--rule);
+    color:var(--paper); padding:9px 13px; border-radius:7px; font:15px/1.4 "Newsreader",serif;
+  }
+  .search::placeholder{color:rgba(241,239,233,.38)}
+  .search:focus{outline:none; border-color:var(--ink-1)}
+  .btn{
+    font-family:"Archivo",system-ui,sans-serif; font-size:11.5px; font-weight:600; letter-spacing:.11em;
+    text-transform:uppercase; background:transparent; color:var(--dim);
+    border:1px solid var(--rule); padding:9px 15px; border-radius:7px; cursor:pointer; white-space:nowrap;
+  }
+  .btn:hover{color:var(--paper); border-color:rgba(241,239,233,.4)}
+  .btn[aria-pressed="true"]{background:var(--paper); color:var(--night); border-color:var(--paper)}
+  .btn:focus-visible{outline:2px solid var(--ink-1); outline-offset:2px}
+  .tally{font-family:"Archivo",sans-serif; font-size:11.5px; letter-spacing:.1em; color:var(--dim); margin-left:auto; white-space:nowrap}
+  .tally b{color:var(--paper); font-weight:600}
+
+  /* ---------- sections ---------- */
+  .sec{padding:52px 0 6px; scroll-margin-top:74px}
+  .sec-head{display:flex; align-items:baseline; gap:16px; border-bottom:2px solid var(--c); padding-bottom:11px; margin-bottom:26px}
+  .sec-head h2{
+    font-family:"Fraunces",Georgia,serif; font-weight:500; font-size:clamp(25px,4.4vw,38px);
+    letter-spacing:-.02em; margin:0; color:var(--paper);
+  }
+  .sec-head .count{font-family:"Archivo",sans-serif; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--c); margin-left:auto; font-weight:600}
+  .sec-note{font-size:15px; color:var(--dim); margin:-14px 0 26px; max-width:60ch; font-style:italic}
+
+  .grid{display:grid; grid-template-columns:1fr; gap:13px}
+  @media(min-width:760px){ .grid{grid-template-columns:repeat(2,1fr); gap:15px} }
+  @media(min-width:1180px){ .grid{grid-template-columns:repeat(3,1fr); gap:15px} }
+
+  /* ---------- entry card ---------- */
+  .card{
+    background:var(--paper); color:#22243F; border-radius:4px; padding:17px 19px 17px 21px;
+    border-left:5px solid var(--c); position:relative; transition:transform .16s ease, box-shadow .16s ease;
+  }
+  .card:hover{transform:translateY(-2px); box-shadow:0 10px 26px rgba(0,0,0,.28)}
+  .card.done{background:var(--paper-2)}
+  .card.done .word{text-decoration:line-through; text-decoration-color:rgba(34,36,63,.3); text-decoration-thickness:1.5px}
+  .top{display:flex; align-items:flex-start; gap:10px}
+  .no{
+    font-family:"Archivo",sans-serif; font-size:10px; font-weight:700; letter-spacing:.04em;
+    color:var(--c); padding-top:7px; min-width:26px;
+  }
+  .word{font-family:"Fraunces",Georgia,serif; font-weight:600; font-size:23px; letter-spacing:-.015em; line-height:1.15; margin:0}
+  .pos{font-family:"Archivo",sans-serif; font-size:9.5px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:rgba(34,36,63,.45); display:block; margin-top:5px}
+  .acts{margin-left:auto; display:flex; align-items:center; gap:7px; flex:none; padding-top:1px}
+  .mark{
+    width:24px; height:24px; flex:none; border-radius:50%; cursor:pointer;
+    border:1.5px solid rgba(34,36,63,.22); background:transparent; color:transparent;
+    font:600 13px/1 "Archivo",sans-serif; display:grid; place-items:center; transition:all .15s ease;
+  }
+  /* pronunciation */
+  .say{
+    width:24px; height:24px; flex:none; border-radius:50%; cursor:pointer; padding:0;
+    border:1.5px solid rgba(34,36,63,.22); background:transparent; color:rgba(34,36,63,.5);
+    display:grid; place-items:center; transition:all .15s ease;
+  }
+  .say svg{width:12px; height:12px; fill:currentColor}
+  .say:hover{border-color:var(--c); color:var(--c)}
+  .say:focus-visible{outline:2px solid var(--c); outline-offset:2px}
+  .say.speaking{background:var(--c); border-color:var(--c); color:var(--paper)}
+  .say-ex{
+    display:inline-flex; align-items:center; gap:5px; margin-top:9px; padding:4px 9px;
+    border:1px solid rgba(34,36,63,.16); border-radius:99px; background:transparent; cursor:pointer;
+    font:600 9.5px/1 "Archivo",sans-serif; letter-spacing:.13em; text-transform:uppercase;
+    color:rgba(34,36,63,.5); transition:all .15s ease;
+  }
+  .say-ex svg{width:10px; height:10px; fill:currentColor}
+  .say-ex:hover{color:var(--c); border-color:var(--c)}
+  .say-ex:focus-visible{outline:2px solid var(--c); outline-offset:2px}
+  .say-ex.speaking{background:var(--c); border-color:var(--c); color:var(--paper)}
+  body.nosound .say,body.nosound .say-ex{display:none}
+  .mark:hover{border-color:var(--c)}
+  .mark[aria-pressed="true"]{background:var(--c); border-color:var(--c); color:var(--paper)}
+  .mark:focus-visible{outline:2px solid var(--c); outline-offset:2px}
+  .body{padding-left:36px}
+  .def{margin:9px 0 0; font-size:16.5px; line-height:1.5}
+  .ex{
+    margin:11px 0 0; padding-left:12px; border-left:2px solid var(--c);
+    font-style:italic; font-size:16px; color:rgba(34,36,63,.78); line-height:1.5;
+  }
+  .ex .t{font-style:italic; font-weight:600; color:var(--c); border-bottom:1.5px solid var(--c); padding-bottom:1px}
+  .flag{
+    margin:10px 0 0; font-family:"Archivo",sans-serif; font-size:11.5px; line-height:1.5;
+    color:rgba(34,36,63,.62); padding:7px 10px; background:rgba(34,36,63,.05); border-radius:3px;
+  }
+  .flag b{color:#22243F}
+
+  /* Arabic gloss */
+  .ar{
+    display:none; direction:rtl; text-align:right; unicode-bidi:isolate;
+    font-family:"Noto Naskh Arabic","Segoe UI",Tahoma,serif;
+    font-size:17px; line-height:1.85; margin:11px 0 0;
+    padding:9px 13px 9px 11px; border-right:3px solid var(--c);
+    background:rgba(34,36,63,.045); border-radius:3px 0 0 3px; color:#22243F;
+  }
+  body.ar-on .ar{display:block}
+  body.ar-only .def,body.ar-only .ex,body.ar-only .say-ex,body.ar-only .flag{display:none}
+  body.ar-only .ar{margin-top:9px}
+
+  /* study mode */
+  body.study .body{display:none}
+  body.study .card.open .body{display:block}
+  body.study .card{cursor:pointer}
+  .hint{display:none; font-family:"Archivo",sans-serif; font-size:10.5px; letter-spacing:.12em;
+        text-transform:uppercase; color:rgba(34,36,63,.35); padding-left:36px; margin-top:8px}
+  body.study .card:not(.open) .hint{display:block}
+
+  /* ---------- confusables ---------- */
+  .fix{margin:64px 0 0; padding:30px; border:1px solid var(--rule); border-radius:6px; background:var(--night-2)}
+  .fix h3{font-family:"Fraunces",serif; font-size:26px; font-weight:500; margin:0 0 6px}
+  .fix p{color:var(--dim); margin:0 0 20px; font-size:16px}
+  .fix table{width:100%; border-collapse:collapse; font-size:16px}
+  .fix th{
+    font-family:"Archivo",sans-serif; font-size:10px; letter-spacing:.15em; text-transform:uppercase;
+    color:var(--dim); text-align:left; padding:0 0 9px; border-bottom:1px solid var(--rule); font-weight:600;
+  }
+  .fix td{padding:11px 0; border-bottom:1px solid var(--rule); vertical-align:top}
+  .fix td:first-child{color:var(--ink-3); text-decoration:line-through; text-decoration-thickness:1px; width:42%; padding-right:14px}
+  .fix td:last-child b{color:var(--ink-2); font-weight:600}
+
+  /* add-words panel */
+  .panel{display:none; margin:26px 0 0; padding:24px; border:1px solid var(--rule); border-radius:8px; background:var(--night-2)}
+  .panel.on{display:block}
+  .panel h3{font-family:"Fraunces",serif; font-size:22px; font-weight:500; margin:0 0 4px}
+  .panel p{color:var(--dim); font-size:15px; margin:0 0 16px}
+  .panel textarea{
+    width:100%; min-height:110px; background:var(--night); color:var(--paper); resize:vertical;
+    border:1px solid var(--rule); border-radius:6px; padding:12px; font:15px/1.6 "Newsreader",serif;
+  }
+  .panel textarea:focus{outline:none; border-color:var(--ink-1)}
+  .panel .row{display:flex; gap:9px; flex-wrap:wrap; margin-top:12px; align-items:center}
+  .step{margin-top:24px; padding-top:20px; border-top:1px solid var(--rule)}
+  .step:first-of-type{border-top:0; padding-top:0; margin-top:0}
+  .stepno{font-family:"Archivo",sans-serif; font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-1); font-weight:600; display:block; margin-bottom:7px}
+  .note{font-size:14px; color:var(--dim); margin:10px 0 0; line-height:1.6}
+  .note.warn{color:var(--ink-1)}
+  .note.bad{color:var(--ink-3)}
+  .note.good{color:var(--ink-2)}
+  .chips{display:flex; flex-wrap:wrap; gap:7px; margin-top:12px}
+  .chip{
+    font-family:"Archivo",sans-serif; font-size:12px; padding:5px 10px; border-radius:99px;
+    border:1px solid var(--rule); color:var(--paper); display:flex; align-items:center; gap:7px;
+  }
+  .chip.dup{color:rgba(241,239,233,.35); text-decoration:line-through}
+  .chip.near{border-color:var(--ink-1); color:var(--ink-1)}
+  .chip b{font-weight:600}
+  .chip button{background:none; border:0; color:inherit; cursor:pointer; font-size:14px; line-height:1; padding:0; opacity:.6}
+  .chip button:hover{opacity:1}
+  .pre{
+    background:var(--night); border:1px solid var(--rule); border-radius:6px; padding:13px;
+    font:12.5px/1.6 ui-monospace,Menlo,monospace; color:var(--dim);
+    max-height:170px; overflow:auto; white-space:pre-wrap; word-break:break-word; margin-top:12px;
+  }
+  .pending{border-left-style:dashed !important; opacity:.9}
+  .pending .word::after{
+    content:"needs detail"; font-family:"Archivo",sans-serif; font-size:9px; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--c); border:1px solid var(--c); border-radius:99px;
+    padding:2px 7px; margin-left:9px; vertical-align:middle; font-weight:600;
+  }
+  .empty{padding:60px 0; text-align:center; color:var(--dim); font-style:italic; display:none}
+  #loaderr{
+    display:none; max-width:56ch; margin:90px auto; padding:26px 30px; text-align:left;
+    font-style:normal; line-height:1.65; border:1px solid var(--rule); border-radius:8px;
+    background:var(--night-2); color:var(--paper); font-size:16px;
+  }
+  #loaderr b{color:var(--ink-1)}
+  #loaderr code{
+    font:13px/1 ui-monospace,Menlo,monospace; background:var(--night);
+    padding:3px 7px; border-radius:4px; color:var(--ink-2);
+  }
+  footer{padding:52px 0 70px; color:rgba(241,239,233,.35); font-size:14px; border-top:1px solid var(--rule); margin-top:64px}
+
+  @media(prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
+
+  /* ---------- print: a real booklet ---------- */
+  @media print{
+    @page{margin:14mm}
+    body{background:#fff; color:#000; font-size:10.5pt}
+    .bar-wrap,.mark,.say,.say-ex,.hint,.swatch .num,footer{display:none!important}
+    body.study .body{display:block!important}
+    .cover{padding:0 0 18pt; border-color:#999}
+    .cover h1{font-size:40pt; color:#000}
+    .cover h1 em{color:#666}
+    .lede,.sec-note{color:#444}
+    .sec{padding:16pt 0 0; break-before:page}
+    .sec:first-of-type{break-before:auto}
+    .sec-head h2,.word{color:#000}
+    .grid{grid-template-columns:1fr 1fr !important; gap:8pt}
+    .card{break-inside:avoid; background:#fff; border:1px solid #ddd; border-left:3px solid var(--c); box-shadow:none; padding:8pt 10pt}
+    .card:hover{transform:none; box-shadow:none}
+    .word{font-size:13pt}
+    .def,.ex{font-size:9.5pt}
+    .def{color:#000}
+    .ex{color:#333}
+    .fix{background:#fff; border-color:#ccc; break-before:page}
+    .ar{background:#fff; border-right-color:#999; padding:4pt 8pt 4pt 0; font-size:10pt}
+    body.ar-on .ar{display:block}
+  }
+</style>
+
+<div class="wrap">
+
+  <div id="app" hidden>
+  <header class="cover">
+    <div class="eyebrow" id="eyebrow">A working vocabulary · seven fields</div>
+    <h1>Margin<em>alia</em></h1>
+    <p class="lede">Words caught in the margins of films, games and videos — then given somewhere to live. Each field has its own ink. Read the definition, then read the sentence: the sentence is where the word actually works.</p>
+    <div class="swatches" id="swatches"></div>
+  </header>
+
+  <div class="bar-wrap">
+    <div class="wrap">
+      <div class="bar">
+        <input class="search" id="q" type="search" placeholder="Search a word, a meaning, an example…" aria-label="Search words">
+        <button class="btn" id="study" aria-pressed="false">Study mode</button>
+        <button class="btn" id="arabic" aria-pressed="false" lang="ar">العربية</button>
+        <button class="btn" id="speed">Speed 0.9×</button>
+        <button class="btn" id="addbtn" aria-pressed="false">+ Add words</button>
+        <button class="btn" id="reset">Reset marks</button>
+        <span class="tally" id="tally"><b>0</b> learned</span>
+      </div>
+    </div>
+  </div>
+
+  <section class="panel" id="panel">
+    <div class="step">
+      <span class="stepno">Step 1 — paste your English words</span>
+      <p>Any format: commas, new lines, numbered. Duplicates are removed automatically.</p>
+      <textarea id="raw" placeholder="obstinate, wary&#10;3. gaunt&#10;forlorn"></textarea>
+      <div class="row"><button class="btn" id="check">Check list</button></div>
+      <div id="report"></div>
+    </div>
+
+    <div class="step" id="s2" style="display:none">
+      <span class="stepno">Step 2 — copy this to Claude</span>
+      <p>Paste it into a chat, then bring the reply back here.</p>
+      <div class="pre" id="prompt"></div>
+      <div class="row">
+        <button class="btn" id="copyp">Copy prompt</button>
+        <button class="btn" id="addnow">Add as needs-detail now</button>
+      </div>
+    </div>
+
+    <div class="step" id="s3" style="display:none">
+      <span class="stepno">Step 3 — paste the reply</span>
+      <textarea id="incoming" placeholder="Paste the JSON array Claude gives you"></textarea>
+      <div class="row"><button class="btn" id="merge">Validate &amp; merge</button></div>
+      <div id="mergemsg"></div>
+    </div>
+
+    <div class="step">
+      <span class="stepno">Step 4 — save it</span>
+      <p>Download the updated file and paste it into <b>words.json</b> on GitHub.</p>
+      <div class="row">
+        <button class="btn" id="dl">Download words.json</button>
+        <button class="btn" id="dlprog">Export progress</button>
+      </div>
+      <p class="note" id="local"></p>
+    </div>
+  </section>
+
+  <main id="book"></main>
+  <p class="empty" id="empty">No entry matches that. Try a shorter word.</p>
+
+  <section class="fix" id="fix" hidden></section>
+
+  </div>
+  <p class="empty" id="loaderr"></p>
+
+  <footer id="foot" hidden>Tap any ink swatch to jump to that field. The <b>العربية</b> button cycles: off → Arabic beside the English → Arabic only. Speaker icons read a word or its sentence aloud; tap again to stop. Print (Ctrl/Cmd&nbsp;+&nbsp;P) for a two-column paper booklet — whatever language mode is on will print with it.</footer>
+</div>
+
+<script>
+let FIELDS = [], W = [];
+
+/* ---------- speech ---------- */
+const SPK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.8-1-3.3-2.5-4v8c1.5-.7 2.5-2.2 2.5-4zM14 3.2v2.1c2.9.9 5 3.5 5 6.7s-2.1 5.8-5 6.7v2.1c4-1 7-4.5 7-8.8s-3-7.8-7-8.8z"/></svg>';
+const TTS = 'speechSynthesis' in window;
+let voice = null, rate = 0.9, current = null;
+
+function pickVoice(){
+  const vs = speechSynthesis.getVoices();
+  if(!vs.length) return;
+  const en = vs.filter(v=>/^en(-|_)?/i.test(v.lang));
+  voice = en.find(v=>/^en-GB/i.test(v.lang) && !/google/i.test(v.name))
+       || en.find(v=>/^en-GB/i.test(v.lang))
+       || en.find(v=>/^en-US/i.test(v.lang))
+       || en[0] || vs[0];
+}
+if(TTS){ pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+else document.body.classList.add('nosound');
+
+function speak(text, btn){
+  if(!TTS) return;
+  speechSynthesis.cancel();
+  if(current){ current.classList.remove('speaking'); }
+  if(current === btn){ current = null; return; }   // second tap stops
+  const u = new SpeechSynthesisUtterance(text);
+  if(voice) u.voice = voice;
+  u.lang = voice ? voice.lang : 'en-GB';
+  u.rate = rate; u.pitch = 1;
+  current = btn; btn.classList.add('speaking');
+  u.onend = u.onerror = ()=>{ btn.classList.remove('speaking'); if(current===btn) current=null; };
+  speechSynthesis.speak(u);
+}
+
+/* ---------- render ---------- */
+const book = document.getElementById('book');
+const done = new Set();
+let n = 0;
+
+function render(){
+book.innerHTML=''; n=0;
+const INBOX={id:0,name:"Waiting for detail",ink:"var(--ink-1)",note:"Words you have captured but not yet enriched. They are searchable now; run them through step 2 when you have a batch."};
+const shown = W.some(x=>!x.d) ? [INBOX].concat(FIELDS) : FIELDS;
+shown.forEach(f=>{
+  const items = W.filter(x=> f.id===0 ? !x.d : (x.f===f.id && x.d));
+  const sec = document.createElement('section');
+  sec.className='sec'; sec.id='f'+f.id; sec.style.setProperty('--c',f.ink);
+  sec.innerHTML = `<div class="sec-head"><h2>${f.name}</h2><span class="count">${items.length} words</span></div>
+                   <p class="sec-note">${f.note}</p><div class="grid"></div>`;
+  const grid = sec.querySelector('.grid');
+
+  items.forEach(x=>{
+    n++;
+    const id = 'w'+n;
+    x.e=x.e||''; x.d=x.d||''; x.p=x.p||''; x.a=x.a||'';
+    const ex = x.e.replace(/\*(.+?)\*/g,'<span class="t">$1</span>');
+    const el = document.createElement('article');
+    el.className='card'+(x.d?'':' pending'); el.dataset.id=id; el.dataset.w=x.w;
+    const plainEx = x.e.replace(/\*/g,'');
+    const sayWord = x.w.replace(/\s*\(.*?\)\s*/g,' ').trim();
+    el.dataset.s=(x.w+' '+x.d+' '+plainEx+' '+(x.n||'')+' '+(x.a||'')).toLowerCase();
+    el.dataset.word = sayWord;
+    el.dataset.ex = plainEx;
+    el.innerHTML = `
+      <div class="top">
+        <span class="no">${String(n).padStart(3,'0')}</span>
+        <div><h3 class="word">${x.w}</h3><span class="pos">${x.p}</span></div>
+        <div class="acts">
+          <button class="say" data-say="word" aria-label="Hear ${sayWord}">${SPK}</button>
+          <button class="mark" aria-pressed="false" aria-label="Mark ${x.w} as learned">✓</button>
+        </div>
+      </div>
+      <div class="hint">Tap to reveal</div>
+      <div class="body">
+        ${x.d?`<p class="def">${x.d}</p>`:'<p class="def" style="opacity:.6">Captured — not enriched yet.</p>'}
+        ${x.a?`<p class="ar" lang="ar" dir="rtl">${x.a}</p>`:''}
+        ${x.e?`<p class="ex">${ex}</p><button class="say-ex" data-say="ex">${SPK}Hear the sentence</button>`:''}
+        ${x.n?`<p class="flag"><b>Careful:</b> ${x.n}</p>`:''}
+      </div>`;
+    grid.appendChild(el);
+  });
+  book.appendChild(sec);
+});
+
+/* swatches */
+document.getElementById('swatches').innerHTML = FIELDS.map(f=>{
+  const c = W.filter(x=>x.f===f.id).length;
+  return `<button class="swatch" style="--c:${f.ink}" data-go="f${f.id}">
+            <span class="bar"></span><span class="lbl">${f.name}</span><span class="num">${c}</span></button>`;
+}).join('');
+document.getElementById('eyebrow').textContent =
+  `A working vocabulary · ${W.length} entries · ${FIELDS.length} fields`;
+}
+document.getElementById('swatches').addEventListener('click',e=>{
+  const b=e.target.closest('[data-go]'); if(b) document.getElementById(b.dataset.go).scrollIntoView({behavior:'smooth'});
+});
+
+/* progress */
+const tally = document.getElementById('tally');
+const KEY='vocab-booklet-progress';
+function paint(){ tally.innerHTML=`<b>${done.size}</b> / ${W.length} learned`; }
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify([...done])); }catch(e){} }
+function loadProgress(){
+  try{
+    const r = localStorage.getItem(KEY);
+    if(r) JSON.parse(r).forEach(w=>{
+      const c=document.querySelector(`[data-w="${CSS.escape(w)}"]`);
+      if(c){ done.add(w); c.classList.add('done'); c.querySelector('.mark').setAttribute('aria-pressed','true'); }
+    });
+  }catch(e){}
+  paint();
+}
+
+book.addEventListener('click',e=>{
+  const s = e.target.closest('[data-say]');
+  if(s){
+    e.stopPropagation();
+    const card = s.closest('.card');
+    speak(s.dataset.say==='word' ? card.dataset.word : card.dataset.ex, s);
+    return;
+  }
+  const m = e.target.closest('.mark');
+  if(m){
+    const card=m.closest('.card'), id=card.dataset.w;
+    if(done.has(id)){ done.delete(id); card.classList.remove('done'); m.setAttribute('aria-pressed','false'); }
+    else{ done.add(id); card.classList.add('done'); m.setAttribute('aria-pressed','true'); }
+    paint(); save(); return;
+  }
+  if(document.body.classList.contains('study')){
+    const c=e.target.closest('.card'); if(c) c.classList.toggle('open');
+  }
+});
+
+/* Arabic: off → alongside English → Arabic only */
+const MODES = [
+  {cls:'',        label:'العربية'},
+  {cls:'ar-on',   label:'عربي + EN'},
+  {cls:'ar-only', label:'عربي فقط'}
+];
+let mode = 0;
+const arBtn = document.getElementById('arabic');
+arBtn.addEventListener('click',()=>{
+  document.body.classList.remove('ar-on','ar-only');
+  mode = (mode+1) % MODES.length;
+  if(mode===1) document.body.classList.add('ar-on');
+  if(mode===2) document.body.classList.add('ar-on','ar-only');
+  arBtn.textContent = MODES[mode].label;
+  arBtn.setAttribute('aria-pressed', String(mode>0));
+});
+
+/* speech speed */
+const RATES=[0.6,0.75,0.9,1];
+const spBtn=document.getElementById('speed');
+if(!TTS) spBtn.style.display='none';
+spBtn.addEventListener('click',()=>{
+  rate = RATES[(RATES.indexOf(rate)+1)%RATES.length];
+  spBtn.textContent = 'Speed '+rate+'×';
+  if(TTS) speechSynthesis.cancel();
+  if(current){ current.classList.remove('speaking'); current=null; }
+});
+
+/* study mode */
+const sBtn=document.getElementById('study');
+sBtn.addEventListener('click',()=>{
+  const on = sBtn.getAttribute('aria-pressed')==='true';
+  sBtn.setAttribute('aria-pressed', String(!on));
+  document.body.classList.toggle('study', !on);
+  document.querySelectorAll('.card.open').forEach(c=>c.classList.remove('open'));
+});
+
+/* reset */
+document.getElementById('reset').addEventListener('click',()=>{
+  done.clear();
+  document.querySelectorAll('.card').forEach(c=>{ c.classList.remove('done'); c.querySelector('.mark').setAttribute('aria-pressed','false'); });
+  paint(); save();
+});
+
+/* ---------- data loading ---------- */
+const CACHE='vocab-words-cache', LOCAL='vocab-words-local';
+const norm=s=>s.toLowerCase().normalize('NFKD').replace(/[^a-z\s-]/g,'').trim();
+const stem=s=>{let v=norm(s);for(let i=0;i<2;i++)v=v.replace(/(ingly|edly|ously|fully|ing|ed|ies|es|s|ly|ness|ment|tion|ion|ity|ous|ful)$/,'');return v;};
+
+function localAdds(){ try{ return JSON.parse(localStorage.getItem(LOCAL)||'[]'); }catch(e){ return []; } }
+function setLocal(a){ try{ localStorage.setItem(LOCAL, JSON.stringify(a)); }catch(e){} }
+
+function apply(data){
+  FIELDS = data.fields;
+  const extra = localAdds();
+  W = data.words.concat(extra.filter(x=>!data.words.some(y=>norm(y.w)===norm(x.w))));
+  render(); loadProgress(); showLocal(); renderFix(data.corrections);
+  CORRECTIONS = data.corrections || [];
+  document.getElementById('app').hidden=false;
+  document.getElementById('foot').hidden=false;
+}
+
+function renderFix(list){
+  const el=document.getElementById('fix');
+  if(!list || !list.length){ el.hidden=true; return; }
+  const n=list.length, word=['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten'][n]||n;
+  el.hidden=false;
+  el.innerHTML=`<h3>${word} you spelled slightly wrong</h3>
+    <p>These are easy to mishear, so they're worth fixing early — a misspelled word looks like a guess even when the meaning is right.</p>
+    <table><tr><th>You wrote</th><th>Correct</th></tr>${
+      list.map(c=>`<tr><td>${c.wrong}</td><td><b>${c.right}</b>${c.hint?' — '+c.hint:''}</td></tr>`).join('')
+    }</table>`;
+}
+
+function failed(msg){
+  const el=document.getElementById('loaderr');
+  el.style.display='block'; el.innerHTML=msg;
+}
+
+async function boot(){
+  let data=null, why='';
+  const local = location.protocol==='file:';
+  try{
+    const r = await fetch('words.json', {cache:'no-cache'});
+    if(r.ok) { data = await r.json(); localStorage.setItem(CACHE, JSON.stringify(data)); }
+    else why = `The server returned ${r.status} for <b>words.json</b> — check the file is uploaded next to index.html, spelled exactly like that.`;
+  }catch(e){
+    why = local
+      ? 'This page was opened directly from disk, so the browser blocks it from reading <b>words.json</b>.<br>Put it online, or run <code>python3 -m http.server</code> in this folder and open <b>localhost:8000</b>.'
+      : 'Could not reach <b>words.json</b>. Check your connection.';
+  }
+  if(!data){ try{ data = JSON.parse(localStorage.getItem(CACHE)); }catch(e){} }
+  if(!data){ failed(why||'Could not load words.json.'); return; }
+  apply(data);
+}
+boot();
+
+function showLocal(){
+  const adds = localAdds(), el = document.getElementById('local');
+  const ready = adds.filter(x=>x.d && x.d.trim()).length, bare = adds.length - ready;
+  const lines = [];
+  if(ready) lines.push(`${ready} word${ready>1?'s':''} added on this device only — download and commit to keep ${ready>1?'them':'it'}.`);
+  if(bare) lines.push(`${bare} more ${bare>1?'are':'is'} still waiting for detail: the download leaves ${bare>1?'them':'it'} out, so ${bare>1?'they stay':'it stays'} in this browser until you enrich ${bare>1?'them':'it'}.`);
+  el.textContent = lines.join(' ');
+  el.className = adds.length ? 'note warn' : 'note';
+}
+
+/* ---------- add words ---------- */
+const panel=document.getElementById('panel'), addBtn=document.getElementById('addbtn');
+addBtn.addEventListener('click',()=>{
+  const on = addBtn.getAttribute('aria-pressed')==='true';
+  addBtn.setAttribute('aria-pressed', String(!on));
+  panel.classList.toggle('on', !on);
+  if(!on) panel.scrollIntoView({behavior:'smooth'});
+});
+
+let fresh=[];
+document.getElementById('check').addEventListener('click',()=>{
+  const raw=document.getElementById('raw').value;
+  const items=[...new Set(raw.split(/[\n,;]+/).map(s=>s.replace(/^\s*\d+[.)]\s*/,'').trim()).filter(Boolean))];
+  const have=new Map(W.map(x=>[norm(x.w),x.w]));
+  const stems=new Map(W.map(x=>[stem(x.w),x.w]));
+  fresh=[]; const dups=[], nears=[];
+  items.forEach(t=>{
+    if(have.has(norm(t))) dups.push(t);
+    else if(stems.has(stem(t))) nears.push({t, like:stems.get(stem(t))});
+    else fresh.push(t);
+  });
+  nears.forEach(nx=>fresh.push(nx.t));
+  const rep=document.getElementById('report');
+  rep.innerHTML =
+    `<p class="note ${fresh.length?'good':''}">${fresh.length} new · ${dups.length} already here${nears.length?` · ${nears.length} similar to existing`:''}</p>` +
+    `<div class="chips">${
+      fresh.map(t=>{const nx=nears.find(n=>n.t===t);
+        return `<span class="chip ${nx?'near':''}" data-t="${t}"><b>${t}</b>${nx?` <span style="opacity:.7">≈ ${nx.like}</span>`:''}<button data-drop="${t}" aria-label="Remove ${t}">×</button></span>`;
+      }).join('') +
+      dups.map(t=>`<span class="chip dup">${t}</span>`).join('')
+    }</div>`;
+  document.getElementById('s2').style.display = fresh.length?'block':'none';
+  document.getElementById('s3').style.display = fresh.length?'block':'none';
+  if(fresh.length) buildPrompt();
+});
+
+document.getElementById('report').addEventListener('click',e=>{
+  const b=e.target.closest('[data-drop]'); if(!b) return;
+  fresh = fresh.filter(t=>t!==b.dataset.drop);
+  b.closest('.chip').remove(); buildPrompt();
+  if(!fresh.length){ document.getElementById('s2').style.display='none'; document.getElementById('s3').style.display='none'; }
+});
+
+function buildPrompt(){
+  const fl = FIELDS.map(f=>`${f.id}=${f.name}`).join(', ');
+  document.getElementById('prompt').textContent =
+`Add these to my vocabulary booklet. Return ONLY a JSON array, no other text.
+
+Words: ${fresh.join(', ')}
+
+Each object: {"w":word, "f":field id, "p":part of speech, "d":definition in plain English, "e":example sentence with the target word wrapped in *asterisks*, "a":Arabic meaning, "n":optional usage warning}
+
+Fields: ${fl}
+
+Match the existing house style: definitions one sentence, examples natural and concrete, Arabic chosen for the sense used in that field.`;
+}
+
+document.getElementById('copyp').addEventListener('click',async e=>{
+  try{ await navigator.clipboard.writeText(document.getElementById('prompt').textContent);
+       e.target.textContent='Copied'; setTimeout(()=>e.target.textContent='Copy prompt',1500); }catch(err){}
+});
+
+document.getElementById('addnow').addEventListener('click',()=>{
+  const add=fresh.map(t=>({w:t,f:0,p:'',d:'',e:'',a:''}));
+  setLocal(localAdds().concat(add)); W=W.concat(add);
+  render(); loadProgress(); showLocal();
+  document.getElementById('report').innerHTML='<p class="note good">Added — enrich them whenever you like.</p>';
+  document.getElementById('s2').style.display='none';
+});
+
+document.getElementById('merge').addEventListener('click',()=>{
+  const msg=document.getElementById('mergemsg');
+  const txt=document.getElementById('incoming').value.trim().replace(/^```(json)?|```$/g,'').trim();
+  let arr;
+  try{ arr=JSON.parse(txt); }catch(e){ msg.className='note bad'; msg.textContent='That is not valid JSON. Paste the whole array including the square brackets.'; return; }
+  if(!Array.isArray(arr)){ msg.className='note bad'; msg.textContent='Expected an array of objects.'; return; }
+  const ids=new Set(FIELDS.map(f=>f.id)); const bad=[];
+  arr.forEach((x,i)=>{
+    if(!x || typeof x.w!=='string' || !x.w.trim()) bad.push(`#${i+1} has no word`);
+    else if(!ids.has(x.f)) bad.push(`${x.w}: field ${x.f} does not exist`);
+    else if(typeof x.d!=='string' || !x.d.trim()) bad.push(`${x.w}: no definition`);
+  });
+  if(bad.length){ msg.className='note bad'; msg.textContent='Nothing merged — '+bad.slice(0,3).join('; '); return; }
+  const enriched=new Set(arr.map(x=>norm(x.w)));
+  const kept=W.filter(x=>!enriched.has(norm(x.w)));
+  const already=new Set(kept.map(x=>norm(x.w)));
+  const add=arr.filter(x=>!already.has(norm(x.w)));
+  W = kept.concat(add);
+  setLocal(localAdds().filter(x=>!enriched.has(norm(x.w))).concat(add));
+  render(); loadProgress(); showLocal();
+  msg.className='note good';
+  msg.textContent = `Merged ${add.length} word${add.length===1?'':'s'}. Download the file and commit it.`;
+  document.getElementById('incoming').value=''; document.getElementById('raw').value='';
+});
+
+function download(name, text){
+  const b=new Blob([text],{type:'application/json'}), u=URL.createObjectURL(b);
+  const a=document.createElement('a'); a.href=u; a.download=name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(u),1000);
+}
+let CORRECTIONS=[];
+document.getElementById('dl').addEventListener('click',()=>{
+  const clean=W.filter(x=>x.d && x.d.trim());
+  download('words.json', JSON.stringify({
+    schema:1, updated:new Date().toISOString().slice(0,10),
+    fields:FIELDS, corrections:CORRECTIONS, words:clean
+  },null,1));
+});
+document.getElementById('dlprog').addEventListener('click',()=>{
+  download('progress.json', JSON.stringify([...done],null,1));
+});
+
+/* search */
+const empty=document.getElementById('empty');
+document.getElementById('q').addEventListener('input',e=>{
+  const q=e.target.value.trim().toLowerCase();
+  let hits=0;
+  document.querySelectorAll('.card').forEach(c=>{
+    const show = !q || c.dataset.s.includes(q);
+    c.style.display = show?'':'none'; if(show) hits++;
+  });
+  document.querySelectorAll('.sec').forEach(s=>{
+    s.style.display = [...s.querySelectorAll('.card')].some(c=>c.style.display!=='none') ? '' : 'none';
+  });
+  empty.style.display = hits?'none':'block';
+});
+</script>
