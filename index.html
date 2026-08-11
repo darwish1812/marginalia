@@ -86,7 +86,7 @@
     text-transform:none; letter-spacing:.02em; font-size:12.5px; max-width:210px;
     appearance:none; -webkit-appearance:none; padding-right:29px;
     background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%23F1EFE9' stroke-opacity='.55' stroke-width='1.6'/></svg>");
-    background-repeat:no-repeat; background-position:right 10px center;
+    background-repeat:no-repeat; background-position:right 11px center; background-size:10px 6px;
   }
   select.btn option{background:var(--night-2); color:var(--paper)}
   body.nosound #voice{display:none}
@@ -121,7 +121,19 @@
     color:var(--c); padding-top:7px; min-width:26px;
   }
   .word{font-family:"Fraunces",Georgia,serif; font-weight:600; font-size:23px; letter-spacing:-.015em; line-height:1.15; margin:0}
-  .pos{font-family:"Archivo",sans-serif; font-size:9.5px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:rgba(34,36,63,.45); display:block; margin-top:5px}
+  .pos{display:flex; flex-wrap:wrap; gap:5px; margin-top:7px}
+  .pos:empty{display:none}
+  .tag{
+    font-family:"Archivo",sans-serif; font-size:9.5px; font-weight:700; letter-spacing:.12em;
+    text-transform:uppercase; padding:3px 7px 2px; border-radius:3px; line-height:1.4;
+    color:var(--pc,#4A4C63); background:var(--pb,rgba(34,36,63,.06)); border:1px solid var(--pd,rgba(34,36,63,.16));
+  }
+  .tag.noun{--pc:#2C5A8C; --pb:rgba(44,90,140,.11); --pd:rgba(44,90,140,.32)}
+  .tag.verb{--pc:#A34328; --pb:rgba(163,67,40,.11); --pd:rgba(163,67,40,.32)}
+  .tag.adj {--pc:#37734B; --pb:rgba(55,115,75,.12); --pd:rgba(55,115,75,.34)}
+  .tag.adv {--pc:#65499F; --pb:rgba(101,73,159,.11); --pd:rgba(101,73,159,.32)}
+  .tag.phr {--pc:#83641B; --pb:rgba(131,100,27,.13); --pd:rgba(131,100,27,.34)}
+  .tag.idi {--pc:#87456D; --pb:rgba(135,69,109,.11); --pd:rgba(135,69,109,.32)}
   .acts{margin-left:auto; display:flex; align-items:center; gap:7px; flex:none; padding-top:1px}
   .mark{
     width:24px; height:24px; flex:none; border-radius:50%; cursor:pointer;
@@ -272,6 +284,8 @@
     .def,.ex{font-size:9.5pt}
     .def{color:#000}
     .ex{color:#333}
+    /* browsers drop background tints when printing, so lean on the outline */
+    .tag{background:none!important; color:#333!important; border-color:#bbb!important; font-size:7pt; letter-spacing:.1em}
     .fix{background:#fff; border-color:#ccc; break-before:page}
     .ar{background:#fff; border-right-color:#999; padding:4pt 8pt 4pt 0; font-size:10pt}
     body.ar-on .ar{display:block}
@@ -380,13 +394,21 @@ function pickVoice(){
   fillVoices(en);
 }
 
+/* Desktop voices carry the vendor and locale in the name — "Microsoft Zira -
+   English (United States)" — which the accent label already says. iOS names
+   are bare ("Samantha") and survive this untouched. */
+const shortName = n => n.replace(/^(Microsoft|Google|Apple)\s+/i,'')
+                        .replace(/\s*[-–—]\s*English\b.*$/i,'')
+                        .replace(/\s*\(.*?\)\s*/g,' ')
+                        .trim() || n;
+
 function fillVoices(en){
   vSel.textContent='';
   en.forEach(v=>{
     const tag = v.lang.replace('_','-');
     const o = document.createElement('option');
     o.value = v.name;
-    o.textContent = `${v.name} — ${ACCENT[tag]||tag}`;
+    o.textContent = `${shortName(v.name)} — ${ACCENT[tag]||tag}`;
     if(voice && v.name===voice.name) o.selected = true;
     vSel.appendChild(o);
   });
@@ -423,6 +445,19 @@ function speak(text, btn){
 }
 
 /* ---------- render ---------- */
+const esc = s => String(s).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+
+/* "noun / verb" becomes two pills; anything unrecognised keeps its own words
+   in the neutral style rather than being dropped. */
+const POS = {noun:['noun','noun'], verb:['verb','verb'], adjective:['adj','adj'],
+             adverb:['adv','adv'], phrase:['phr','phrase'], idiom:['idi','idiom']};
+function posTags(p){
+  return (p||'').split(/[\/,]/).map(s=>s.trim().toLowerCase()).filter(Boolean).map(s=>{
+    const m = POS[s] || POS[s.replace(/s$/,'')];
+    return m ? `<span class="tag ${m[0]}">${m[1]}</span>` : `<span class="tag">${esc(s)}</span>`;
+  }).join('');
+}
+
 const book = document.getElementById('book');
 const done = new Set();
 let n = 0;
@@ -454,7 +489,7 @@ shown.forEach(f=>{
     el.innerHTML = `
       <div class="top">
         <span class="no">${String(n).padStart(3,'0')}</span>
-        <div><h3 class="word">${x.w}</h3><span class="pos">${x.p}</span></div>
+        <div><h3 class="word">${x.w}</h3><div class="pos">${posTags(x.p)}</div></div>
         <div class="acts">
           <button class="say" data-say="word" aria-label="Hear ${sayWord}">${SPK}</button>
           <button class="mark" aria-pressed="false" aria-label="Mark ${x.w} as learned">✓</button>
