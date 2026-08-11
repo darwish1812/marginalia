@@ -152,10 +152,11 @@
   .tag.idi {--pc:#87456D; --pb:rgba(135,69,109,.11); --pd:rgba(135,69,109,.32)}
   .acts{margin-left:auto; display:flex; align-items:center; gap:10px; flex:none; padding-top:1px}
   /* 24px circles are well under the 44px iOS guidance, so each grows an
-     invisible hit area — wider outwards than inwards, so the two never overlap */
-  .mark,.say{position:relative}
-  .mark::after,.say::after{content:""; position:absolute; top:-10px; bottom:-10px}
+     invisible hit area — wider outwards than inwards, so they never overlap */
+  .mark,.say,.arbtn{position:relative}
+  .mark::after,.say::after,.arbtn::after{content:""; position:absolute; top:-10px; bottom:-10px}
   .say::after{left:-10px; right:-4px}
+  .arbtn::after{left:-4px; right:-4px}
   .mark::after{left:-4px; right:-10px}
   .mark{
     width:24px; height:24px; flex:none; border-radius:50%; cursor:pointer;
@@ -168,6 +169,16 @@
     border:1.5px solid rgba(34,36,63,.22); background:transparent; color:rgba(34,36,63,.5);
     display:grid; place-items:center; transition:all .15s ease;
   }
+  /* per-card Arabic gloss */
+  .arbtn{
+    width:24px; height:24px; flex:none; border-radius:50%; cursor:pointer; padding:0;
+    border:1.5px solid rgba(34,36,63,.22); background:transparent; color:rgba(34,36,63,.5);
+    font:600 14px/1 "Noto Naskh Arabic","Segoe UI",Tahoma,serif;
+    display:grid; place-items:center; transition:all .15s ease;
+  }
+  .arbtn:hover{border-color:var(--c); color:var(--c)}
+  .arbtn:focus-visible{outline:2px solid var(--c); outline-offset:2px}
+  .arbtn[aria-pressed="true"]{background:var(--c); border-color:var(--c); color:var(--paper)}
   .say svg{width:12px; height:12px; fill:currentColor}
   .say:hover{border-color:var(--c); color:var(--c)}
   .say:focus-visible{outline:2px solid var(--c); outline-offset:2px}
@@ -211,9 +222,7 @@
     padding:9px 13px 9px 11px; border-right:3px solid var(--c);
     background:rgba(34,36,63,.045); border-radius:3px 0 0 3px; color:#22243F;
   }
-  body.ar-on .ar{display:block}
-  body.ar-only .def,body.ar-only .ex,body.ar-only .say-ex,body.ar-only .flag{display:none}
-  body.ar-only .ar{margin-top:9px}
+  .card.ar-on .ar{display:block}
 
   /* study mode */
   body.study .body{display:none}
@@ -294,7 +303,7 @@
   @media print{
     @page{margin:14mm}
     body{background:#fff; color:#000; font-size:10.5pt}
-    .bar-wrap,.mark,.say,.say-ex,.hint,.swatch .num,footer{display:none!important}
+    .bar-wrap,.mark,.say,.arbtn,.say-ex,.hint,.swatch .num,footer{display:none!important}
     body.study .body{display:block!important}
     .cover{padding:0 0 18pt; border-color:#999}
     .cover h1{font-size:40pt; color:#000}
@@ -315,7 +324,7 @@
     .tag{background:none!important; color:#333!important; border-color:#bbb!important; font-size:7pt; letter-spacing:.1em}
     .fix{background:#fff; border-color:#ccc; break-before:page}
     .ar{background:#fff; border-right-color:#999; padding:4pt 8pt 4pt 0; font-size:10pt}
-    body.ar-on .ar{display:block}
+    .card.ar-on .ar{display:block}
   }
 </style>
 
@@ -389,7 +398,7 @@
   </div>
   <p class="empty" id="loaderr"></p>
 
-  <footer id="foot" hidden>Tap any ink swatch to jump to that field. The <b>العربية</b> button cycles: off → Arabic beside the English → Arabic only. Speaker icons read a word or its sentence aloud; tap again to stop. Print (Ctrl/Cmd&nbsp;+&nbsp;P) for a two-column paper booklet — whatever language mode is on will print with it.</footer>
+  <footer id="foot" hidden>Tap any ink swatch to jump to that field. Each card has its own <b lang="ar">ع</b> button for the Arabic; the <b>العربية</b> button in the bar shows or hides every gloss at once. Speaker icons read a word or its sentence aloud; tap again to stop. Print (Ctrl/Cmd&nbsp;+&nbsp;P) for a two-column paper booklet — whatever language mode is on will print with it.</footer>
 </div>
 
 <script>
@@ -523,6 +532,7 @@ shown.forEach(f=>{
         <div><h3 class="word">${x.w}</h3><div class="pos">${posTags(x.p)}</div></div>
         <div class="acts">
           <button class="say" data-say="word" aria-label="Hear ${sayWord}">${SPK}</button>
+          ${x.a?`<button class="arbtn" aria-pressed="false" lang="ar" aria-label="Show the Arabic for ${x.w}">ع</button>`:''}
           <button class="mark" aria-pressed="false" aria-label="Mark ${x.w} as learned">✓</button>
         </div>
       </div>
@@ -547,6 +557,9 @@ document.getElementById('swatches').innerHTML = FIELDS.map(f=>{
 }).join('');
 document.getElementById('eyebrow').textContent =
   `A working vocabulary · ${W.length} entries · ${FIELDS.length} fields`;
+
+/* fresh cards come back English-only, so re-apply the master switch */
+setArabicAll(arBtn.getAttribute('aria-pressed')==='true');
 }
 document.getElementById('swatches').addEventListener('click',e=>{
   const b=e.target.closest('[data-go]'); if(b) document.getElementById(b.dataset.go).scrollIntoView({behavior:'smooth'});
@@ -576,6 +589,16 @@ book.addEventListener('click',e=>{
     speak(s.dataset.say==='word' ? card.dataset.word : card.dataset.ex, s);
     return;
   }
+  const a = e.target.closest('.arbtn');
+  if(a){
+    e.stopPropagation();
+    const card = a.closest('.card');
+    const on = a.getAttribute('aria-pressed')==='true';
+    a.setAttribute('aria-pressed', String(!on));
+    card.classList.toggle('ar-on', !on);
+    if(!on) card.classList.add('open');   // .ar sits inside .body, which study mode collapses
+    return;
+  }
   const m = e.target.closest('.mark');
   if(m){
     const card=m.closest('.card'), id=card.dataset.w;
@@ -588,21 +611,20 @@ book.addEventListener('click',e=>{
   }
 });
 
-/* Arabic: off → alongside English → Arabic only */
-const MODES = [
-  {cls:'',        label:'العربية'},
-  {cls:'ar-on',   label:'عربي + EN'},
-  {cls:'ar-only', label:'عربي فقط'}
-];
-let mode = 0;
+/* Arabic: each card carries its own toggle; this one drives them all at once */
 const arBtn = document.getElementById('arabic');
+function setArabicAll(on){
+  document.querySelectorAll('.card').forEach(c=>{
+    const b = c.querySelector('.arbtn');
+    if(!b) return;                       // nothing to show on this card
+    c.classList.toggle('ar-on', on);
+    b.setAttribute('aria-pressed', String(on));
+  });
+}
 arBtn.addEventListener('click',()=>{
-  document.body.classList.remove('ar-on','ar-only');
-  mode = (mode+1) % MODES.length;
-  if(mode===1) document.body.classList.add('ar-on');
-  if(mode===2) document.body.classList.add('ar-on','ar-only');
-  arBtn.textContent = MODES[mode].label;
-  arBtn.setAttribute('aria-pressed', String(mode>0));
+  const on = arBtn.getAttribute('aria-pressed')==='true';
+  arBtn.setAttribute('aria-pressed', String(!on));
+  setArabicAll(!on);
 });
 
 /* speech speed */
