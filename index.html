@@ -244,6 +244,13 @@
   .fix td{padding:11px 0; border-bottom:1px solid var(--rule); vertical-align:top}
   .fix td:first-child{color:var(--ink-3); text-decoration:line-through; text-decoration-thickness:1px; width:42%; padding-right:14px}
   .fix td:last-child b{color:var(--ink-2); font-weight:600}
+  .fix.dismissed{display:none}          /* screen only — see the print block */
+  #fixok{margin-top:22px}
+  .fresh{
+    font-family:"Archivo",sans-serif; font-size:9px; font-weight:700; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--ink-1); border:1px solid var(--ink-1); border-radius:99px;
+    padding:2px 7px; margin-left:9px; vertical-align:middle; text-decoration:none; display:inline-block;
+  }
 
   /* add-words panel */
   .panel{display:none; margin:26px 0 0; padding:24px; border:1px solid var(--rule); border-radius:8px; background:var(--night-2)}
@@ -303,7 +310,7 @@
   @media print{
     @page{margin:14mm}
     body{background:#fff; color:#000; font-size:10.5pt}
-    .bar-wrap,.mark,.say,.arbtn,.say-ex,.hint,.swatch .num,footer{display:none!important}
+    .bar-wrap,.mark,.say,.arbtn,.say-ex,.hint,.swatch .num,#fixok,footer{display:none!important}
     body.study .body{display:block!important}
     .cover{padding:0 0 18pt; border-color:#999}
     .cover h1{font-size:40pt; color:#000}
@@ -322,7 +329,9 @@
     .ex{color:#333}
     /* browsers drop background tints when printing, so lean on the outline */
     .tag{background:none!important; color:#333!important; border-color:#bbb!important; font-size:7pt; letter-spacing:.1em}
+    /* the paper booklet keeps the table whether or not it is dismissed on screen */
     .fix{background:#fff; border-color:#ccc; break-before:page}
+    .fix.dismissed{display:block}
     .ar{background:#fff; border-right-color:#999; padding:4pt 8pt 4pt 0; font-size:10pt}
     .card.ar-on .ar{display:block}
   }
@@ -666,23 +675,37 @@ function apply(data){
   FIELDS = data.fields;
   const extra = localAdds();
   W = data.words.concat(extra.filter(x=>!data.words.some(y=>norm(y.w)===norm(x.w))));
-  render(); loadProgress(); showLocal(); renderFix(data.corrections);
   CORRECTIONS = data.corrections || [];
+  render(); loadProgress(); showLocal(); renderFix(CORRECTIONS);
   document.getElementById('app').hidden=false;
   document.getElementById('foot').hidden=false;
 }
 
+/* The table is a reference, not a standing scold: once dismissed it stays
+   hidden until words.json brings a misspelling you have not seen before. */
+const FIXKEY='vocab-fix-seen';
+function fixSeen(){ try{ return JSON.parse(localStorage.getItem(FIXKEY)||'[]'); }catch(e){ return []; } }
+
 function renderFix(list){
   const el=document.getElementById('fix');
   if(!list || !list.length){ el.hidden=true; return; }
+  const seen=fixSeen(), unseen=list.filter(c=>!seen.includes(c.wrong));
   const n=list.length, word=['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten'][n]||n;
   el.hidden=false;
+  el.classList.toggle('dismissed', unseen.length===0);
   el.innerHTML=`<h3>${word} you spelled slightly wrong</h3>
     <p>These are easy to mishear, so they're worth fixing early — a misspelled word looks like a guess even when the meaning is right.</p>
     <table><tr><th>You wrote</th><th>Correct</th></tr>${
-      list.map(c=>`<tr><td>${c.wrong}</td><td><b>${c.right}</b>${c.hint?' — '+c.hint:''}</td></tr>`).join('')
-    }</table>`;
+      list.map(c=>`<tr><td>${c.wrong}${seen.includes(c.wrong)?'':'<span class="fresh">new</span>'}</td><td><b>${c.right}</b>${c.hint?' — '+c.hint:''}</td></tr>`).join('')
+    }</table>
+    <button class="btn" id="fixok">Got it — hide this</button>`;
 }
+
+document.getElementById('fix').addEventListener('click',e=>{
+  if(!e.target.closest('#fixok')) return;
+  try{ localStorage.setItem(FIXKEY, JSON.stringify(CORRECTIONS.map(c=>c.wrong))); }catch(err){}
+  document.getElementById('fix').classList.add('dismissed');
+});
 
 function failed(msg){
   const el=document.getElementById('loaderr');
