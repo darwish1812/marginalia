@@ -39,6 +39,7 @@
   }
   .wrap{max-width:1080px; margin:0 auto; padding:0 22px}
   @media(min-width:1180px){ .wrap{max-width:1380px} }
+  @media(min-width:1800px){ .wrap{max-width:1760px} }   /* room for a third column at full measure */
 
   /* ---------- cover ---------- */
   .cover{padding:74px 0 54px; border-bottom:1px solid var(--rule); position:relative; overflow:hidden}
@@ -103,14 +104,23 @@
   .sec-head .count{font-family:"Archivo",sans-serif; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--c); margin-left:auto; font-weight:600}
   .sec-note{font-size:15px; color:var(--dim); margin:-14px 0 26px; max-width:60ch; font-style:italic}
 
-  .grid{display:grid; grid-template-columns:1fr; gap:13px}
-  @media(min-width:760px){ .grid{grid-template-columns:repeat(2,1fr); gap:15px} }
-  @media(min-width:1180px){ .grid{grid-template-columns:repeat(3,1fr); gap:15px} }
+  /* Columns are whatever fits while every card stays between 490 and 560px —
+     the band that holds the definition to roughly 45-60 characters a line.
+     Fixed column counts squeezed it to 36 on an iPad and 41 on a laptop. */
+  .grid{
+    display:grid; gap:13px; justify-content:center;
+    grid-template-columns:repeat(auto-fit, minmax(min(100%,490px), 560px));
+  }
+  @media(min-width:900px){ .grid{gap:15px} }
 
   /* ---------- entry card ---------- */
   .card{
     background:var(--paper); color:#22243F; border-radius:4px; padding:17px 19px 22px 21px;
     border-left:5px solid var(--c); position:relative; transition:transform .16s ease, box-shadow .16s ease;
+    width:100%; max-width:560px;   /* only bites in the single-column layout */
+    /* the shell is light-on-dark and wants thinned stems; these cards are the
+       reverse, where antialiasing weakens the serif */
+    -webkit-font-smoothing:auto; -moz-osx-font-smoothing:auto;
   }
   .card:hover{transform:translateY(-2px); box-shadow:0 10px 26px rgba(0,0,0,.28)}
   .card.done{background:var(--paper-2)}
@@ -136,7 +146,13 @@
   .tag.adv {--pc:#65499F; --pb:rgba(101,73,159,.11); --pd:rgba(101,73,159,.32)}
   .tag.phr {--pc:#83641B; --pb:rgba(131,100,27,.13); --pd:rgba(131,100,27,.34)}
   .tag.idi {--pc:#87456D; --pb:rgba(135,69,109,.11); --pd:rgba(135,69,109,.32)}
-  .acts{margin-left:auto; display:flex; align-items:center; gap:7px; flex:none; padding-top:1px}
+  .acts{margin-left:auto; display:flex; align-items:center; gap:10px; flex:none; padding-top:1px}
+  /* 24px circles are well under the 44px iOS guidance, so each grows an
+     invisible hit area — wider outwards than inwards, so the two never overlap */
+  .mark,.say{position:relative}
+  .mark::after,.say::after{content:""; position:absolute; top:-10px; bottom:-10px}
+  .say::after{left:-10px; right:-4px}
+  .mark::after{left:-4px; right:-10px}
   .mark{
     width:24px; height:24px; flex:none; border-radius:50%; cursor:pointer;
     border:1.5px solid rgba(34,36,63,.22); background:transparent; color:transparent;
@@ -153,11 +169,13 @@
   .say:focus-visible{outline:2px solid var(--c); outline-offset:2px}
   .say.speaking{background:var(--c); border-color:var(--c); color:var(--paper)}
   .say-ex{
-    display:inline-flex; align-items:center; gap:5px; margin-top:9px; padding:4px 9px;
+    position:relative;
+    display:inline-flex; align-items:center; gap:5px; margin-top:9px; padding:6px 11px;
     border:1px solid rgba(34,36,63,.16); border-radius:99px; background:transparent; cursor:pointer;
-    font:600 9.5px/1 "Archivo",sans-serif; letter-spacing:.13em; text-transform:uppercase;
-    color:rgba(34,36,63,.5); transition:all .15s ease;
+    font:600 10px/1 "Archivo",sans-serif; letter-spacing:.13em; text-transform:uppercase;
+    color:rgba(34,36,63,.68); transition:all .15s ease;
   }
+  .say-ex::after{content:""; position:absolute; inset:-10px -6px}
   .say-ex svg{width:10px; height:10px; fill:currentColor}
   .say-ex:hover{color:var(--c); border-color:var(--c)}
   .say-ex:focus-visible{outline:2px solid var(--c); outline-offset:2px}
@@ -168,14 +186,16 @@
   .mark:focus-visible{outline:2px solid var(--c); outline-offset:2px}
   .body{padding-left:0}
   .def{margin:9px 0 0; font-size:16.5px; line-height:1.5}
+  /* upright: the ink rule already marks this as the quotation, and a whole
+     sentence of italic serif is the hardest text on the card to read */
   .ex{
     margin:11px 0 0; padding-left:12px; border-left:2px solid var(--c);
-    font-style:italic; font-size:16px; color:rgba(34,36,63,.78); line-height:1.5;
+    font-size:16px; color:rgba(34,36,63,.78); line-height:1.5;
   }
-  .ex .t{font-style:italic; font-weight:600; color:var(--c); border-bottom:1.5px solid var(--c); padding-bottom:1px}
+  .ex .t{font-style:italic; font-weight:600; color:var(--c)}
   .flag{
-    margin:10px 0 0; font-family:"Archivo",sans-serif; font-size:11.5px; line-height:1.5;
-    color:rgba(34,36,63,.62); padding:7px 10px; background:rgba(34,36,63,.05); border-radius:3px;
+    margin:10px 0 0; font-family:"Archivo",sans-serif; font-size:13px; line-height:1.5;
+    color:rgba(34,36,63,.74); padding:8px 11px; background:rgba(34,36,63,.05); border-radius:3px;
   }
   .flag b{color:#22243F}
 
@@ -183,7 +203,7 @@
   .ar{
     display:none; direction:rtl; text-align:right; unicode-bidi:isolate;
     font-family:"Noto Naskh Arabic","Segoe UI",Tahoma,serif;
-    font-size:17px; line-height:1.85; margin:11px 0 0;
+    font-size:19px; line-height:1.85; margin:11px 0 0;   /* Naskh with vowel marks needs the extra size */
     padding:9px 13px 9px 11px; border-right:3px solid var(--c);
     background:rgba(34,36,63,.045); border-radius:3px 0 0 3px; color:#22243F;
   }
@@ -195,8 +215,8 @@
   body.study .body{display:none}
   body.study .card.open .body{display:block}
   body.study .card{cursor:pointer}
-  .hint{display:none; font-family:"Archivo",sans-serif; font-size:10.5px; letter-spacing:.12em;
-        text-transform:uppercase; color:rgba(34,36,63,.35); margin-top:8px}
+  .hint{display:none; font-family:"Archivo",sans-serif; font-size:11px; letter-spacing:.12em;
+        text-transform:uppercase; color:rgba(34,36,63,.70); margin-top:8px}
   body.study .card:not(.open) .hint{display:block}
 
   /* ---------- confusables ---------- */
