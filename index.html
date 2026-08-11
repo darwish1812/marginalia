@@ -109,16 +109,18 @@
 
   /* ---------- entry card ---------- */
   .card{
-    background:var(--paper); color:#22243F; border-radius:4px; padding:17px 19px 17px 21px;
+    background:var(--paper); color:#22243F; border-radius:4px; padding:17px 19px 22px 21px;
     border-left:5px solid var(--c); position:relative; transition:transform .16s ease, box-shadow .16s ease;
   }
   .card:hover{transform:translateY(-2px); box-shadow:0 10px 26px rgba(0,0,0,.28)}
   .card.done{background:var(--paper-2)}
   .card.done .word{text-decoration:line-through; text-decoration-color:rgba(34,36,63,.3); text-decoration-thickness:1.5px}
   .top{display:flex; align-items:flex-start; gap:10px}
+  /* parked in the card's bottom padding, where no content reaches */
   .no{
-    font-family:"Archivo",sans-serif; font-size:10px; font-weight:700; letter-spacing:.04em;
-    color:var(--c); padding-top:7px; min-width:26px;
+    position:absolute; right:19px; bottom:6px;
+    font-family:"Archivo",sans-serif; font-size:10px; font-weight:700; letter-spacing:.06em;
+    color:var(--c); opacity:.65;
   }
   .word{font-family:"Fraunces",Georgia,serif; font-weight:600; font-size:23px; letter-spacing:-.015em; line-height:1.15; margin:0}
   .pos{display:flex; flex-wrap:wrap; gap:5px; margin-top:7px}
@@ -164,7 +166,7 @@
   .mark:hover{border-color:var(--c)}
   .mark[aria-pressed="true"]{background:var(--c); border-color:var(--c); color:var(--paper)}
   .mark:focus-visible{outline:2px solid var(--c); outline-offset:2px}
-  .body{padding-left:36px}
+  .body{padding-left:0}
   .def{margin:9px 0 0; font-size:16.5px; line-height:1.5}
   .ex{
     margin:11px 0 0; padding-left:12px; border-left:2px solid var(--c);
@@ -194,7 +196,7 @@
   body.study .card.open .body{display:block}
   body.study .card{cursor:pointer}
   .hint{display:none; font-family:"Archivo",sans-serif; font-size:10.5px; letter-spacing:.12em;
-        text-transform:uppercase; color:rgba(34,36,63,.35); padding-left:36px; margin-top:8px}
+        text-transform:uppercase; color:rgba(34,36,63,.35); margin-top:8px}
   body.study .card:not(.open) .hint{display:block}
 
   /* ---------- confusables ---------- */
@@ -278,7 +280,8 @@
     .sec:first-of-type{break-before:auto}
     .sec-head h2,.word{color:#000}
     .grid{grid-template-columns:1fr 1fr !important; gap:8pt}
-    .card{break-inside:avoid; background:#fff; border:1px solid #ddd; border-left:3px solid var(--c); box-shadow:none; padding:8pt 10pt}
+    .card{break-inside:avoid; background:#fff; border:1px solid #ddd; border-left:3px solid var(--c); box-shadow:none; padding:8pt 10pt 15pt}
+    .no{bottom:5pt; right:10pt; font-size:7.5pt; opacity:1}
     .card:hover{transform:none; box-shadow:none}
     .word{font-size:13pt}
     .def,.ex{font-size:9.5pt}
@@ -493,7 +496,6 @@ shown.forEach(f=>{
     el.dataset.ex = plainEx;
     el.innerHTML = `
       <div class="top">
-        <span class="no">${String(n).padStart(3,'0')}</span>
         <div><h3 class="word">${x.w}</h3><div class="pos">${posTags(x.p)}</div></div>
         <div class="acts">
           <button class="say" data-say="word" aria-label="Hear ${sayWord}">${SPK}</button>
@@ -506,7 +508,8 @@ shown.forEach(f=>{
         ${x.a?`<p class="ar" lang="ar" dir="rtl">${x.a}</p>`:''}
         ${x.e?`<p class="ex">${ex}</p><button class="say-ex" data-say="ex">${SPK}Hear the sentence</button>`:''}
         ${x.n?`<p class="flag"><b>Careful:</b> ${x.n}</p>`:''}
-      </div>`;
+      </div>
+      <span class="no">${String(n).padStart(3,'0')}</span>`;
     grid.appendChild(el);
   });
   book.appendChild(sec);
