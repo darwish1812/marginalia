@@ -10,6 +10,7 @@ an example sentence, an Arabic gloss, and pronunciation audio.
 |---|---|
 | `index.html` | The whole app. No build step, no dependencies. |
 | `words.json` | **The data.** Never edit by hand — the app generates it. |
+| `img/` | Optional pictures for the few words that can have one. |
 | `manifest.json`, `icon.svg` | Make "Add to Home Screen" work on iPad. |
 
 ## Putting it online
@@ -78,6 +79,64 @@ waiting for detail are offered again rather than dismissed as duplicates.
 
 Asterisks in `e` mark the target word for highlighting. `f` must match a field `id`.
 `n` is optional. `schema` is there so future versions can migrate old files.
+
+## Pictures
+
+A word may carry `"i"`, a relative path to an image: `{ "w": "loom", "i": "img/loom.png" }`.
+
+It sits in the bottom-right corner of the card as a faint watermark, behind the text and
+outside the layout, so a card with a picture is exactly as tall as one without and the grid
+row never stretches to accommodate it. It belongs to the revealed part of the card, so study
+mode still asks you to recall the meaning first. Printing leaves images out, and **Settings →
+Pictures** turns them off for good — the cards do not move either way.
+
+The blend is `multiply`, not plain transparency: the light parts of the picture disappear into
+the paper and only the subject's ink stays, so it reads as printed into the card rather than
+pasted on top of it.
+
+Keep it to words you could point at — `radish`, `tavern`, `apothecary`, `coffers`.
+For `fealty`, `nuance` or `penury` a picture illustrates a scene rather than the meaning,
+and you end up remembering the scene. Perhaps fifteen or twenty words here deserve one.
+
+### Where the picture comes from
+
+Two ways, and `i` ends up holding a different kind of string in each.
+
+**Drawn by the reply.** The prompt asks for `"s"` — a small flat SVG — but only for words
+naming something you could photograph. Merging converts it to a `data:` URI and stores that
+in `i`. The model never supplies a *link*: ask for image URLs and you get plausible-looking
+ones that mostly 404, each needing to be opened to find out. A drawing can be judged on sight.
+
+That SVG is markup typed by a model and pasted through a chat window, so it is never written
+into the card's HTML. It becomes the `src` of an `<img>`, where a browser will not run script
+even if the markup carries some. On top of that, merging strips `<script>`, `on*` handlers,
+`href`s and external references, requires a `viewBox`, and rejects anything over ~2.6 KB.
+A drawing that fails any of this is dropped and the word simply keeps no picture — the merge
+still goes through, and the message says how many were discarded.
+
+**Committed by hand.** Put a file in `img/` and point `i` at it: `"i": "img/loom.png"`.
+Better for anything you will reuse or edit — the diff stays readable and the browser caches it.
+
+This is the one case where editing `words.json` by hand is fine, despite the rule above. The
+hazard is real but narrow: the app rewrites the whole file on download, so if you hand-edit on
+GitHub and then download from a browser holding a stale cached copy, your edits are gone.
+**After any hand-edit, load the app online once before you download again.** Everything else
+preserves `i` — re-enriching a word keeps its picture, including across a spelling correction.
+
+**The subject has to be cut out.** A photograph with its own background shows up as a
+translucent rectangle in the corner, which looks like a mistake. What works is a subject on
+white or on nothing: a transparent PNG, or an SVG drawing. This narrows where the pictures
+can come from — a stock photo of a loom is no use, an illustration of one is.
+
+`img/` currently holds ten drawings: `radish`, `rodent`, `holdfast`, `porridge`, `coffers`,
+`apothecary`, `jade`, `incense`, `tavern`, `seamstress`. They share one style — dark outline,
+thick strokes, two or three flat colours — because ten pictures in ten styles look like a
+jumble rather than a set. Match it, or replace the lot.
+
+Roughly 400–600px wide, under about 60 KB; the card never draws it wider than 200px, so
+anything larger is waste, and every visitor downloads what you commit. A missing file removes
+itself from the card rather than leaving a broken icon — which is also what happens offline,
+since only `words.json` is cached.
 
 A `corrections` array holds the misspelling table shown at the end of the booklet:
 

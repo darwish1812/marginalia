@@ -121,6 +121,10 @@
   .card{
     background:var(--paper); color:#22243F; border-radius:4px; padding:17px 19px 22px 21px;
     border-left:5px solid var(--c); position:relative; transition:transform .16s ease, box-shadow .16s ease;
+    /* the corner watermark bleeds to the edge and blends with this paper only:
+       overflow trims it to the radius, isolate keeps both the blend and its
+       negative z-index inside the card */
+    overflow:hidden; isolation:isolate;
     width:100%; max-width:560px;   /* only bites in the single-column layout */
     /* the shell is light-on-dark and wants thinned stems; these cards are the
        reverse, where antialiasing weakens the serif */
@@ -196,6 +200,7 @@
   .say-ex:focus-visible{outline:2px solid var(--c); outline-offset:2px}
   .say-ex.speaking{background:var(--c); border-color:var(--c); color:var(--paper)}
   body.nosound .say,body.nosound .say-ex{display:none}
+  body.nopics .pic{display:none}
   .mark:hover{border-color:var(--c)}
   .mark[aria-pressed="true"]{background:var(--c); border-color:var(--c); color:var(--paper)}
   .mark:focus-visible{outline:2px solid var(--c); outline-offset:2px}
@@ -208,6 +213,23 @@
     font-size:16px; color:rgba(34,36,63,.78); line-height:1.5;
   }
   .ex .t{font-style:italic; font-weight:600; color:var(--c)}
+  /* Only the handful of words you could point at earn a picture — a loom, a radish,
+     a blister. The card has to look finished without one, so it drops itself if the
+     file is missing rather than leaving a broken icon behind.
+
+     Parked in the bottom-right corner behind the text, so a card with a picture is
+     exactly as tall as one without and the grid row never stretches. Negative z-index
+     puts it under the words but over the paper; multiply drops the picture's light
+     ground into that paper and keeps only the subject's ink; the mask dissolves the
+     two inner edges so it fades in rather than ending on a seam. */
+  .pic{
+    position:absolute; right:0; bottom:0; z-index:-1; margin:0;
+    width:46%; max-width:200px; pointer-events:none;
+    mix-blend-mode:multiply; opacity:.24;
+    -webkit-mask-image:linear-gradient(to top left, #000 34%, transparent 84%);
+    mask-image:linear-gradient(to top left, #000 34%, transparent 84%);
+  }
+  .pic img{display:block; width:100%; height:auto}
   .flag{
     margin:10px 0 0; font-family:"Archivo",sans-serif; font-size:13px; line-height:1.5;
     color:rgba(34,36,63,.74); padding:8px 11px; background:rgba(34,36,63,.05); border-radius:3px;
@@ -311,7 +333,8 @@
   @media print{
     @page{margin:14mm}
     body{background:#fff; color:#000; font-size:10.5pt}
-    .bar-wrap,.mark,.say,.arbtn,.say-ex,.hint,.swatch .num,#fixok,footer{display:none!important}
+    /* pictures are screen-only: they break the two-column pagination and drink ink */
+    .bar-wrap,.panel,.mark,.say,.arbtn,.say-ex,.hint,.pic,.swatch .num,#fixok,footer{display:none!important}
     body.study .body{display:block!important}
     .cover{padding:0 0 18pt; border-color:#999}
     .cover h1{font-size:40pt; color:#000}
@@ -554,6 +577,7 @@ shown.forEach(f=>{
       <div class="body">
         ${x.d?`<p class="def">${x.d}</p>`:'<p class="def" style="opacity:.6">Captured — not enriched yet.</p>'}
         ${x.a?`<p class="ar" lang="ar" dir="rtl">${x.a}</p>`:''}
+        ${x.i?`<figure class="pic"><img src="${esc(x.i)}" alt="${esc(x.w)}" loading="lazy" decoding="async"></figure>`:''}
         ${x.e?`<p class="ex">${ex}</p><button class="say-ex" data-say="ex">${SPK}Hear the sentence</button>`:''}
         ${x.n?`<p class="flag"><b>Careful:</b> ${x.n}</p>`:''}
       </div>
@@ -561,6 +585,12 @@ shown.forEach(f=>{
     grid.appendChild(el);
   });
   book.appendChild(sec);
+});
+
+/* Offline, or after a file is renamed, a missing picture would leave a broken icon
+   sitting on the card. Take the whole figure out instead — the card reads fine without it. */
+book.querySelectorAll('.pic img').forEach(im=>{
+  im.addEventListener('error',()=>{ const f=im.closest('.pic'); if(f) f.remove(); });
 });
 
 /* swatches */

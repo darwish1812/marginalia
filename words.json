@@ -1,6 +1,6 @@
 {
  "schema": 1,
- "updated": "2026-08-11",
+ "updated": "2026-08-13",
  "fields": [
   {
    "id": 1,
@@ -71,6 +71,7 @@
   {
    "w": "holdfast",
    "f": 1,
+   "i": "img/holdfast.svg",
    "p": "noun",
    "d": "A fortified stronghold or keep. (In modern use it can also mean a clamp.)",
    "e": "The soldiers retreated to the *holdfast* on the hill and prepared to defend it.",
@@ -111,6 +112,7 @@
   {
    "w": "tavern",
    "f": 1,
+   "i": "img/tavern.svg",
    "p": "noun",
    "d": "An inn where people drink, eat and sometimes sleep.",
    "e": "They found a warm *tavern* near the gate and ordered ale and bread.",
@@ -127,6 +129,7 @@
   {
    "w": "coffers",
    "f": 1,
+   "i": "img/coffers.svg",
    "p": "noun",
    "d": "Treasure chests — and by extension, a government's or company's financial reserves.",
    "e": "The war emptied the kingdom's *coffers*, and the crown had to raise taxes.",
@@ -135,6 +138,7 @@
   {
    "w": "porridge",
    "f": 1,
+   "i": "img/porridge.svg",
    "p": "noun",
    "d": "A thick hot cereal made by boiling grain, usually oats, in water or milk.",
    "e": "The prisoners received nothing but thin *porridge* and stale bread.",
@@ -143,6 +147,7 @@
   {
    "w": "apothecary",
    "f": 1,
+   "i": "img/apothecary.svg",
    "p": "noun",
    "d": "An old term for a pharmacist — someone who prepared and sold medicines.",
    "e": "She visited the *apothecary* for a tincture to ease her headaches.",
@@ -167,6 +172,7 @@
   {
    "w": "seamstress",
    "f": 1,
+   "i": "img/seamstress.svg",
    "p": "noun",
    "d": "A woman who sews clothes for a living.",
    "e": "The *seamstress* worked by candlelight to finish the gown before the feast.",
@@ -184,6 +190,7 @@
   {
    "w": "jade",
    "f": 1,
+   "i": "img/jade.svg",
    "p": "noun",
    "d": "A green gemstone — but in older writing, a worn-out horse or a disreputable woman.",
    "e": "The merchant tried to sell me that old *jade* of a horse for twice its worth.",
@@ -362,6 +369,7 @@
   {
    "w": "incense",
    "f": 2,
+   "i": "img/incense.svg",
    "p": "noun / verb",
    "d": "Fragrant smoke burned in worship. As a verb (stress the second syllable): to enrage.",
    "e": "His arrogance *incensed* everyone in the room.",
@@ -1017,6 +1025,7 @@
   {
    "w": "rodent",
    "f": 7,
+   "i": "img/rodent.svg",
    "p": "noun",
    "d": "A small gnawing mammal — rats, mice, squirrels.",
    "e": "The barn was overrun with *rodents* that chewed through the grain sacks.",
@@ -1025,6 +1034,7 @@
   {
    "w": "radish",
    "f": 7,
+   "i": "img/radish.svg",
    "p": "noun",
    "d": "A small, round, peppery root vegetable, usually red-skinned and white inside.",
    "e": "She pulled a handful of *radishes* from the garden and rinsed them for the salad.",
