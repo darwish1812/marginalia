@@ -285,6 +285,17 @@
   }
   .panel textarea:focus{outline:none; border-color:var(--ink-1)}
   .panel .row{display:flex; gap:9px; flex-wrap:wrap; margin-top:12px; align-items:center}
+  /* The add panel is opened from inside settings, so it needs a door back out —
+     the bar button alone works but reads as a dead end once you are in here. */
+  .back{margin:0 0 20px; padding:7px 13px; font-size:10.5px}
+  /* settings: a label and its control on one line, the reason underneath */
+  .set{display:flex; gap:16px; align-items:center; justify-content:space-between; flex-wrap:wrap;
+       margin-top:18px; padding-top:18px; border-top:1px solid var(--rule)}
+  .set:first-of-type{border-top:0; padding-top:0; margin-top:0}
+  .set-t{font-family:"Archivo",sans-serif; font-size:12px; font-weight:600; letter-spacing:.1em;
+         text-transform:uppercase; color:var(--paper); margin:0 0 5px}
+  .set-d{font-size:14px; color:var(--dim); margin:0; max-width:56ch; line-height:1.55}
+  body.nosound .set-sound{display:none}
   .step{margin-top:24px; padding-top:20px; border-top:1px solid var(--rule)}
   .step:first-of-type{border-top:0; padding-top:0; margin-top:0}
   .stepno{font-family:"Archivo",sans-serif; font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-1); font-weight:600; display:block; margin-bottom:7px}
@@ -377,9 +388,7 @@
         <input class="search" id="q" type="search" placeholder="Search a word, a meaning, an example…" aria-label="Search words">
         <button class="btn" id="study" aria-pressed="false">Study mode</button>
         <button class="btn" id="arabic" aria-pressed="false" lang="ar">العربية</button>
-        <button class="btn" id="speed">Speed 0.9×</button>
-        <select class="btn" id="voice" aria-label="Reading voice" style="display:none"></select>
-        <button class="btn" id="addbtn" aria-pressed="false">+ Add words</button>
+        <button class="btn" id="setbtn" aria-pressed="false">Settings</button>
         <button class="btn" id="reset">Reset marks</button>
         <span class="tally" id="tally"><b>0</b> learned</span>
       </div>
@@ -427,6 +436,42 @@
     </div>
   </section>
 
+  <section class="panel" id="settings">
+    <div class="set">
+      <div>
+        <p class="set-t">Add words</p>
+        <p class="set-d" id="addhint">Paste a list, take the prompt to Claude, bring the reply back.</p>
+      </div>
+      <button class="btn" id="addbtn" aria-pressed="false">+ Add words</button>
+    </div>
+
+    <div class="set">
+      <div>
+        <p class="set-t">Pictures</p>
+        <p class="set-d">A few words carry a drawing, watermarked into the corner of the card.
+          Turning them off leaves the text exactly as it was.</p>
+      </div>
+      <button class="btn" id="pics" aria-pressed="true">Pictures on</button>
+    </div>
+
+    <div class="set set-sound">
+      <div>
+        <p class="set-t">Reading voice</p>
+        <p class="set-d">Which of your device's voices reads the cards. The list differs between
+          the iPad and a laptop, and rare words are occasionally mispronounced whichever you pick.</p>
+      </div>
+      <select class="btn" id="voice" aria-label="Reading voice"></select>
+    </div>
+
+    <div class="set set-sound">
+      <div>
+        <p class="set-t">Reading speed</p>
+        <p class="set-d">Slower is easier to shadow aloud when a word is new.</p>
+      </div>
+      <button class="btn" id="speed">Speed 0.9×</button>
+    </div>
+  </section>
+
   <main id="book"></main>
   <p class="empty" id="empty">No entry matches that. Try a shorter word.</p>
 
@@ -461,7 +506,7 @@ const enVoices = ()=> speechSynthesis.getVoices()
 
 function pickVoice(){
   const en = enVoices();
-  if(!en.length){ vSel.style.display='none'; return; }   // nothing left to choose from
+  if(!en.length){ showVoiceRow(false); return; }   // nothing left to choose from
   let saved=null; try{ saved = localStorage.getItem(VKEY); }catch(e){}
   voice = (saved && en.find(v=>v.name===saved))
        || en.find(v=>/uk english female/i.test(v.name))   // Chrome's Google UK English Female
@@ -490,7 +535,12 @@ function fillVoices(en){
     if(voice && v.name===voice.name) o.selected = true;
     vSel.appendChild(o);
   });
-  vSel.style.display = en.length>1 ? '' : 'none';
+  /* one voice is not a choice: hide the whole settings row, label and all */
+  showVoiceRow(en.length>1);
+}
+function showVoiceRow(on){
+  const row = vSel.closest('.set');
+  if(row) row.style.display = on ? '' : 'none';
 }
 
 if(vSel) vSel.addEventListener('change',()=>{
@@ -672,12 +722,14 @@ arBtn.addEventListener('click',()=>{
 });
 
 /* speech speed */
-const RATES=[0.6,0.75,0.9,1];
+const RATES=[0.6,0.75,0.9,1], RKEY='vocab-rate';
 const spBtn=document.getElementById('speed');
-if(!TTS) spBtn.style.display='none';
+try{ const r=parseFloat(localStorage.getItem(RKEY)); if(RATES.includes(r)) rate=r; }catch(e){}
+spBtn.textContent = 'Speed '+rate+'×';
 spBtn.addEventListener('click',()=>{
   rate = RATES[(RATES.indexOf(rate)+1)%RATES.length];
   spBtn.textContent = 'Speed '+rate+'×';
+  try{ localStorage.setItem(RKEY, String(rate)); }catch(e){}
   if(TTS) speechSynthesis.cancel();
   if(current){ current.classList.remove('speaking'); current=null; }
 });

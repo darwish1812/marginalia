@@ -25,7 +25,7 @@ On the iPad, open that URL in Safari, tap Share, then **Add to Home Screen**. It
 ## Adding words — the weekly loop
 
 1. Collect English words as you meet them (Google Translate, notes app, anywhere).
-2. In the booklet, tap **+ Add words** and paste the list. Any format works — commas,
+2. In the booklet, tap **Settings → + Add words** and paste the list. Any format works — commas,
    new lines, numbered. Duplicates are dropped; near-matches are flagged so you can decide.
 3. Tap **Copy prompt**, paste it into a Claude chat, and copy the JSON reply.
 4. Paste that into step 3 and tap **Validate & merge**. Bad input is rejected without
