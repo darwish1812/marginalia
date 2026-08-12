@@ -82,6 +82,11 @@ A `corrections` array holds the misspelling table shown at the end of the bookle
 
 It grows as new misspellings turn up, and the section hides itself when the array is empty.
 
+Most of it fills itself. The prompt asks for an `"x"` key holding the word as you originally
+typed it whenever the corrected spelling differs; merging records that as a `wrong` / `right`
+pair, retires the card filed under the wrong spelling, and drops the key so `x` never reaches
+`words.json`. The `hint` column stays hand-written — add those yourself when a word deserves one.
+
 ## Opening it locally
 
 Double-clicking `index.html` will **not** work — browsers block `file://` pages from reading

@@ -664,18 +664,23 @@ document.getElementById('reset').addEventListener('click',()=>{
 });
 
 /* ---------- data loading ---------- */
-const CACHE='vocab-words-cache', LOCAL='vocab-words-local';
+const CACHE='vocab-words-cache', LOCAL='vocab-words-local', LOCALFIX='vocab-fix-local';
 const norm=s=>s.toLowerCase().normalize('NFKD').replace(/[^a-z\s-]/g,'').trim();
 const stem=s=>{let v=norm(s);for(let i=0;i<2;i++)v=v.replace(/(ingly|edly|ously|fully|ing|ed|ies|es|s|ly|ness|ment|tion|ion|ity|ous|ful)$/,'');return v;};
 
 function localAdds(){ try{ return JSON.parse(localStorage.getItem(LOCAL)||'[]'); }catch(e){ return []; } }
 function setLocal(a){ try{ localStorage.setItem(LOCAL, JSON.stringify(a)); }catch(e){} }
+/* Corrections caught on this device outlive a reload the same way new words do —
+   they are only truly saved once words.json is downloaded and committed. */
+function localFix(){ try{ return JSON.parse(localStorage.getItem(LOCALFIX)||'[]'); }catch(e){ return []; } }
+function setLocalFix(a){ try{ localStorage.setItem(LOCALFIX, JSON.stringify(a)); }catch(e){} }
 
 function apply(data){
   FIELDS = data.fields;
   const extra = localAdds();
   W = data.words.concat(extra.filter(x=>!data.words.some(y=>norm(y.w)===norm(x.w))));
-  CORRECTIONS = data.corrections || [];
+  const fixed = data.corrections || [];
+  CORRECTIONS = fixed.concat(localFix().filter(c=>!fixed.some(d=>norm(d.wrong)===norm(c.wrong))));
   render(); loadProgress(); showLocal(); renderFix(CORRECTIONS);
   document.getElementById('app').hidden=false;
   document.getElementById('foot').hidden=false;
@@ -826,6 +831,35 @@ document.getElementById('addnow').addEventListener('click',()=>{
   document.getElementById('s2').style.display='none';
 });
 
+/* A drawing arrives as "s": raw SVG typed by a model and pasted through a chat window.
+   It is never written into the card's HTML. It becomes the src of an <img>, where the
+   browser will not run script even if the markup carries some — and the strip below is
+   a second lock on top of that. Anything malformed, oversized or not an <svg> at all is
+   dropped, and the word simply keeps no picture. */
+const MAXART=2600;
+function artToSrc(src){
+  if(typeof src!=='string') return null;
+  const raw=src.trim();
+  if(!/^<svg[\s>]/i.test(raw) || raw.length>MAXART*2) return null;
+  let doc;
+  try{ doc = new DOMParser().parseFromString(raw,'image/svg+xml'); }catch(e){ return null; }
+  const svg = doc.documentElement;
+  if(!svg || svg.nodeName.toLowerCase()!=='svg') return null;
+  if(doc.getElementsByTagName('parsererror').length) return null;
+  if(!svg.getAttribute('viewBox')) return null;
+  doc.querySelectorAll('script,foreignObject,image,iframe,style,a,use,animate,set').forEach(n=>n.remove());
+  doc.querySelectorAll('*').forEach(n=>{
+    [...n.attributes].forEach(a=>{
+      const k=a.name.toLowerCase();
+      if(k.startsWith('on') || k.includes('href')) n.removeAttribute(a.name);
+    });
+  });
+  svg.setAttribute('xmlns','http://www.w3.org/2000/svg');
+  const out = new XMLSerializer().serializeToString(svg);
+  if(out.length>MAXART) return null;
+  return 'data:image/svg+xml,'+encodeURIComponent(out);
+}
+
 document.getElementById('merge').addEventListener('click',()=>{
   const msg=document.getElementById('mergemsg');
   const txt=document.getElementById('incoming').value.trim().replace(/^```(json)?|```$/g,'').trim();
@@ -839,15 +873,50 @@ document.getElementById('merge').addEventListener('click',()=>{
     else if(typeof x.d!=='string' || !x.d.trim()) bad.push(`${x.w}: no definition`);
   });
   if(bad.length){ msg.className='note bad'; msg.textContent='Nothing merged — '+bad.slice(0,3).join('; '); return; }
+  /* A corrected spelling comes back as "x": the word as I actually typed it. It feeds
+     the misspellings table and retires the card filed under the wrong spelling, then
+     the key is dropped so it never reaches words.json. */
+  const typed=[];
+  arr.forEach(o=>{
+    const was = typeof o.x==='string' ? o.x.trim() : '';
+    delete o.x;
+    if(was && norm(was)!==norm(o.w)) typed.push({wrong:was, right:o.w});
+  });
+  const fixes = typed.filter((c,i)=>
+    typed.findIndex(d=>norm(d.wrong)===norm(c.wrong))===i &&
+    !CORRECTIONS.some(d=>norm(d.wrong)===norm(c.wrong)));
+  /* A drawing in the reply becomes the picture; a bad one is discarded without
+     blocking the merge, since the word is still worth having. */
+  let drawn=0, dropped=0;
+  arr.forEach(o=>{
+    if(!('s' in o)) return;
+    const art=artToSrc(o.s); delete o.s;
+    if(art){ o.i=art; drawn++; } else dropped++;
+  });
+  /* A picture already on a word is carried across a re-enrichment — including onto a
+     corrected spelling — unless this reply drew a new one. */
+  const pics=new Map(W.filter(o=>o.i).map(o=>[norm(o.w),o.i]));
+  typed.forEach(c=>{ if(pics.has(norm(c.wrong)) && !pics.has(norm(c.right))) pics.set(norm(c.right), pics.get(norm(c.wrong))); });
   const enriched=new Set(arr.map(x=>norm(x.w)));
+  typed.forEach(c=>enriched.add(norm(c.wrong)));
   const kept=W.filter(x=>!enriched.has(norm(x.w)));
   const already=new Set(kept.map(x=>norm(x.w)));
   const add=arr.filter(x=>!already.has(norm(x.w)));
+  add.forEach(o=>{ if(!o.i && pics.has(norm(o.w))) o.i = pics.get(norm(o.w)); });
   W = kept.concat(add);
   setLocal(localAdds().filter(x=>!enriched.has(norm(x.w))).concat(add));
+  if(fixes.length){
+    CORRECTIONS = CORRECTIONS.concat(fixes);
+    setLocalFix(localFix().concat(fixes));
+    renderFix(CORRECTIONS);
+  }
   render(); loadProgress(); showLocal();
   msg.className='note good';
-  msg.textContent = `Merged ${add.length} word${add.length===1?'':'s'}. Download the file and commit it.`;
+  msg.textContent = `Merged ${add.length} word${add.length===1?'':'s'}.`
+    + (fixes.length?` ${fixes.length} spelling${fixes.length===1?'':'s'} noted for the table.`:'')
+    + (drawn?` ${drawn} drawing${drawn===1?'':'s'} kept.`:'')
+    + (dropped?` ${dropped} discarded as unusable.`:'')
+    + ' Download the file and commit it.';
   document.getElementById('incoming').value=''; document.getElementById('raw').value='';
 });
 
