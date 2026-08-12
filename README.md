@@ -39,10 +39,17 @@ If you don't want to enrich immediately, tap **Add as needs-detail now**. The wo
 as cards straight away in a "Waiting for detail" section at the top, searchable but bare.
 Enrich them later and they move to their proper field.
 
+To come back to them, open the panel and tap **Queue the N waiting** — it loads every bare
+word into a fresh prompt. Typing them into step 1 again works too: words that are still
+waiting for detail are offered again rather than dismissed as duplicates.
+
 ## Notes
 
 - **Progress is per-device.** The ✓ marks live in that browser only. Use **Export progress**
   before clearing Safari data.
+- **Settings** holds the picture switch, the reading voice and the reading speed. Like the ✓
+  marks, they are per-device — set them once on the iPad and once on the laptop. The voice row
+  hides itself where the device offers only one English voice.
 - **Audio** uses your device's built-in speech engine, so voices differ between iPad and
   laptop. Rare words are occasionally mispronounced — verify anything that sounds odd.
 - **Printing** (Ctrl/Cmd+P) reflows into a two-column paper booklet, one field per page.

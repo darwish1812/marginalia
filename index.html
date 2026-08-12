@@ -277,6 +277,7 @@
   }
   .chip.dup{color:rgba(241,239,233,.35); text-decoration:line-through}
   .chip.near{border-color:var(--ink-1); color:var(--ink-1)}
+  .chip.again{border-color:var(--ink-6); color:var(--ink-6)}
   .chip b{font-weight:600}
   .chip button{background:none; border:0; color:inherit; cursor:pointer; font-size:14px; line-height:1; padding:0; opacity:.6}
   .chip button:hover{opacity:1}
@@ -363,11 +364,15 @@
   </div>
 
   <section class="panel" id="panel">
+    <button class="btn back" id="backset">← Settings</button>
     <div class="step">
       <span class="stepno">Step 1 — paste your English words</span>
       <p>Any format: commas, new lines, numbered. Duplicates are removed automatically.</p>
       <textarea id="raw" placeholder="obstinate, wary&#10;3. gaunt&#10;forlorn"></textarea>
-      <div class="row"><button class="btn" id="check">Check list</button></div>
+      <div class="row">
+        <button class="btn" id="check">Check list</button>
+        <button class="btn" id="queue" style="display:none"></button>
+      </div>
       <div id="report"></div>
     </div>
 
@@ -743,42 +748,100 @@ function showLocal(){
   if(bare) lines.push(`${bare} more ${bare>1?'are':'is'} still waiting for detail: the download leaves ${bare>1?'them':'it'} out, so ${bare>1?'they stay':'it stays'} in this browser until you enrich ${bare>1?'them':'it'}.`);
   el.textContent = lines.join(' ');
   el.className = adds.length ? 'note warn' : 'note';
+  /* The add panel now sits behind Settings, so the count of uncommitted words has to
+     show on the way in — otherwise it is two clicks from anywhere you would notice it. */
+  const hint = document.getElementById('addhint');
+  if(hint){
+    hint.textContent = adds.length
+      ? `${adds.length} word${adds.length===1?'':'s'} added on this device, not yet committed.`
+      : 'Paste a list, take the prompt to Claude, bring the reply back.';
+    hint.style.color = adds.length ? 'var(--ink-1)' : '';
+  }
+  showQueue();
 }
 
 /* ---------- add words ---------- */
 const panel=document.getElementById('panel'), addBtn=document.getElementById('addbtn');
-addBtn.addEventListener('click',()=>{
-  const on = addBtn.getAttribute('aria-pressed')==='true';
-  addBtn.setAttribute('aria-pressed', String(!on));
-  panel.classList.toggle('on', !on);
-  if(!on) panel.scrollIntoView({behavior:'smooth'});
-});
+const setBtn=document.getElementById('setbtn'), setPanel=document.getElementById('settings');
+
+/* the two panels share the space under the bar, so opening one closes the other */
+function openPanel(which){
+  [[addBtn,panel],[setBtn,setPanel]].forEach(([b,p])=>{
+    const on = p===which;
+    b.setAttribute('aria-pressed', String(on));
+    p.classList.toggle('on', on);
+  });
+  if(which) which.scrollIntoView({behavior:'smooth'});
+}
+addBtn.addEventListener('click',()=>openPanel(panel.classList.contains('on') ? null : panel));
+setBtn.addEventListener('click',()=>openPanel(setPanel.classList.contains('on') ? null : setPanel));
+document.getElementById('backset').addEventListener('click',()=>openPanel(setPanel));
+
+/* Pictures are a preference, not data: the class hides them everywhere at once and the
+   cards keep their exact layout, since the watermark was never part of it. */
+const PKEY='vocab-pics', picBtn=document.getElementById('pics');
+function setPics(on){
+  document.body.classList.toggle('nopics', !on);
+  picBtn.setAttribute('aria-pressed', String(on));
+  picBtn.textContent = on ? 'Pictures on' : 'Pictures off';
+  try{ localStorage.setItem(PKEY, on?'1':'0'); }catch(e){}
+}
+let picsOn=true; try{ picsOn = localStorage.getItem(PKEY)!=='0'; }catch(e){}
+setPics(picsOn);
+picBtn.addEventListener('click',()=>setPics(document.body.classList.contains('nopics')));
 
 let fresh=[];
-document.getElementById('check').addEventListener('click',()=>{
-  const raw=document.getElementById('raw').value;
-  const items=[...new Set(raw.split(/[\n,;]+/).map(s=>s.replace(/^\s*\d+[.)]\s*/,'').trim()).filter(Boolean))];
-  const have=new Map(W.map(x=>[norm(x.w),x.w]));
-  const stems=new Map(W.map(x=>[stem(x.w),x.w]));
-  fresh=[]; const dups=[], nears=[];
-  items.forEach(t=>{
-    if(have.has(norm(t))) dups.push(t);
-    else if(stems.has(stem(t))) nears.push({t, like:stems.get(stem(t))});
-    else fresh.push(t);
-  });
-  nears.forEach(nx=>fresh.push(nx.t));
-  const rep=document.getElementById('report');
-  rep.innerHTML =
-    `<p class="note ${fresh.length?'good':''}">${fresh.length} new · ${dups.length} already here${nears.length?` · ${nears.length} similar to existing`:''}</p>` +
+
+/* Words already captured but not yet enriched are offered again rather than
+   dropped as duplicates — otherwise nothing in the panel could ever reach them. */
+function renderReport(dups, nears, again){
+  const bits=[`${fresh.length} to enrich`];
+  if(again.length) bits.push(`${again.length} waiting for detail`);
+  if(dups.length) bits.push(`${dups.length} already here`);
+  if(nears.length) bits.push(`${nears.length} similar to existing`);
+  document.getElementById('report').innerHTML =
+    `<p class="note ${fresh.length?'good':''}">${bits.join(' · ')}</p>` +
     `<div class="chips">${
-      fresh.map(t=>{const nx=nears.find(n=>n.t===t);
-        return `<span class="chip ${nx?'near':''}" data-t="${t}"><b>${t}</b>${nx?` <span style="opacity:.7">≈ ${nx.like}</span>`:''}<button data-drop="${t}" aria-label="Remove ${t}">×</button></span>`;
+      fresh.map(t=>{
+        const nx=nears.find(n=>n.t===t), ag=again.includes(t);
+        const tail = nx ? ` <span style="opacity:.7">≈ ${nx.like}</span>`
+                        : ag ? ` <span style="opacity:.7">waiting</span>` : '';
+        return `<span class="chip ${nx?'near':ag?'again':''}" data-t="${t}"><b>${t}</b>${tail}<button data-drop="${t}" aria-label="Remove ${t}">×</button></span>`;
       }).join('') +
       dups.map(t=>`<span class="chip dup">${t}</span>`).join('')
     }</div>`;
   document.getElementById('s2').style.display = fresh.length?'block':'none';
   document.getElementById('s3').style.display = fresh.length?'block':'none';
   if(fresh.length) buildPrompt();
+}
+
+document.getElementById('check').addEventListener('click',()=>{
+  const raw=document.getElementById('raw').value;
+  const items=[...new Set(raw.split(/[\n,;]+/).map(s=>s.replace(/^\s*\d+[.)]\s*/,'').trim()).filter(Boolean))];
+  const have=new Map(W.filter(x=>x.d).map(x=>[norm(x.w),x.w]));
+  const pend=new Map(W.filter(x=>!x.d).map(x=>[norm(x.w),x.w]));
+  const stems=new Map(W.filter(x=>x.d).map(x=>[stem(x.w),x.w]));
+  fresh=[]; const dups=[], nears=[], again=[];
+  items.forEach(t=>{
+    if(have.has(norm(t))) dups.push(t);
+    else if(pend.has(norm(t))) again.push(t);
+    else if(stems.has(stem(t))) nears.push({t, like:stems.get(stem(t))});
+    else fresh.push(t);
+  });
+  again.forEach(t=>fresh.push(t));
+  nears.forEach(nx=>fresh.push(nx.t));
+  renderReport(dups, nears, again);
+});
+
+function showQueue(){
+  const btn=document.getElementById('queue'), pend=W.filter(x=>!x.d);
+  btn.style.display = pend.length ? '' : 'none';
+  btn.textContent = `Queue the ${pend.length} waiting`;
+}
+document.getElementById('queue').addEventListener('click',()=>{
+  const pend=W.filter(x=>!x.d).map(x=>x.w);
+  fresh=pend.slice();
+  renderReport([], [], pend);
 });
 
 document.getElementById('report').addEventListener('click',e=>{
