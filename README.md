@@ -25,8 +25,9 @@ On the iPad, open that URL in Safari, tap Share, then **Add to Home Screen**. It
 ## Adding words — the weekly loop
 
 1. Collect English words as you meet them (Google Translate, notes app, anywhere).
-2. In the booklet, tap **Settings → + Add words** and paste the list. Any format works — commas,
-   new lines, numbered. Duplicates are dropped; near-matches are flagged so you can decide.
+2. In the booklet, tap **Settings → + Add words** and paste the list, then tap **Check list**.
+   Any format works — commas, new lines, numbered. Duplicates are dropped; near-matches are
+   flagged so you can decide. Steps 2 and 3 stay greyed out until this list is checked.
 3. Tap **Copy prompt**, paste it into a Claude chat, and copy the JSON reply.
 4. Paste that into step 3 and tap **Validate & merge**. Bad input is rejected without
    changing anything.
@@ -48,9 +49,12 @@ waiting for detail are offered again rather than dismissed as duplicates.
 
 - **Progress is per-device.** The ✓ marks live in that browser only. Use **Export progress**
   before clearing Safari data.
-- **Settings** holds the picture switch, the reading voice and the reading speed. Like the ✓
-  marks, they are per-device — set them once on the iPad and once on the laptop. The voice row
-  hides itself where the device offers only one English voice.
+- **Settings** — the ⚙ button at the end of the bar, set apart from the view toggles — holds
+  add-words, the picture switch, the reading voice and the reading speed. It drops from the
+  bar over wherever you are reading, so it never sends you back to the top; Escape or a tap
+  outside closes it. Like the ✓ marks, the preferences are per-device — set them once on the
+  iPad and once on the laptop. The voice row hides itself where the device offers only one
+  English voice.
 - **Audio** uses your device's built-in speech engine, so voices differ between iPad and
   laptop. Rare words are occasionally mispronounced — verify anything that sounds odd.
 - **Printing** (Ctrl/Cmd+P) reflows into a two-column paper booklet, one field per page.

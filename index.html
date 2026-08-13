@@ -82,8 +82,24 @@
     border:1px solid var(--rule); padding:9px 15px; border-radius:7px; cursor:pointer; white-space:nowrap;
   }
   .btn:hover{color:var(--paper); border-color:rgba(241,239,233,.4)}
-  .btn[aria-pressed="true"]{background:var(--paper); color:var(--night); border-color:var(--paper)}
+  .btn[aria-pressed="true"],.btn[aria-expanded="true"]{background:var(--paper); color:var(--night); border-color:var(--paper)}
   .btn:focus-visible{outline:2px solid var(--ink-1); outline-offset:2px}
+  /* Settings opens a panel rather than toggling a view, so it stops sitting inside the run
+     of toggles: a hairline sets it apart, and the gear and caret say it leads somewhere. */
+  /* the rule travels with the button so a wrapped bar never leaves it stranded at a line end */
+  .bar-menu{display:inline-flex; align-items:center; gap:12px}
+  .bar-div{width:1px; align-self:stretch; margin:3px 0; background:var(--rule)}
+  /* below this the bar wraps and Settings begins a line of its own, where a rule
+     divides nothing and reads as a stray tick */
+  @media(max-width:940px){ .bar-div{display:none} }
+  .menubtn{display:inline-flex; align-items:center; gap:8px; padding-left:13px; padding-right:12px}
+  .menubtn .gear{width:14px; height:14px; fill:currentColor; opacity:.85; flex:none}
+  .menubtn .caret{
+    width:9px; height:6px; flex:none; fill:none; stroke:currentColor; stroke-width:1.7;
+    stroke-linecap:round; stroke-linejoin:round; opacity:.65; transition:transform .2s ease;
+  }
+  .menubtn[aria-expanded="true"] .caret{transform:rotate(180deg)}
+  .menubtn:hover .gear,.menubtn:hover .caret{opacity:1}
   select.btn{
     text-transform:none; letter-spacing:.02em; font-size:12.5px; max-width:210px;
     appearance:none; -webkit-appearance:none; padding-right:29px;
@@ -275,7 +291,19 @@
   }
 
   /* add-words panel */
-  .panel{display:none; margin:26px 0 0; padding:24px; border:1px solid var(--rule); border-radius:8px; background:var(--night-2)}
+  /* The panels used to sit at the top of the document, so opening one from halfway down
+     the book threw you back to the cover to see it. They now hang off the sticky bar and
+     drop over the page wherever you happen to be — nothing scrolls, nothing shifts. */
+  .panels{position:absolute; top:100%; left:0; right:0; pointer-events:none}
+  .panel{
+    display:none; margin:9px 0 0; padding:24px; border:1px solid var(--rule); border-radius:8px;
+    background:var(--night-2); pointer-events:auto; box-shadow:0 22px 48px rgba(0,0,0,.45);
+    /* a long add-words panel scrolls inside itself rather than off the bottom of the screen;
+       --barh is the toolbar's own height, which changes as the bar wraps */
+    max-height:calc(100vh - var(--barh,96px) - 18px);
+    max-height:calc(100dvh - var(--barh,96px) - 18px);
+    overflow:auto; overscroll-behavior:contain;
+  }
   .panel.on{display:block}
   .panel h3{font-family:"Fraunces",serif; font-size:22px; font-weight:500; margin:0 0 4px}
   .panel p{color:var(--dim); font-size:15px; margin:0 0 16px}
@@ -298,6 +326,14 @@
   body.nosound .set-sound{display:none}
   .step{margin-top:24px; padding-top:20px; border-top:1px solid var(--rule)}
   .step:first-of-type{border-top:0; padding-top:0; margin-top:0}
+  /* Steps 2 and 3 have nothing to act on until a list has been checked, but hiding them
+     left the panel running 1 then 4, which reads as a fault rather than as a sequence.
+     They stay in place, greyed and inert, so the four steps are visible from the start. */
+  .step.waiting{opacity:.42}
+  .step.waiting .pre{font-style:italic}
+  .btn:disabled{opacity:.5; cursor:default}
+  .btn:disabled:hover{color:var(--dim); border-color:var(--rule)}
+  .panel textarea:disabled{cursor:default}
   .stepno{font-family:"Archivo",sans-serif; font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-1); font-weight:600; display:block; margin-bottom:7px}
   .note{font-size:14px; color:var(--dim); margin:10px 0 0; line-height:1.6}
   .note.warn{color:var(--ink-1)}
@@ -388,89 +424,99 @@
         <input class="search" id="q" type="search" placeholder="Search a word, a meaning, an example…" aria-label="Search words">
         <button class="btn" id="study" aria-pressed="false">Study mode</button>
         <button class="btn" id="arabic" aria-pressed="false" lang="ar">العربية</button>
-        <button class="btn" id="setbtn" aria-pressed="false">Settings</button>
         <button class="btn" id="reset">Reset marks</button>
+        <span class="bar-menu">
+        <span class="bar-div" aria-hidden="true"></span>
+        <button class="btn menubtn" id="setbtn" aria-haspopup="true" aria-expanded="false" aria-controls="settings">
+          <svg class="gear" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M12 8.6a3.4 3.4 0 100 6.8 3.4 3.4 0 000-6.8zm7.9 3.4c0-.5 0-.9-.1-1.4l2-1.5-1.9-3.3-2.4 1a7.6 7.6 0 00-2.4-1.4L14.8 3H11l-.3 2.4c-.9.3-1.7.8-2.4 1.4l-2.4-1L4 9.1l2 1.5a8.4 8.4 0 000 2.8l-2 1.5 1.9 3.3 2.4-1c.7.6 1.5 1.1 2.4 1.4l.3 2.4h3.8l.3-2.4c.9-.3 1.7-.8 2.4-1.4l2.4 1 1.9-3.3-2-1.5c.1-.5.1-.9.1-1.4z"/></svg>
+          Settings
+          <svg class="caret" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4"/></svg>
+        </button>
+        </span>
         <span class="tally" id="tally"><b>0</b> learned</span>
       </div>
     </div>
+
+    <!-- the panels hang off the bar itself, so they open where you are standing -->
+    <div class="panels wrap">
+      <section class="panel" id="panel">
+        <button class="btn back" id="backset">← Settings</button>
+        <div class="step">
+          <span class="stepno">Step 1 — paste your English words</span>
+          <p>Any format: commas, new lines, numbered. Duplicates are removed automatically.</p>
+          <textarea id="raw" placeholder="obstinate, wary&#10;3. gaunt&#10;forlorn"></textarea>
+          <div class="row">
+            <button class="btn" id="check">Check list</button>
+            <button class="btn" id="queue" style="display:none"></button>
+          </div>
+          <div id="report"></div>
+        </div>
+
+        <div class="step waiting" id="s2">
+          <span class="stepno">Step 2 — copy this to Claude</span>
+          <p>Paste it into a chat, then bring the reply back here.</p>
+          <div class="pre" id="prompt">The prompt is written here once you check a list above.</div>
+          <div class="row">
+            <button class="btn" id="copyp" disabled>Copy prompt</button>
+            <button class="btn" id="addnow" disabled>Add as needs-detail now</button>
+          </div>
+        </div>
+
+        <div class="step waiting" id="s3">
+          <span class="stepno">Step 3 — paste the reply</span>
+          <textarea id="incoming" placeholder="Paste the JSON array Claude gives you" disabled></textarea>
+          <div class="row"><button class="btn" id="merge" disabled>Validate &amp; merge</button></div>
+          <div id="mergemsg"></div>
+        </div>
+
+        <div class="step">
+          <span class="stepno">Step 4 — save it</span>
+          <p>Download the updated file and paste it into <b>words.json</b> on GitHub.</p>
+          <div class="row">
+            <button class="btn" id="dl">Download words.json</button>
+            <button class="btn" id="dlprog">Export progress</button>
+          </div>
+          <p class="note" id="local"></p>
+        </div>
+      </section>
+
+      <section class="panel" id="settings">
+        <div class="set">
+          <div>
+            <p class="set-t">Add words</p>
+            <p class="set-d" id="addhint">Paste a list, take the prompt to Claude, bring the reply back.</p>
+          </div>
+          <button class="btn" id="addbtn" aria-pressed="false">+ Add words</button>
+        </div>
+
+        <div class="set">
+          <div>
+            <p class="set-t">Pictures</p>
+            <p class="set-d">A few words carry a drawing, watermarked into the corner of the card.
+              Turning them off leaves the text exactly as it was.</p>
+          </div>
+          <button class="btn" id="pics" aria-pressed="true">Pictures on</button>
+        </div>
+
+        <div class="set set-sound">
+          <div>
+            <p class="set-t">Reading voice</p>
+            <p class="set-d">Which of your device's voices reads the cards. The list differs between
+              the iPad and a laptop, and rare words are occasionally mispronounced whichever you pick.</p>
+          </div>
+          <select class="btn" id="voice" aria-label="Reading voice"></select>
+        </div>
+
+        <div class="set set-sound">
+          <div>
+            <p class="set-t">Reading speed</p>
+            <p class="set-d">Slower is easier to shadow aloud when a word is new.</p>
+          </div>
+          <button class="btn" id="speed">Speed 0.9×</button>
+        </div>
+      </section>
+    </div>
   </div>
-
-  <section class="panel" id="panel">
-    <button class="btn back" id="backset">← Settings</button>
-    <div class="step">
-      <span class="stepno">Step 1 — paste your English words</span>
-      <p>Any format: commas, new lines, numbered. Duplicates are removed automatically.</p>
-      <textarea id="raw" placeholder="obstinate, wary&#10;3. gaunt&#10;forlorn"></textarea>
-      <div class="row">
-        <button class="btn" id="check">Check list</button>
-        <button class="btn" id="queue" style="display:none"></button>
-      </div>
-      <div id="report"></div>
-    </div>
-
-    <div class="step" id="s2" style="display:none">
-      <span class="stepno">Step 2 — copy this to Claude</span>
-      <p>Paste it into a chat, then bring the reply back here.</p>
-      <div class="pre" id="prompt"></div>
-      <div class="row">
-        <button class="btn" id="copyp">Copy prompt</button>
-        <button class="btn" id="addnow">Add as needs-detail now</button>
-      </div>
-    </div>
-
-    <div class="step" id="s3" style="display:none">
-      <span class="stepno">Step 3 — paste the reply</span>
-      <textarea id="incoming" placeholder="Paste the JSON array Claude gives you"></textarea>
-      <div class="row"><button class="btn" id="merge">Validate &amp; merge</button></div>
-      <div id="mergemsg"></div>
-    </div>
-
-    <div class="step">
-      <span class="stepno">Step 4 — save it</span>
-      <p>Download the updated file and paste it into <b>words.json</b> on GitHub.</p>
-      <div class="row">
-        <button class="btn" id="dl">Download words.json</button>
-        <button class="btn" id="dlprog">Export progress</button>
-      </div>
-      <p class="note" id="local"></p>
-    </div>
-  </section>
-
-  <section class="panel" id="settings">
-    <div class="set">
-      <div>
-        <p class="set-t">Add words</p>
-        <p class="set-d" id="addhint">Paste a list, take the prompt to Claude, bring the reply back.</p>
-      </div>
-      <button class="btn" id="addbtn" aria-pressed="false">+ Add words</button>
-    </div>
-
-    <div class="set">
-      <div>
-        <p class="set-t">Pictures</p>
-        <p class="set-d">A few words carry a drawing, watermarked into the corner of the card.
-          Turning them off leaves the text exactly as it was.</p>
-      </div>
-      <button class="btn" id="pics" aria-pressed="true">Pictures on</button>
-    </div>
-
-    <div class="set set-sound">
-      <div>
-        <p class="set-t">Reading voice</p>
-        <p class="set-d">Which of your device's voices reads the cards. The list differs between
-          the iPad and a laptop, and rare words are occasionally mispronounced whichever you pick.</p>
-      </div>
-      <select class="btn" id="voice" aria-label="Reading voice"></select>
-    </div>
-
-    <div class="set set-sound">
-      <div>
-        <p class="set-t">Reading speed</p>
-        <p class="set-d">Slower is easier to shadow aloud when a word is new.</p>
-      </div>
-      <button class="btn" id="speed">Speed 0.9×</button>
-    </div>
-  </section>
 
   <main id="book"></main>
   <p class="empty" id="empty">No entry matches that. Try a shorter word.</p>
@@ -846,18 +892,40 @@ function showLocal(){
 const panel=document.getElementById('panel'), addBtn=document.getElementById('addbtn');
 const setBtn=document.getElementById('setbtn'), setPanel=document.getElementById('settings');
 
+/* The panels drop from the bar and may not fit the screen beneath it, so they need to know
+   how tall the bar is — which changes whenever it wraps to another line. */
+const barWrap=document.querySelector('.bar-wrap');
+new ResizeObserver(()=>document.documentElement.style
+  .setProperty('--barh', barWrap.getBoundingClientRect().height+'px')).observe(barWrap);
+
 /* the two panels share the space under the bar, so opening one closes the other */
 function openPanel(which){
   [[addBtn,panel],[setBtn,setPanel]].forEach(([b,p])=>{
     const on = p===which;
-    b.setAttribute('aria-pressed', String(on));
+    if(b!==setBtn) b.setAttribute('aria-pressed', String(on));
     p.classList.toggle('on', on);
   });
-  if(which) which.scrollIntoView({behavior:'smooth'});
+  /* The bar button announces a menu, not a toggle, and add-words is a room inside that
+     menu — so the caret stays turned down for as long as either panel is on screen. */
+  setBtn.setAttribute('aria-expanded', String(!!which));
+  if(which) which.scrollTop = 0;   // a panel reopens at its own top, not where you left it
 }
 addBtn.addEventListener('click',()=>openPanel(panel.classList.contains('on') ? null : panel));
 setBtn.addEventListener('click',()=>openPanel(setPanel.classList.contains('on') ? null : setPanel));
 document.getElementById('backset').addEventListener('click',()=>openPanel(setPanel));
+
+/* A menu closes the way menus do — Escape, or a click anywhere off it. The add panel is
+   part of the same menu, so it obeys both too, and Escape hands focus back to the button. */
+function panelOpen(){ return panel.classList.contains('on') || setPanel.classList.contains('on'); }
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape' || !panelOpen()) return;
+  openPanel(null); setBtn.focus();
+});
+document.addEventListener('pointerdown',e=>{
+  if(!panelOpen()) return;
+  if(e.target.closest('#panel, #settings, #setbtn')) return;
+  openPanel(null);
+});
 
 /* Pictures are a preference, not data: the class hides them everywhere at once and the
    cards keep their exact layout, since the watermark was never part of it. */
@@ -873,6 +941,15 @@ setPics(picsOn);
 picBtn.addEventListener('click',()=>setPics(document.body.classList.contains('nopics')));
 
 let fresh=[];
+
+/* Steps 2 and 3 are always on screen; this is what turns them from a preview of what is
+   coming into something you can actually use. */
+const IDLEPROMPT='The prompt is written here once you check a list above.';
+function setReady(on){
+  ['s2','s3'].forEach(id=>document.getElementById(id).classList.toggle('waiting', !on));
+  ['copyp','addnow','merge','incoming'].forEach(id=>document.getElementById(id).disabled = !on);
+  if(!on) document.getElementById('prompt').textContent=IDLEPROMPT;
+}
 
 /* Words already captured but not yet enriched are offered again rather than
    dropped as duplicates — otherwise nothing in the panel could ever reach them. */
@@ -892,8 +969,7 @@ function renderReport(dups, nears, again){
       }).join('') +
       dups.map(t=>`<span class="chip dup">${t}</span>`).join('')
     }</div>`;
-  document.getElementById('s2').style.display = fresh.length?'block':'none';
-  document.getElementById('s3').style.display = fresh.length?'block':'none';
+  setReady(!!fresh.length);
   if(fresh.length) buildPrompt();
 }
 
@@ -929,8 +1005,8 @@ document.getElementById('queue').addEventListener('click',()=>{
 document.getElementById('report').addEventListener('click',e=>{
   const b=e.target.closest('[data-drop]'); if(!b) return;
   fresh = fresh.filter(t=>t!==b.dataset.drop);
-  b.closest('.chip').remove(); buildPrompt();
-  if(!fresh.length){ document.getElementById('s2').style.display='none'; document.getElementById('s3').style.display='none'; }
+  b.closest('.chip').remove();
+  if(fresh.length) buildPrompt(); else setReady(false);
 });
 
 function buildPrompt(){
@@ -973,7 +1049,7 @@ document.getElementById('addnow').addEventListener('click',()=>{
   setLocal(localAdds().concat(add)); W=W.concat(add);
   render(); loadProgress(); showLocal();
   document.getElementById('report').innerHTML='<p class="note good">Added — enrich them whenever you like.</p>';
-  document.getElementById('s2').style.display='none';
+  fresh=[]; setReady(false);
 });
 
 /* A drawing arrives as "s": raw SVG typed by a model and pasted through a chat window.
@@ -1063,6 +1139,8 @@ document.getElementById('merge').addEventListener('click',()=>{
     + (dropped?` ${dropped} discarded as unusable.`:'')
     + ' Download the file and commit it.';
   document.getElementById('incoming').value=''; document.getElementById('raw').value='';
+  /* the batch is spent: the chips and the prompt describe words that are now in the book */
+  document.getElementById('report').innerHTML=''; fresh=[]; setReady(false);
 });
 
 function download(name, text){
