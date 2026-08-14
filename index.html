@@ -11,6 +11,10 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..600&family=Archivo:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 
+<!-- The only dependency this booklet has. Left out, or offline, the app still opens and
+     reads: it falls back to keeping words on this device, the way it always did. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
   :root{
     --night:#141634;
@@ -323,7 +327,9 @@
     font:15px/1.5 "Newsreader",serif;
   }
   .fld input:focus{outline:none; border-color:var(--ink-1)}
-  .acct + .acct{margin-top:18px; padding-top:18px; border-top:1px solid var(--rule)}
+  /* the three account states are mutually exclusive, so no divider between them —
+     a rule above the only visible one is a line separating it from nothing */
+  .acct .set-d{margin-bottom:4px}
   /* the sign-in gate stands where the book would be, so it is sized like a section head
      rather than like a dialog — nobody is being interrupted, there is simply nothing yet */
   .gate{max-width:56ch; padding:60px 0 40px}
@@ -331,6 +337,14 @@
            letter-spacing:-.02em; margin:0 0 18px; color:var(--paper)}
   .gate p{font-size:17px; line-height:1.7; color:var(--dim); margin:0 0 16px}
   .gate .fld{margin-top:26px}
+  /* Signed out there is no booklet to search, mark or print, so the whole apparatus goes
+     rather than sitting there greyed: the cover and the gate are the entire page. */
+  body.signed-out .bar-wrap,
+  body.signed-out .swatches,
+  body.signed-out #book,
+  body.signed-out #fix,
+  body.signed-out #empty,
+  body.signed-out footer{display:none!important}
   /* The add panel is opened from inside settings, so it needs a door back out —
      the bar button alone works but reads as a dead end once you are in here. */
   .back{margin:0 0 20px; padding:7px 13px; font-size:10.5px}
@@ -495,6 +509,7 @@
             <button class="btn" id="dlprog">Export progress</button>
           </div>
           <p class="note" id="local"></p>
+          <p class="note" id="sync"></p>
         </div>
       </section>
 
@@ -596,6 +611,20 @@
 </div>
 
 <script>
+/* ---------- accounts ----------
+   Paste these from your Supabase project: Dashboard → Settings → API. Both belong in the
+   file and in git. The anon key names the project, not you; it is row level security in
+   the database that keeps one person's words away from another's, and the key is useless
+   without a signed-in session. See README.md.
+
+   Leave them empty and nothing breaks: the booklet runs on this device alone, exactly as
+   it did before accounts existed, with Download as the way words leave it. */
+const SUPABASE_URL      = '';
+const SUPABASE_ANON_KEY = '';
+
+const ACCOUNTS = !!(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase);
+const sb = ACCOUNTS ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
 /* SEED is the parsed words.json: the eight fields every account shares, and the words a
    brand-new account is stocked with. CORRECTIONS lives up here rather than beside the
    download button because apply() assigns it long before that line is reached — it only
@@ -910,7 +939,162 @@ const localStore = {
   async setDone(w, on){ try{ localStorage.setItem(KEY, JSON.stringify([...done])); }catch(e){} },
   async clearDone(){ try{ localStorage.setItem(KEY, '[]'); }catch(e){} }
 };
-let store = localStore;
+
+/* ---------- the same seam, against an account ----------
+   A row and a card are deliberately the same shape — the single-letter columns are the
+   keys render() already reads — so the only translation is dropping the bookkeeping
+   columns on the way out and adding them on the way in. */
+
+/* Key order matches words.json exactly (w, f, [i], p, d, e, a, [n]) so an export from an
+   account is indistinguishable from one made before accounts existed. Absent rather than
+   null for n and i, because that is how the file has always written them. */
+function rowToWord(r){
+  const o = {w:r.w, f:r.f};
+  if(r.i) o.i = r.i;
+  o.p = r.p||''; o.d = r.d||''; o.e = r.e||''; o.a = r.a||'';
+  if(r.n) o.n = r.n;
+  return o;
+}
+function wordToRow(o, uid){
+  return {user_id:uid, w:o.w, norm:norm(o.w), f:o.f,
+          p:o.p||null, d:o.d||null, e:o.e||null, a:o.a||null, n:o.n||null, i:o.i||null};
+}
+
+const cloudStore = {
+  id:'cloud',
+  savedNote:' Saved to your account.',
+  uid:null, email:null,
+  ready:[],          // word strings marked learned, straight off the rows
+  /* Rows are mirrored into localStorage per account so the booklet still opens on a train
+     with no signal, or while a paused free project is waking up. Reads come from here
+     when the network doesn't answer; writes wait for a connection and say so. */
+  cacheKey(){ return 'vocab-rows-'+this.uid; },
+  readCache(){ try{ return JSON.parse(localStorage.getItem(this.cacheKey())||'null'); }catch(e){ return null; } },
+  writeCache(v){ try{ localStorage.setItem(this.cacheKey(), JSON.stringify(v)); }catch(e){} },
+
+  async load(seed){
+    let words, corrections;
+    try{
+      /* Inside the try, not before it: stocking a new account is just another thing that
+         needs the database, and failing it should fall back to the cached booklet like
+         any other read — not slam the door on someone with no signal. */
+      await seedAccount(seed, this.uid);
+      const [a,b] = await Promise.all([
+        sb.from('words').select('*').order('created_at'),
+        sb.from('corrections').select('*').order('created_at')
+      ]);
+      if(a.error) throw a.error;
+      if(b.error) throw b.error;
+      words = a.data; corrections = b.data;
+      this.writeCache({words, corrections, at:Date.now()});
+      offline = false;
+    }catch(e){
+      const cached = this.readCache();
+      if(!cached) throw e;              // nothing to fall back to — let boot() say so
+      words = cached.words; corrections = cached.corrections;
+      offline = true;
+    }
+    this.ready = words.filter(r=>r.done).map(r=>r.w);
+    return {
+      words: words.map(rowToWord),
+      corrections: corrections.map(c=>({wrong:c.wrong, right:c.right, hint:c.hint||undefined}))
+    };
+  },
+
+  /* `retired` holds the norms this merge replaces — a re-enriched word, or the misspelled
+     card a correction supersedes. Deleting them first is what keeps the unique index from
+     rejecting the insert, and what stops the wrong spelling lingering as its own card. */
+  async addWords(add, retired){
+    const gone = [...retired];
+    if(gone.length){
+      const {error} = await sb.from('words').delete().in('norm', gone);
+      if(error) throw asError(error);
+    }
+    if(add.length){
+      const {error} = await sb.from('words').insert(add.map(o=>wordToRow(o, this.uid)));
+      if(error) throw asError(error);
+    }
+    await this.refreshCache();
+  },
+  async addFixes(fixes){
+    const {error} = await sb.from('corrections').upsert(
+      fixes.map(c=>({user_id:this.uid, wrong:c.wrong, norm_wrong:norm(c.wrong), right:c.right, hint:c.hint||null})),
+      {onConflict:'user_id,norm_wrong', ignoreDuplicates:true});
+    if(error) throw asError(error);
+  },
+  doneList(){ return this.ready; },
+  /* Optimistic: the tick has already moved on screen. If the write fails the status line
+     says so rather than snatching the tick back — one lost mark is a smaller surprise
+     than a card that undoes itself under your finger. */
+  async setDone(w, on){
+    this.ready = on ? this.ready.concat(w) : this.ready.filter(x=>x!==w);
+    try{
+      const {error} = await sb.from('words').update({done:on}).eq('norm', norm(w));
+      if(error) throw asError(error);
+      syncNote('');
+      await this.refreshCache();
+    }catch(e){ syncNote('That tick did not reach your account — '+errText(e)); }
+  },
+  async clearDone(){
+    this.ready = [];
+    try{
+      const {error} = await sb.from('words').update({done:false}).eq('user_id', this.uid);
+      if(error) throw asError(error);
+      await this.refreshCache();
+    }catch(e){ syncNote('The marks did not clear in your account — '+errText(e)); }
+  },
+  async refreshCache(){
+    try{
+      const [a,b] = await Promise.all([
+        sb.from('words').select('*').order('created_at'),
+        sb.from('corrections').select('*').order('created_at')
+      ]);
+      if(!a.error && !b.error) this.writeCache({words:a.data, corrections:b.data, at:Date.now()});
+    }catch(e){}
+  }
+};
+
+let store = localStore, offline = false;
+
+/* Supabase hands back {message, code, details}, not an Error, and a dead network throws a
+   bare TypeError with no status at all. Both end up here so the callers can just throw. */
+function asError(e){
+  const err = new Error(e.message || 'The database refused that.');
+  err.code = e.code; err.status = e.status;
+  return err;
+}
+function errText(e){
+  if(!navigator.onLine) return 'you appear to be offline.';
+  const m = e && e.message ? e.message : '';
+  if(/fetch|network|Failed to fetch/i.test(m)) return 'the database could not be reached. If it has been idle a week it may be waking up — try again in a moment.';
+  return m || 'the save failed.';
+}
+
+/* ---------- stocking a new account ----------
+   The starter words come from words.json, which the browser has already fetched, so the
+   database never needs a copy of them. Guarded by profiles.seeded_at rather than by "are
+   there any words yet", so an account emptied on purpose stays empty. The upsert makes a
+   half-finished seed harmless: the next sign-in simply completes it. */
+async function seedAccount(seed, uid){
+  const {data:prof, error} = await sb.from('profiles').select('seeded_at').eq('id', uid).maybeSingle();
+  if(error) throw asError(error);
+  if(prof && prof.seeded_at) return;
+
+  await sb.from('profiles').upsert({id:uid}, {onConflict:'id', ignoreDuplicates:true});
+
+  const rows = seed.words.map(o=>wordToRow(o, uid));
+  if(rows.length){
+    const {error:e1} = await sb.from('words').upsert(rows, {onConflict:'user_id,norm', ignoreDuplicates:true});
+    if(e1) throw asError(e1);
+  }
+  const cr = (seed.corrections||[]).map(c=>({user_id:uid, wrong:c.wrong, norm_wrong:norm(c.wrong), right:c.right, hint:c.hint||null}));
+  if(cr.length){
+    const {error:e2} = await sb.from('corrections').upsert(cr, {onConflict:'user_id,norm_wrong', ignoreDuplicates:true});
+    if(e2) throw asError(e2);
+  }
+  const {error:e3} = await sb.from('profiles').update({seeded_at:new Date().toISOString()}).eq('id', uid);
+  if(e3) throw asError(e3);
+}
 
 async function apply(data){
   FIELDS = data.fields;
@@ -970,21 +1154,167 @@ async function boot(){
   if(!data){ try{ data = JSON.parse(localStorage.getItem(CACHE)); }catch(e){} }
   if(!data){ failed(why||'Could not load words.json.'); return; }
   SEED = data;
-  await apply(data);
+
+  /* No project configured: this is the booklet as it always was, on this device. */
+  if(!ACCOUNTS){
+    document.getElementById('app').hidden=false;
+    setAcctState(null);
+    await apply(SEED);
+    return;
+  }
+
+  /* A magic link comes back with the session in the URL fragment. supabase-js reads it
+     and fires onAuthStateChange, so all boot has to do is ask who is already here and
+     let enter() handle both that answer and every later change. */
+  document.getElementById('app').hidden=false;
+  let session=null;
+  try{ ({data:{session}} = await sb.auth.getSession()); }catch(e){}
+  await enter(session);
+  sb.auth.onAuthStateChange((_evt, s)=>{
+    const same = (s && s.user.id) === (cloudStore.uid);
+    if(same) return;              // token refreshes fire this too; nothing to redraw
+    enter(s);
+  });
 }
 boot();
 
+/* ---------- signed in, signed out ----------
+   One function owns the difference. Signed out there is no book to show, so the gate
+   stands where it would be rather than covering it: nothing is being interrupted, there
+   simply is not a booklet yet. */
+async function enter(session){
+  if(session){
+    cloudStore.uid = session.user.id;
+    cloudStore.email = session.user.email;
+    store = cloudStore;
+    done.clear();
+    document.body.classList.remove('signed-out');
+    document.getElementById('gate').hidden = true;
+    setAcctState(session.user.email);
+    try{
+      await apply(SEED);
+      if(offline) syncNote('Offline — showing the last copy saved on this device.');
+      else syncNote('');
+    }catch(e){
+      failed('Signed in, but your words could not be loaded — '+esc(errText(e))
+        +'<br><br>If the database has been idle for a week it may be waking up; give it a moment and reload.');
+    }
+  }else{
+    cloudStore.uid = null; cloudStore.email = null;
+    store = localStore;
+    W = []; CORRECTIONS = []; done.clear();
+    document.body.classList.add('signed-out');
+    document.getElementById('gate').hidden = false;
+    document.getElementById('book').innerHTML = '';
+    document.getElementById('fix').hidden = true;
+    setAcctState(null);
+    openPanel(null);
+  }
+}
+
+/* The Settings row and the account panel say the same thing in two lengths. */
+function setAcctState(email){
+  const btn=document.getElementById('acctbtn'), hint=document.getElementById('accthint');
+  const out=document.getElementById('acct-out'), inn=document.getElementById('acct-in'), off=document.getElementById('acct-off');
+  out.hidden = inn.hidden = off.hidden = true;
+  if(!ACCOUNTS){
+    off.hidden = false;
+    btn.textContent = 'Not set up';
+    hint.textContent = 'No account behind this copy — words are kept in this browser, and Download is how they leave it.';
+  }else if(email){
+    inn.hidden = false;
+    document.getElementById('who').textContent = email;
+    btn.textContent = 'Signed in';
+    hint.textContent = email+' — your words follow you between devices.';
+  }else{
+    out.hidden = false;
+    btn.textContent = 'Sign in';
+    hint.textContent = 'Sign in to see your words and to keep new ones.';
+  }
+}
+
+function syncNote(text){
+  const el=document.getElementById('sync');
+  if(!el) return;
+  el.textContent = text || '';
+  el.className = text ? 'note warn' : 'note';
+}
+
+/* ---------- the sign-in gate ---------- */
+if(ACCOUNTS){
+  const send=document.getElementById('sendlink'), mail=document.getElementById('email'), msg=document.getElementById('acctmsg');
+  async function sendLink(){
+    const email=mail.value.trim();
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ msg.className='note bad'; msg.textContent='That does not look like an email address.'; return; }
+    send.disabled=true; send.textContent='Sending…';
+    msg.className='note'; msg.textContent='';
+    try{
+      /* Back to this page, without the fragment a previous link may have left behind. */
+      const {error} = await sb.auth.signInWithOtp({email, options:{emailRedirectTo: location.origin+location.pathname}});
+      if(error) throw asError(error);
+      msg.className='note good';
+      msg.textContent='Check '+email+' — the link is on its way. It opens straight back here.';
+    }catch(e){
+      msg.className='note bad';
+      msg.textContent='Could not send it — '+errText(e);
+    }
+    send.disabled=false; send.textContent='Send me a link';
+  }
+  send.addEventListener('click', sendLink);
+  mail.addEventListener('keydown', e=>{ if(e.key==='Enter') sendLink(); });
+
+  document.getElementById('tosignin').addEventListener('click',()=>{
+    openPanel(null);
+    document.getElementById('gate').scrollIntoView({behavior:'smooth'});
+    mail.focus();
+  });
+
+  document.getElementById('signout').addEventListener('click',async ()=>{
+    const m=document.getElementById('acctmsg2');
+    m.className='note'; m.textContent='Signing out…';
+    try{ await sb.auth.signOut(); m.textContent=''; }
+    catch(e){ m.className='note bad'; m.textContent='Could not sign out — '+errText(e); }
+  });
+}
+document.getElementById('acctbtn').addEventListener('click',()=>{
+  openPanel(document.getElementById('account').classList.contains('on') ? null : document.getElementById('account'));
+});
+
+/* On an account there is nothing to nag about — a word is saved the moment it is merged,
+   which was the entire point. What is left is a bare count of words still waiting for
+   detail, and step 4 becomes an offer of a copy rather than an instruction. */
 function showLocal(){
-  const adds = localAdds(), el = document.getElementById('local');
-  const ready = adds.filter(x=>x.d && x.d.trim()).length, bare = adds.length - ready;
+  const el = document.getElementById('local');
+  const bare = W.filter(x=>!x.d || !x.d.trim()).length;
+  const hint = document.getElementById('addhint');
+  const step4 = document.getElementById('step4');
+
+  if(store.id === 'cloud'){
+    el.textContent = bare
+      ? `${bare} word${bare>1?'s are':' is'} still waiting for detail — saved, but left out of a downloaded copy until enriched.`
+      : '';
+    el.className = 'note';
+    step4.textContent = 'Your words save themselves as you add them. Download a copy whenever you want one of your own.';
+    if(hint){
+      hint.textContent = bare
+        ? `${bare} word${bare===1?'':'s'} waiting for detail.`
+        : 'Paste a list, take the prompt to Claude, bring the reply back.';
+      hint.style.color = '';
+    }
+    showQueue();
+    return;
+  }
+
+  const adds = localAdds();
+  const ready = adds.filter(x=>x.d && x.d.trim()).length, stillBare = adds.length - ready;
   const lines = [];
   if(ready) lines.push(`${ready} word${ready>1?'s':''} added on this device only — download and commit to keep ${ready>1?'them':'it'}.`);
-  if(bare) lines.push(`${bare} more ${bare>1?'are':'is'} still waiting for detail: the download leaves ${bare>1?'them':'it'} out, so ${bare>1?'they stay':'it stays'} in this browser until you enrich ${bare>1?'them':'it'}.`);
+  if(stillBare) lines.push(`${stillBare} more ${stillBare>1?'are':'is'} still waiting for detail: the download leaves ${stillBare>1?'them':'it'} out, so ${stillBare>1?'they stay':'it stays'} in this browser until you enrich ${stillBare>1?'them':'it'}.`);
   el.textContent = lines.join(' ');
   el.className = adds.length ? 'note warn' : 'note';
+  step4.textContent = 'Download the updated file and paste it into words.json on GitHub.';
   /* The add panel now sits behind Settings, so the count of uncommitted words has to
      show on the way in — otherwise it is two clicks from anywhere you would notice it. */
-  const hint = document.getElementById('addhint');
   if(hint){
     hint.textContent = adds.length
       ? `${adds.length} word${adds.length===1?'':'s'} added on this device, not yet committed.`
@@ -1156,7 +1486,7 @@ document.getElementById('addnow').addEventListener('click',async ()=>{
   const add=fresh.map(t=>({w:t,f:0,p:'',d:'',e:'',a:''}));
   const report=document.getElementById('report');
   try{ await store.addWords(add, new Set()); }
-  catch(e){ report.innerHTML='<p class="note bad">Could not save them — '+esc(e && e.message ? e.message : 'try again.')+'</p>'; return; }
+  catch(e){ report.innerHTML='<p class="note bad">Could not save them — '+esc(errText(e))+'</p>'; return; }
   W=W.concat(add);
   render(); loadProgress(); showLocal();
   report.innerHTML='<p class="note good">Added — enrich them whenever you like.</p>';
@@ -1246,7 +1576,12 @@ async function mergeArray(arr){
   const already=new Set(kept.map(x=>norm(x.w)));
   const add=arr.filter(x=>!already.has(norm(x.w)));
   add.forEach(o=>{ if(!o.i && pics.has(norm(o.w))) o.i = pics.get(norm(o.w)); });
-  W = kept.concat(add);
+  /* Put them through the same normaliser a row gets on the way back, so a word looks the
+     same in an export whether it was merged a second ago or reloaded from storage —
+     canonical key order, and no "n": null on a word that simply has no caution. */
+  const canon = add.map(rowToWord);
+  W = kept.concat(canon);
+  add.length = 0; add.push(...canon);
   await store.addWords(add, enriched);
   if(fixes.length){
     CORRECTIONS = CORRECTIONS.concat(fixes);
@@ -1275,7 +1610,7 @@ document.getElementById('merge').addEventListener('click',async ()=>{
   if(!Array.isArray(arr)){ msg.className='note bad'; msg.textContent='Expected an array of objects.'; return; }
   let res;
   try{ res = await mergeArray(arr); }
-  catch(e){ msg.className='note bad'; msg.textContent='Nothing merged — '+(e && e.message ? e.message : 'the save failed.'); return; }
+  catch(e){ msg.className='note bad'; msg.textContent='Nothing merged — '+errText(e)+' Your reply is still in the box.'; return; }
   if(!res.ok){ msg.className='note bad'; msg.textContent='Nothing merged — '+res.errors.slice(0,3).join('; '); return; }
   msg.className='note good';
   msg.textContent = mergeMsg(res);
