@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#141634"/>
+  <!-- margin rule -->
+  <line x1="150" y1="96" x2="150" y2="416" stroke="#F1EFE9" stroke-opacity="0.18" stroke-width="3"/>
+  <!-- lines of text -->
+  <g fill="#F1EFE9" fill-opacity="0.30">
+    <rect x="176" y="108" width="240" height="14" rx="7"/>
+    <rect x="176" y="148" width="208" height="14" rx="7"/>
+    <rect x="176" y="188" width="240" height="14" rx="7"/>
+    <rect x="176" y="228" width="184" height="14" rx="7"/>
+    <rect x="176" y="268" width="240" height="14" rx="7"/>
+    <rect x="176" y="308" width="216" height="14" rx="7"/>
+    <rect x="176" y="348" width="240" height="14" rx="7"/>
+    <rect x="176" y="388" width="160" height="14" rx="7"/>
+  </g>
+  <!-- marginal marks, one per ink -->
+  <g>
+    <rect x="96" y="108" width="34" height="14" rx="7" fill="#C9922F"/>
+    <rect x="96" y="148" width="20" height="14" rx="7" fill="#3F9A85"/>
+    <rect x="96" y="188" width="34" height="14" rx="7" fill="#C4485C"/>
+    <rect x="96" y="228" width="20" height="14" rx="7" fill="#8C6FD4"/>
+    <rect x="96" y="268" width="34" height="14" rx="7" fill="#4E8AD6"/>
+    <rect x="96" y="308" width="20" height="14" rx="7" fill="#C77FB0"/>
+    <rect x="96" y="348" width="34" height="14" rx="7" fill="#6E9E4E"/>
+    <rect x="96" y="388" width="20" height="14" rx="7" fill="#6E7899"/>
+  </g>
+</svg>

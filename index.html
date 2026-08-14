@@ -1,0 +1,1177 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Marginalia — a vocabulary booklet</title>
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Marginalia">
+<meta name="theme-color" content="#141634">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..600&family=Archivo:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --night:#141634;
+    --night-2:#1C1F45;
+    --paper:#F1EFE9;
+    --paper-2:#E4E1D8;
+    --rule:rgba(241,239,233,.14);
+    --dim:rgba(241,239,233,.55);
+
+    --ink-1:#C9922F; /* feudal    — ochre     */
+    --ink-2:#3F9A85; /* faith     — verdigris */
+    --ink-3:#C4485C; /* conflict  — oxblood   */
+    --ink-4:#8C6FD4; /* rhetoric  — violet    */
+    --ink-5:#4E8AD6; /* character — steel     */
+    --ink-6:#C77FB0; /* mind      — mauve     */
+    --ink-7:#6E9E4E; /* body      — moss      */
+    --ink-8:#6E7899; /* hardship  — slate     */
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--night); color:var(--paper);
+    font-family:"Newsreader",Georgia,serif; font-size:17px; line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px; margin:0 auto; padding:0 22px}
+  @media(min-width:1180px){ .wrap{max-width:1380px} }
+  @media(min-width:1400px){ .wrap{max-width:1500px} }   /* wider gutter-to-gutter so three columns are not cramped */
+  @media(min-width:1800px){ .wrap{max-width:1760px} }   /* room for a third column at full measure */
+
+  /* ---------- cover ---------- */
+  .cover{padding:74px 0 54px; border-bottom:1px solid var(--rule); position:relative; overflow:hidden}
+  .eyebrow{
+    font-family:"Archivo",system-ui,sans-serif; font-size:11px; font-weight:600;
+    letter-spacing:.22em; text-transform:uppercase; color:var(--dim);
+  }
+  .cover h1{
+    font-family:"Fraunces",Georgia,serif; font-weight:600; font-variation-settings:"SOFT" 40,"WONK" 1;
+    font-size:clamp(46px,10vw,104px); line-height:.92; letter-spacing:-.025em;
+    margin:16px 0 0; max-width:12ch;
+  }
+  .cover h1 em{font-style:italic; color:var(--ink-1); font-weight:400}
+  .lede{max-width:46ch; margin:22px 0 0; color:var(--dim); font-size:19px}
+  .swatches{display:flex; gap:8px; margin-top:34px; flex-wrap:wrap}
+  .swatch{
+    display:flex; flex-direction:column; gap:8px; min-width:104px; flex:1 1 104px;
+    background:none; border:0; padding:0; cursor:pointer; text-align:left; color:inherit;
+    font-family:"Archivo",system-ui,sans-serif;
+  }
+  .swatch .bar{height:7px; border-radius:99px; background:var(--c); transition:height .18s ease}
+  .swatch:hover .bar,.swatch:focus-visible .bar{height:14px}
+  .swatch .lbl{font-size:10.5px; letter-spacing:.11em; text-transform:uppercase; color:var(--dim); line-height:1.35}
+  .swatch .num{font-size:10.5px; color:var(--c); font-weight:600}
+  .swatch:focus-visible{outline:2px solid var(--paper); outline-offset:5px; border-radius:3px}
+
+  /* ---------- toolbar ---------- */
+  .bar-wrap{position:sticky; top:0; z-index:20; background:rgba(20,22,52,.93); backdrop-filter:blur(10px); border-bottom:1px solid var(--rule)}
+  .bar{display:flex; gap:12px; align-items:center; flex-wrap:wrap; padding:13px 0}
+  .search{
+    flex:1 1 210px; min-width:0; background:var(--night-2); border:1px solid var(--rule);
+    color:var(--paper); padding:9px 13px; border-radius:7px; font:15px/1.4 "Newsreader",serif;
+  }
+  .search::placeholder{color:rgba(241,239,233,.38)}
+  .search:focus{outline:none; border-color:var(--ink-1)}
+  .btn{
+    font-family:"Archivo",system-ui,sans-serif; font-size:11.5px; font-weight:600; letter-spacing:.11em;
+    text-transform:uppercase; background:transparent; color:var(--dim);
+    border:1px solid var(--rule); padding:9px 15px; border-radius:7px; cursor:pointer; white-space:nowrap;
+  }
+  .btn:hover{color:var(--paper); border-color:rgba(241,239,233,.4)}
+  .btn[aria-pressed="true"],.btn[aria-expanded="true"]{background:var(--paper); color:var(--night); border-color:var(--paper)}
+  .btn:focus-visible{outline:2px solid var(--ink-1); outline-offset:2px}
+  /* Settings opens a panel rather than toggling a view, so it stops sitting inside the run
+     of toggles: a hairline sets it apart, and the gear and caret say it leads somewhere. */
+  /* the rule travels with the button so a wrapped bar never leaves it stranded at a line end */
+  .bar-menu{display:inline-flex; align-items:center; gap:12px}
+  .bar-div{width:1px; align-self:stretch; margin:3px 0; background:var(--rule)}
+  /* below this the bar wraps and Settings begins a line of its own, where a rule
+     divides nothing and reads as a stray tick */
+  @media(max-width:940px){ .bar-div{display:none} }
+  .menubtn{display:inline-flex; align-items:center; gap:8px; padding-left:13px; padding-right:12px}
+  .menubtn .gear{width:14px; height:14px; fill:currentColor; opacity:.85; flex:none}
+  .menubtn .caret{
+    width:9px; height:6px; flex:none; fill:none; stroke:currentColor; stroke-width:1.7;
+    stroke-linecap:round; stroke-linejoin:round; opacity:.65; transition:transform .2s ease;
+  }
+  .menubtn[aria-expanded="true"] .caret{transform:rotate(180deg)}
+  .menubtn:hover .gear,.menubtn:hover .caret{opacity:1}
+  select.btn{
+    text-transform:none; letter-spacing:.02em; font-size:12.5px; max-width:210px;
+    appearance:none; -webkit-appearance:none; padding-right:29px;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%23F1EFE9' stroke-opacity='.55' stroke-width='1.6'/></svg>");
+    background-repeat:no-repeat; background-position:right 11px center; background-size:10px 6px;
+  }
+  select.btn option{background:var(--night-2); color:var(--paper)}
+  body.nosound #voice{display:none}
+  .tally{font-family:"Archivo",sans-serif; font-size:11.5px; letter-spacing:.1em; color:var(--dim); margin-left:auto; white-space:nowrap}
+  .tally b{color:var(--paper); font-weight:600}
+
+  /* ---------- sections ---------- */
+  .sec{padding:52px 0 6px; scroll-margin-top:74px}
+  .sec-head{display:flex; align-items:baseline; gap:16px; border-bottom:2px solid var(--c); padding-bottom:11px; margin-bottom:26px}
+  .sec-head h2{
+    font-family:"Fraunces",Georgia,serif; font-weight:500; font-size:clamp(25px,4.4vw,38px);
+    letter-spacing:-.02em; margin:0; color:var(--paper);
+  }
+  .sec-head .count{font-family:"Archivo",sans-serif; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--c); margin-left:auto; font-weight:600}
+  .sec-note{font-size:15px; color:var(--dim); margin:-14px 0 26px; max-width:60ch; font-style:italic}
+
+  /* Columns are whatever fits while every card stays between 430 and 560px.
+     430 is the floor that keeps three columns on a 1440 laptop; the cap is
+     what stops a single column running long on an iPad. */
+  /* the max must stay flexible: auto-fit counts tracks off a definite maximum,
+     so a 560px cap here would hold the laptop at two columns. The cap lives on
+     .card instead, which keeps a lone column from running long. */
+  .grid{
+    display:grid; gap:13px; justify-content:center; justify-items:center;
+    grid-template-columns:repeat(auto-fit, minmax(min(100%,430px), 1fr));
+  }
+  @media(min-width:900px){ .grid{gap:15px} }
+
+  /* ---------- entry card ---------- */
+  .card{
+    background:var(--paper); color:#22243F; border-radius:4px; padding:17px 19px 22px 21px;
+    border-left:5px solid var(--c); position:relative; transition:transform .16s ease, box-shadow .16s ease;
+    /* the corner watermark bleeds to the edge and blends with this paper only:
+       overflow trims it to the radius, isolate keeps both the blend and its
+       negative z-index inside the card */
+    overflow:hidden; isolation:isolate;
+    width:100%; max-width:560px;   /* only bites in the single-column layout */
+    /* the shell is light-on-dark and wants thinned stems; these cards are the
+       reverse, where antialiasing weakens the serif */
+    -webkit-font-smoothing:auto; -moz-osx-font-smoothing:auto;
+  }
+  .card:hover{transform:translateY(-2px); box-shadow:0 10px 26px rgba(0,0,0,.28)}
+  .card.done{background:var(--paper-2)}
+  .card.done .word{text-decoration:line-through; text-decoration-color:rgba(34,36,63,.3); text-decoration-thickness:1.5px}
+  .top{display:flex; align-items:flex-start; gap:10px}
+  /* parked in the card's bottom padding, where no content reaches */
+  .no{
+    position:absolute; right:19px; bottom:6px;
+    font-family:"Archivo",sans-serif; font-size:10px; font-weight:700; letter-spacing:.06em;
+    color:var(--c); opacity:.65;
+  }
+  .word{font-family:"Fraunces",Georgia,serif; font-weight:600; font-size:23px; letter-spacing:-.015em; line-height:1.15; margin:0}
+  .pos{display:flex; flex-wrap:wrap; gap:5px; margin-top:7px}
+  .pos:empty{display:none}
+  .tag{
+    font-family:"Archivo",sans-serif; font-size:9.5px; font-weight:700; letter-spacing:.12em;
+    text-transform:uppercase; padding:3px 7px 2px; border-radius:3px; line-height:1.4;
+    color:var(--pc,#4A4C63); background:var(--pb,rgba(34,36,63,.06)); border:1px solid var(--pd,rgba(34,36,63,.16));
+  }
+  .tag.noun{--pc:#2C5A8C; --pb:rgba(44,90,140,.11); --pd:rgba(44,90,140,.32)}
+  .tag.verb{--pc:#A34328; --pb:rgba(163,67,40,.11); --pd:rgba(163,67,40,.32)}
+  .tag.adj {--pc:#37734B; --pb:rgba(55,115,75,.12); --pd:rgba(55,115,75,.34)}
+  .tag.adv {--pc:#65499F; --pb:rgba(101,73,159,.11); --pd:rgba(101,73,159,.32)}
+  .tag.phr {--pc:#83641B; --pb:rgba(131,100,27,.13); --pd:rgba(131,100,27,.34)}
+  .tag.idi {--pc:#87456D; --pb:rgba(135,69,109,.11); --pd:rgba(135,69,109,.32)}
+  .acts{margin-left:auto; display:flex; align-items:center; gap:10px; flex:none; padding-top:1px}
+  /* 24px circles are well under the 44px iOS guidance, so each grows an
+     invisible hit area — wider outwards than inwards, so they never overlap */
+  .mark,.say,.arbtn{position:relative}
+  .mark::after,.say::after,.arbtn::after{content:""; position:absolute; top:-10px; bottom:-10px}
+  .say::after{left:-10px; right:-4px}
+  .arbtn::after{left:-4px; right:-4px}
+  .mark::after{left:-4px; right:-10px}
+  .mark{
+    width:24px; height:24px; flex:none; border-radius:50%; cursor:pointer;
+    border:1.5px solid rgba(34,36,63,.22); background:transparent; color:transparent;
+    font:600 13px/1 "Archivo",sans-serif; display:grid; place-items:center; transition:all .15s ease;
+  }
+  /* pronunciation */
+  .say{
+    width:24px; height:24px; flex:none; border-radius:50%; cursor:pointer; padding:0;
+    border:1.5px solid rgba(34,36,63,.22); background:transparent; color:rgba(34,36,63,.5);
+    display:grid; place-items:center; transition:all .15s ease;
+  }
+  /* per-card Arabic gloss */
+  .arbtn{
+    width:24px; height:24px; flex:none; border-radius:50%; cursor:pointer; padding:0;
+    border:1.5px solid rgba(34,36,63,.22); background:transparent; color:rgba(34,36,63,.5);
+    font:600 14px/1 "Noto Naskh Arabic","Segoe UI",Tahoma,serif;
+    display:grid; place-items:center; transition:all .15s ease;
+  }
+  .arbtn:hover{border-color:var(--c); color:var(--c)}
+  .arbtn:focus-visible{outline:2px solid var(--c); outline-offset:2px}
+  .arbtn[aria-pressed="true"]{background:var(--c); border-color:var(--c); color:var(--paper)}
+  .say svg{width:12px; height:12px; fill:currentColor}
+  .say:hover{border-color:var(--c); color:var(--c)}
+  .say:focus-visible{outline:2px solid var(--c); outline-offset:2px}
+  .say.speaking{background:var(--c); border-color:var(--c); color:var(--paper)}
+  .say-ex{
+    position:relative;
+    display:inline-flex; align-items:center; gap:5px; margin-top:9px; padding:6px 11px;
+    border:1px solid rgba(34,36,63,.16); border-radius:99px; background:transparent; cursor:pointer;
+    font:600 10px/1 "Archivo",sans-serif; letter-spacing:.13em; text-transform:uppercase;
+    color:rgba(34,36,63,.68); transition:all .15s ease;
+  }
+  .say-ex::after{content:""; position:absolute; inset:-10px -6px}
+  .say-ex svg{width:10px; height:10px; fill:currentColor}
+  .say-ex:hover{color:var(--c); border-color:var(--c)}
+  .say-ex:focus-visible{outline:2px solid var(--c); outline-offset:2px}
+  .say-ex.speaking{background:var(--c); border-color:var(--c); color:var(--paper)}
+  body.nosound .say,body.nosound .say-ex{display:none}
+  body.nopics .pic{display:none}
+  .mark:hover{border-color:var(--c)}
+  .mark[aria-pressed="true"]{background:var(--c); border-color:var(--c); color:var(--paper)}
+  .mark:focus-visible{outline:2px solid var(--c); outline-offset:2px}
+  .body{padding-left:0}
+  .def{margin:9px 0 0; font-size:16.5px; line-height:1.5}
+  /* upright: the ink rule already marks this as the quotation, and a whole
+     sentence of italic serif is the hardest text on the card to read */
+  .ex{
+    margin:11px 0 0; padding-left:12px; border-left:2px solid var(--c);
+    font-size:16px; color:rgba(34,36,63,.78); line-height:1.5;
+  }
+  .ex .t{font-style:italic; font-weight:600; color:var(--c)}
+  /* Only the handful of words you could point at earn a picture — a loom, a radish,
+     a blister. The card has to look finished without one, so it drops itself if the
+     file is missing rather than leaving a broken icon behind.
+
+     Parked in the bottom-right corner behind the text, so a card with a picture is
+     exactly as tall as one without and the grid row never stretches. Negative z-index
+     puts it under the words but over the paper; multiply drops the picture's light
+     ground into that paper and keeps only the subject's ink; the mask dissolves the
+     two inner edges so it fades in rather than ending on a seam. */
+  .pic{
+    position:absolute; right:0; bottom:0; z-index:-1; margin:0;
+    width:46%; max-width:200px; pointer-events:none;
+    mix-blend-mode:multiply; opacity:.24;
+    -webkit-mask-image:linear-gradient(to top left, #000 34%, transparent 84%);
+    mask-image:linear-gradient(to top left, #000 34%, transparent 84%);
+  }
+  .pic img{display:block; width:100%; height:auto}
+  .flag{
+    margin:10px 0 0; font-family:"Archivo",sans-serif; font-size:13px; line-height:1.5;
+    color:rgba(34,36,63,.74); padding:8px 11px; background:rgba(34,36,63,.05); border-radius:3px;
+  }
+  .flag b{color:#22243F}
+
+  /* Arabic gloss */
+  .ar{
+    display:none; direction:rtl; text-align:right; unicode-bidi:isolate;
+    font-family:"Noto Naskh Arabic","Segoe UI",Tahoma,serif;
+    font-size:19px; line-height:1.85; margin:11px 0 0;   /* Naskh with vowel marks needs the extra size */
+    padding:9px 13px 9px 11px; border-right:3px solid var(--c);
+    background:rgba(34,36,63,.045); border-radius:3px 0 0 3px; color:#22243F;
+  }
+  .card.ar-on .ar{display:block}
+
+  /* study mode */
+  body.study .body{display:none}
+  body.study .card.open .body{display:block}
+  body.study .card{cursor:pointer}
+  .hint{display:none; font-family:"Archivo",sans-serif; font-size:11px; letter-spacing:.12em;
+        text-transform:uppercase; color:rgba(34,36,63,.70); margin-top:8px}
+  body.study .card:not(.open) .hint{display:block}
+
+  /* ---------- confusables ---------- */
+  .fix{margin:64px 0 0; padding:30px; border:1px solid var(--rule); border-radius:6px; background:var(--night-2)}
+  .fix h3{font-family:"Fraunces",serif; font-size:26px; font-weight:500; margin:0 0 6px}
+  .fix p{color:var(--dim); margin:0 0 20px; font-size:16px}
+  .fix table{width:100%; border-collapse:collapse; font-size:16px}
+  .fix th{
+    font-family:"Archivo",sans-serif; font-size:10px; letter-spacing:.15em; text-transform:uppercase;
+    color:var(--dim); text-align:left; padding:0 0 9px; border-bottom:1px solid var(--rule); font-weight:600;
+  }
+  .fix td{padding:11px 0; border-bottom:1px solid var(--rule); vertical-align:top}
+  .fix td:first-child{color:var(--ink-3); text-decoration:line-through; text-decoration-thickness:1px; width:42%; padding-right:14px}
+  .fix td:last-child b{color:var(--ink-2); font-weight:600}
+  .fix.dismissed{display:none}          /* screen only — see the print block */
+  #fixok{margin-top:22px}
+  .fresh{
+    font-family:"Archivo",sans-serif; font-size:9px; font-weight:700; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--ink-1); border:1px solid var(--ink-1); border-radius:99px;
+    padding:2px 7px; margin-left:9px; vertical-align:middle; text-decoration:none; display:inline-block;
+  }
+
+  /* add-words panel */
+  /* The panels used to sit at the top of the document, so opening one from halfway down
+     the book threw you back to the cover to see it. They now hang off the sticky bar and
+     drop over the page wherever you happen to be — nothing scrolls, nothing shifts. */
+  .panels{position:absolute; top:100%; left:0; right:0; pointer-events:none}
+  .panel{
+    display:none; margin:9px 0 0; padding:24px; border:1px solid var(--rule); border-radius:8px;
+    background:var(--night-2); pointer-events:auto; box-shadow:0 22px 48px rgba(0,0,0,.45);
+    /* a long add-words panel scrolls inside itself rather than off the bottom of the screen;
+       --barh is the toolbar's own height, which changes as the bar wraps */
+    max-height:calc(100vh - var(--barh,96px) - 18px);
+    max-height:calc(100dvh - var(--barh,96px) - 18px);
+    overflow:auto; overscroll-behavior:contain;
+  }
+  .panel.on{display:block}
+  .panel h3{font-family:"Fraunces",serif; font-size:22px; font-weight:500; margin:0 0 4px}
+  .panel p{color:var(--dim); font-size:15px; margin:0 0 16px}
+  .panel textarea{
+    width:100%; min-height:110px; background:var(--night); color:var(--paper); resize:vertical;
+    border:1px solid var(--rule); border-radius:6px; padding:12px; font:15px/1.6 "Newsreader",serif;
+  }
+  .panel textarea:focus{outline:none; border-color:var(--ink-1)}
+  .panel .row{display:flex; gap:9px; flex-wrap:wrap; margin-top:12px; align-items:center}
+  /* The add panel is opened from inside settings, so it needs a door back out —
+     the bar button alone works but reads as a dead end once you are in here. */
+  .back{margin:0 0 20px; padding:7px 13px; font-size:10.5px}
+  /* settings: a label and its control on one line, the reason underneath */
+  .set{display:flex; gap:16px; align-items:center; justify-content:space-between; flex-wrap:wrap;
+       margin-top:18px; padding-top:18px; border-top:1px solid var(--rule)}
+  .set:first-of-type{border-top:0; padding-top:0; margin-top:0}
+  .set-t{font-family:"Archivo",sans-serif; font-size:12px; font-weight:600; letter-spacing:.1em;
+         text-transform:uppercase; color:var(--paper); margin:0 0 5px}
+  .set-d{font-size:14px; color:var(--dim); margin:0; max-width:56ch; line-height:1.55}
+  body.nosound .set-sound{display:none}
+  .step{margin-top:24px; padding-top:20px; border-top:1px solid var(--rule)}
+  .step:first-of-type{border-top:0; padding-top:0; margin-top:0}
+  /* Steps 2 and 3 have nothing to act on until a list has been checked, but hiding them
+     left the panel running 1 then 4, which reads as a fault rather than as a sequence.
+     They stay in place, greyed and inert, so the four steps are visible from the start. */
+  .step.waiting{opacity:.42}
+  .step.waiting .pre{font-style:italic}
+  .btn:disabled{opacity:.5; cursor:default}
+  .btn:disabled:hover{color:var(--dim); border-color:var(--rule)}
+  .panel textarea:disabled{cursor:default}
+  .stepno{font-family:"Archivo",sans-serif; font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-1); font-weight:600; display:block; margin-bottom:7px}
+  .note{font-size:14px; color:var(--dim); margin:10px 0 0; line-height:1.6}
+  .note.warn{color:var(--ink-1)}
+  .note.bad{color:var(--ink-3)}
+  .note.good{color:var(--ink-2)}
+  .chips{display:flex; flex-wrap:wrap; gap:7px; margin-top:12px}
+  .chip{
+    font-family:"Archivo",sans-serif; font-size:12px; padding:5px 10px; border-radius:99px;
+    border:1px solid var(--rule); color:var(--paper); display:flex; align-items:center; gap:7px;
+  }
+  .chip.dup{color:rgba(241,239,233,.35); text-decoration:line-through}
+  .chip.near{border-color:var(--ink-1); color:var(--ink-1)}
+  .chip.again{border-color:var(--ink-6); color:var(--ink-6)}
+  .chip b{font-weight:600}
+  .chip button{background:none; border:0; color:inherit; cursor:pointer; font-size:14px; line-height:1; padding:0; opacity:.6}
+  .chip button:hover{opacity:1}
+  .pre{
+    background:var(--night); border:1px solid var(--rule); border-radius:6px; padding:13px;
+    font:12.5px/1.6 ui-monospace,Menlo,monospace; color:var(--dim);
+    max-height:170px; overflow:auto; white-space:pre-wrap; word-break:break-word; margin-top:12px;
+  }
+  .pending{border-left-style:dashed !important; opacity:.9}
+  .pending .word::after{
+    content:"needs detail"; font-family:"Archivo",sans-serif; font-size:9px; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--c); border:1px solid var(--c); border-radius:99px;
+    padding:2px 7px; margin-left:9px; vertical-align:middle; font-weight:600;
+  }
+  .empty{padding:60px 0; text-align:center; color:var(--dim); font-style:italic; display:none}
+  #loaderr{
+    display:none; max-width:56ch; margin:90px auto; padding:26px 30px; text-align:left;
+    font-style:normal; line-height:1.65; border:1px solid var(--rule); border-radius:8px;
+    background:var(--night-2); color:var(--paper); font-size:16px;
+  }
+  #loaderr b{color:var(--ink-1)}
+  #loaderr code{
+    font:13px/1 ui-monospace,Menlo,monospace; background:var(--night);
+    padding:3px 7px; border-radius:4px; color:var(--ink-2);
+  }
+  footer{padding:52px 0 70px; color:rgba(241,239,233,.35); font-size:14px; border-top:1px solid var(--rule); margin-top:64px}
+
+  @media(prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
+
+  /* ---------- print: a real booklet ---------- */
+  @media print{
+    @page{margin:14mm}
+    body{background:#fff; color:#000; font-size:10.5pt}
+    /* pictures are screen-only: they break the two-column pagination and drink ink */
+    .bar-wrap,.panel,.mark,.say,.arbtn,.say-ex,.hint,.pic,.swatch .num,#fixok,footer{display:none!important}
+    body.study .body{display:block!important}
+    .cover{padding:0 0 18pt; border-color:#999}
+    .cover h1{font-size:40pt; color:#000}
+    .cover h1 em{color:#666}
+    .lede,.sec-note{color:#444}
+    .sec{padding:16pt 0 0; break-before:page}
+    .sec:first-of-type{break-before:auto}
+    .sec-head h2,.word{color:#000}
+    .grid{grid-template-columns:1fr 1fr !important; gap:8pt}
+    .card{break-inside:avoid; background:#fff; border:1px solid #ddd; border-left:3px solid var(--c); box-shadow:none; padding:8pt 10pt 15pt}
+    .no{bottom:5pt; right:10pt; font-size:7.5pt; opacity:1}
+    .card:hover{transform:none; box-shadow:none}
+    .word{font-size:13pt}
+    .def,.ex{font-size:9.5pt}
+    .def{color:#000}
+    .ex{color:#333}
+    /* browsers drop background tints when printing, so lean on the outline */
+    .tag{background:none!important; color:#333!important; border-color:#bbb!important; font-size:7pt; letter-spacing:.1em}
+    /* the paper booklet keeps the table whether or not it is dismissed on screen */
+    .fix{background:#fff; border-color:#ccc; break-before:page}
+    .fix.dismissed{display:block}
+    .ar{background:#fff; border-right-color:#999; padding:4pt 8pt 4pt 0; font-size:10pt}
+    .card.ar-on .ar{display:block}
+  }
+</style>
+
+<div class="wrap">
+
+  <div id="app" hidden>
+  <header class="cover">
+    <div class="eyebrow" id="eyebrow">A working vocabulary · seven fields</div>
+    <h1>Margin<em>alia</em></h1>
+    <p class="lede">Words caught in the margins of films, games and videos — then given somewhere to live. Each field has its own ink. Read the definition, then read the sentence: the sentence is where the word actually works.</p>
+    <div class="swatches" id="swatches"></div>
+  </header>
+
+  <div class="bar-wrap">
+    <div class="wrap">
+      <div class="bar">
+        <input class="search" id="q" type="search" placeholder="Search a word, a meaning, an example…" aria-label="Search words">
+        <button class="btn" id="study" aria-pressed="false">Study mode</button>
+        <button class="btn" id="arabic" aria-pressed="false" lang="ar">العربية</button>
+        <button class="btn" id="reset">Reset marks</button>
+        <span class="bar-menu">
+        <span class="bar-div" aria-hidden="true"></span>
+        <button class="btn menubtn" id="setbtn" aria-haspopup="true" aria-expanded="false" aria-controls="settings">
+          <svg class="gear" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M12 8.6a3.4 3.4 0 100 6.8 3.4 3.4 0 000-6.8zm7.9 3.4c0-.5 0-.9-.1-1.4l2-1.5-1.9-3.3-2.4 1a7.6 7.6 0 00-2.4-1.4L14.8 3H11l-.3 2.4c-.9.3-1.7.8-2.4 1.4l-2.4-1L4 9.1l2 1.5a8.4 8.4 0 000 2.8l-2 1.5 1.9 3.3 2.4-1c.7.6 1.5 1.1 2.4 1.4l.3 2.4h3.8l.3-2.4c.9-.3 1.7-.8 2.4-1.4l2.4 1 1.9-3.3-2-1.5c.1-.5.1-.9.1-1.4z"/></svg>
+          Settings
+          <svg class="caret" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4"/></svg>
+        </button>
+        </span>
+        <span class="tally" id="tally"><b>0</b> learned</span>
+      </div>
+    </div>
+
+    <!-- the panels hang off the bar itself, so they open where you are standing -->
+    <div class="panels wrap">
+      <section class="panel" id="panel">
+        <button class="btn back" id="backset">← Settings</button>
+        <div class="step">
+          <span class="stepno">Step 1 — paste your English words</span>
+          <p>Any format: commas, new lines, numbered. Duplicates are removed automatically.</p>
+          <textarea id="raw" placeholder="obstinate, wary&#10;3. gaunt&#10;forlorn"></textarea>
+          <div class="row">
+            <button class="btn" id="check">Check list</button>
+            <button class="btn" id="queue" style="display:none"></button>
+          </div>
+          <div id="report"></div>
+        </div>
+
+        <div class="step waiting" id="s2">
+          <span class="stepno">Step 2 — copy this to Claude</span>
+          <p>Paste it into a chat, then bring the reply back here.</p>
+          <div class="pre" id="prompt">The prompt is written here once you check a list above.</div>
+          <div class="row">
+            <button class="btn" id="copyp" disabled>Copy prompt</button>
+            <button class="btn" id="addnow" disabled>Add as needs-detail now</button>
+          </div>
+        </div>
+
+        <div class="step waiting" id="s3">
+          <span class="stepno">Step 3 — paste the reply</span>
+          <textarea id="incoming" placeholder="Paste the JSON array Claude gives you" disabled></textarea>
+          <div class="row"><button class="btn" id="merge" disabled>Validate &amp; merge</button></div>
+          <div id="mergemsg"></div>
+        </div>
+
+        <div class="step">
+          <span class="stepno">Step 4 — save it</span>
+          <p>Download the updated file and paste it into <b>words.json</b> on GitHub.</p>
+          <div class="row">
+            <button class="btn" id="dl">Download words.json</button>
+            <button class="btn" id="dlprog">Export progress</button>
+          </div>
+          <p class="note" id="local"></p>
+        </div>
+      </section>
+
+      <section class="panel" id="settings">
+        <div class="set">
+          <div>
+            <p class="set-t">Add words</p>
+            <p class="set-d" id="addhint">Paste a list, take the prompt to Claude, bring the reply back.</p>
+          </div>
+          <button class="btn" id="addbtn" aria-pressed="false">+ Add words</button>
+        </div>
+
+        <div class="set">
+          <div>
+            <p class="set-t">Pictures</p>
+            <p class="set-d">A few words carry a drawing, watermarked into the corner of the card.
+              Turning them off leaves the text exactly as it was.</p>
+          </div>
+          <button class="btn" id="pics" aria-pressed="true">Pictures on</button>
+        </div>
+
+        <div class="set set-sound">
+          <div>
+            <p class="set-t">Reading voice</p>
+            <p class="set-d">Which of your device's voices reads the cards. The list differs between
+              the iPad and a laptop, and rare words are occasionally mispronounced whichever you pick.</p>
+          </div>
+          <select class="btn" id="voice" aria-label="Reading voice"></select>
+        </div>
+
+        <div class="set set-sound">
+          <div>
+            <p class="set-t">Reading speed</p>
+            <p class="set-d">Slower is easier to shadow aloud when a word is new.</p>
+          </div>
+          <button class="btn" id="speed">Speed 0.9×</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <main id="book"></main>
+  <p class="empty" id="empty">No entry matches that. Try a shorter word.</p>
+
+  <section class="fix" id="fix" hidden></section>
+
+  </div>
+  <p class="empty" id="loaderr"></p>
+
+  <footer id="foot" hidden>Tap any ink swatch to jump to that field. Each card has its own <b lang="ar">ع</b> button for the Arabic; the <b>العربية</b> button in the bar shows or hides every gloss at once. Speaker icons read a word or its sentence aloud; tap again to stop. Print (Ctrl/Cmd&nbsp;+&nbsp;P) for a two-column paper booklet — whatever language mode is on will print with it.</footer>
+</div>
+
+<script>
+let FIELDS = [], W = [];
+
+/* ---------- speech ---------- */
+const SPK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.8-1-3.3-2.5-4v8c1.5-.7 2.5-2.2 2.5-4zM14 3.2v2.1c2.9.9 5 3.5 5 6.7s-2.1 5.8-5 6.7v2.1c4-1 7-4.5 7-8.8s-3-7.8-7-8.8z"/></svg>';
+const TTS = 'speechSynthesis' in window;
+let voice = null, rate = 0.9, current = null;
+
+/* Voices differ per device — iOS lets you delete downloaded ones — so the
+   choice is remembered by name and quietly falls back if it disappears. */
+const VKEY='vocab-voice';
+const ACCENT={'en-GB':'British','en-US':'American','en-AU':'Australian','en-IE':'Irish',
+              'en-IN':'Indian','en-ZA':'South African','en-NZ':'New Zealand','en-CA':'Canadian'};
+const vSel = document.getElementById('voice');
+
+/* Windows' built-in SAPI voices sound robotic beside the rest, so they never
+   reach the list. Absent on iOS, where this filter does nothing. */
+const HIDE = /^Microsoft (David|Mark|Zira)\b/i;
+const enVoices = ()=> speechSynthesis.getVoices()
+  .filter(v=>/^en([-_]|$)/i.test(v.lang) && !HIDE.test(v.name));
+
+function pickVoice(){
+  const en = enVoices();
+  if(!en.length){ showVoiceRow(false); return; }   // nothing left to choose from
+  let saved=null; try{ saved = localStorage.getItem(VKEY); }catch(e){}
+  voice = (saved && en.find(v=>v.name===saved))
+       || en.find(v=>/uk english female/i.test(v.name))   // Chrome's Google UK English Female
+       || en.find(v=>/^en-GB/i.test(v.lang) && /female/i.test(v.name))
+       || en.find(v=>/^en-GB/i.test(v.lang))
+       || en.find(v=>/^en-US/i.test(v.lang))
+       || en[0];
+  fillVoices(en);
+}
+
+/* Desktop voices carry the vendor and locale in the name — "Microsoft Zira -
+   English (United States)" — which the accent label already says. iOS names
+   are bare ("Samantha") and survive this untouched. */
+const shortName = n => n.replace(/^(Microsoft|Google|Apple)\s+/i,'')
+                        .replace(/\s*[-–—]\s*English\b.*$/i,'')
+                        .replace(/\s*\(.*?\)\s*/g,' ')
+                        .trim() || n;
+
+function fillVoices(en){
+  vSel.textContent='';
+  en.forEach(v=>{
+    const tag = v.lang.replace('_','-');
+    const o = document.createElement('option');
+    o.value = v.name;
+    o.textContent = `${shortName(v.name)} — ${ACCENT[tag]||tag}`;
+    if(voice && v.name===voice.name) o.selected = true;
+    vSel.appendChild(o);
+  });
+  /* one voice is not a choice: hide the whole settings row, label and all */
+  showVoiceRow(en.length>1);
+}
+function showVoiceRow(on){
+  const row = vSel.closest('.set');
+  if(row) row.style.display = on ? '' : 'none';
+}
+
+if(vSel) vSel.addEventListener('change',()=>{
+  const en = enVoices();
+  voice = en.find(v=>v.name===vSel.value) || voice;
+  if(!voice) return;
+  try{ localStorage.setItem(VKEY, voice.name); }catch(e){}
+  speechSynthesis.cancel();
+  if(current){ current.classList.remove('speaking'); current=null; }
+  const u = new SpeechSynthesisUtterance('marginalia');   // hear it, don't guess from the name
+  u.voice = voice; u.lang = voice.lang; u.rate = rate;
+  speechSynthesis.speak(u);
+});
+
+if(TTS){ pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+else document.body.classList.add('nosound');
+
+function speak(text, btn){
+  if(!TTS) return;
+  speechSynthesis.cancel();
+  if(current){ current.classList.remove('speaking'); }
+  if(current === btn){ current = null; return; }   // second tap stops
+  const u = new SpeechSynthesisUtterance(text);
+  if(voice) u.voice = voice;
+  u.lang = voice ? voice.lang : 'en-GB';
+  u.rate = rate; u.pitch = 1;
+  current = btn; btn.classList.add('speaking');
+  u.onend = u.onerror = ()=>{ btn.classList.remove('speaking'); if(current===btn) current=null; };
+  speechSynthesis.speak(u);
+}
+
+/* ---------- render ---------- */
+const esc = s => String(s).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+
+/* "noun / verb" becomes two pills; anything unrecognised keeps its own words
+   in the neutral style rather than being dropped. */
+const POS = {noun:['noun','noun'], verb:['verb','verb'], adjective:['adj','adj'],
+             adverb:['adv','adv'], phrase:['phr','phrase'], idiom:['idi','idiom']};
+function posTags(p){
+  return (p||'').split(/[\/,]/).map(s=>s.trim().toLowerCase()).filter(Boolean).map(s=>{
+    const m = POS[s] || POS[s.replace(/s$/,'')];
+    return m ? `<span class="tag ${m[0]}">${m[1]}</span>` : `<span class="tag">${esc(s)}</span>`;
+  }).join('');
+}
+
+const book = document.getElementById('book');
+const done = new Set();
+let n = 0;
+
+function render(){
+book.innerHTML=''; n=0;
+const INBOX={id:0,name:"Waiting for detail",ink:"var(--ink-1)",note:"Words you have captured but not yet enriched. They are searchable now; run them through step 2 when you have a batch."};
+const shown = W.some(x=>!x.d) ? [INBOX].concat(FIELDS) : FIELDS;
+shown.forEach(f=>{
+  const items = W.filter(x=> f.id===0 ? !x.d : (x.f===f.id && x.d));
+  const sec = document.createElement('section');
+  sec.className='sec'; sec.id='f'+f.id; sec.style.setProperty('--c',f.ink);
+  sec.innerHTML = `<div class="sec-head"><h2>${f.name}</h2><span class="count">${items.length} words</span></div>
+                   <p class="sec-note">${f.note}</p><div class="grid"></div>`;
+  const grid = sec.querySelector('.grid');
+
+  items.forEach(x=>{
+    n++;
+    const id = 'w'+n;
+    x.e=x.e||''; x.d=x.d||''; x.p=x.p||''; x.a=x.a||'';
+    const ex = x.e.replace(/\*(.+?)\*/g,'<span class="t">$1</span>');
+    const el = document.createElement('article');
+    el.className='card'+(x.d?'':' pending'); el.dataset.id=id; el.dataset.w=x.w;
+    const plainEx = x.e.replace(/\*/g,'');
+    const sayWord = x.w.replace(/\s*\(.*?\)\s*/g,' ').trim();
+    el.dataset.s=(x.w+' '+x.d+' '+plainEx+' '+(x.n||'')+' '+(x.a||'')).toLowerCase();
+    el.dataset.word = sayWord;
+    el.dataset.ex = plainEx;
+    el.innerHTML = `
+      <div class="top">
+        <div><h3 class="word">${x.w}</h3><div class="pos">${posTags(x.p)}</div></div>
+        <div class="acts">
+          <button class="say" data-say="word" aria-label="Hear ${sayWord}">${SPK}</button>
+          ${x.a?`<button class="arbtn" aria-pressed="false" lang="ar" aria-label="Show the Arabic for ${x.w}">ع</button>`:''}
+          <button class="mark" aria-pressed="false" aria-label="Mark ${x.w} as learned">✓</button>
+        </div>
+      </div>
+      <div class="hint">Tap to reveal</div>
+      <div class="body">
+        ${x.d?`<p class="def">${x.d}</p>`:'<p class="def" style="opacity:.6">Captured — not enriched yet.</p>'}
+        ${x.a?`<p class="ar" lang="ar" dir="rtl">${x.a}</p>`:''}
+        ${x.i?`<figure class="pic"><img src="${esc(x.i)}" alt="${esc(x.w)}" loading="lazy" decoding="async"></figure>`:''}
+        ${x.e?`<p class="ex">${ex}</p><button class="say-ex" data-say="ex">${SPK}Hear the sentence</button>`:''}
+        ${x.n?`<p class="flag"><b>Careful:</b> ${x.n}</p>`:''}
+      </div>
+      <span class="no">${String(n).padStart(3,'0')}</span>`;
+    grid.appendChild(el);
+  });
+  book.appendChild(sec);
+});
+
+/* Offline, or after a file is renamed, a missing picture would leave a broken icon
+   sitting on the card. Take the whole figure out instead — the card reads fine without it. */
+book.querySelectorAll('.pic img').forEach(im=>{
+  im.addEventListener('error',()=>{ const f=im.closest('.pic'); if(f) f.remove(); });
+});
+
+/* swatches */
+document.getElementById('swatches').innerHTML = FIELDS.map(f=>{
+  const c = W.filter(x=>x.f===f.id).length;
+  return `<button class="swatch" style="--c:${f.ink}" data-go="f${f.id}">
+            <span class="bar"></span><span class="lbl">${f.name}</span><span class="num">${c}</span></button>`;
+}).join('');
+document.getElementById('eyebrow').textContent =
+  `A working vocabulary · ${W.length} entries · ${FIELDS.length} fields`;
+
+/* fresh cards come back English-only, so re-apply the master switch */
+setArabicAll(arBtn.getAttribute('aria-pressed')==='true');
+}
+document.getElementById('swatches').addEventListener('click',e=>{
+  const b=e.target.closest('[data-go]'); if(b) document.getElementById(b.dataset.go).scrollIntoView({behavior:'smooth'});
+});
+
+/* progress */
+const tally = document.getElementById('tally');
+const KEY='vocab-booklet-progress';
+function paint(){ tally.innerHTML=`<b>${done.size}</b> / ${W.length} learned`; }
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify([...done])); }catch(e){} }
+function loadProgress(){
+  try{
+    const r = localStorage.getItem(KEY);
+    if(r) JSON.parse(r).forEach(w=>{
+      const c=document.querySelector(`[data-w="${CSS.escape(w)}"]`);
+      if(c){ done.add(w); c.classList.add('done'); c.querySelector('.mark').setAttribute('aria-pressed','true'); }
+    });
+  }catch(e){}
+  paint();
+}
+
+book.addEventListener('click',e=>{
+  const s = e.target.closest('[data-say]');
+  if(s){
+    e.stopPropagation();
+    const card = s.closest('.card');
+    speak(s.dataset.say==='word' ? card.dataset.word : card.dataset.ex, s);
+    return;
+  }
+  const a = e.target.closest('.arbtn');
+  if(a){
+    e.stopPropagation();
+    const card = a.closest('.card');
+    const on = a.getAttribute('aria-pressed')==='true';
+    a.setAttribute('aria-pressed', String(!on));
+    card.classList.toggle('ar-on', !on);
+    if(!on) card.classList.add('open');   // .ar sits inside .body, which study mode collapses
+    return;
+  }
+  const m = e.target.closest('.mark');
+  if(m){
+    const card=m.closest('.card'), id=card.dataset.w;
+    if(done.has(id)){ done.delete(id); card.classList.remove('done'); m.setAttribute('aria-pressed','false'); }
+    else{ done.add(id); card.classList.add('done'); m.setAttribute('aria-pressed','true'); }
+    paint(); save(); return;
+  }
+  if(document.body.classList.contains('study')){
+    const c=e.target.closest('.card'); if(c) c.classList.toggle('open');
+  }
+});
+
+/* Arabic: each card carries its own toggle; this one drives them all at once */
+const arBtn = document.getElementById('arabic');
+function setArabicAll(on){
+  document.querySelectorAll('.card').forEach(c=>{
+    const b = c.querySelector('.arbtn');
+    if(!b) return;                       // nothing to show on this card
+    c.classList.toggle('ar-on', on);
+    b.setAttribute('aria-pressed', String(on));
+  });
+}
+arBtn.addEventListener('click',()=>{
+  const on = arBtn.getAttribute('aria-pressed')==='true';
+  arBtn.setAttribute('aria-pressed', String(!on));
+  setArabicAll(!on);
+});
+
+/* speech speed */
+const RATES=[0.6,0.75,0.9,1], RKEY='vocab-rate';
+const spBtn=document.getElementById('speed');
+try{ const r=parseFloat(localStorage.getItem(RKEY)); if(RATES.includes(r)) rate=r; }catch(e){}
+spBtn.textContent = 'Speed '+rate+'×';
+spBtn.addEventListener('click',()=>{
+  rate = RATES[(RATES.indexOf(rate)+1)%RATES.length];
+  spBtn.textContent = 'Speed '+rate+'×';
+  try{ localStorage.setItem(RKEY, String(rate)); }catch(e){}
+  if(TTS) speechSynthesis.cancel();
+  if(current){ current.classList.remove('speaking'); current=null; }
+});
+
+/* study mode */
+const sBtn=document.getElementById('study');
+sBtn.addEventListener('click',()=>{
+  const on = sBtn.getAttribute('aria-pressed')==='true';
+  sBtn.setAttribute('aria-pressed', String(!on));
+  document.body.classList.toggle('study', !on);
+  document.querySelectorAll('.card.open').forEach(c=>c.classList.remove('open'));
+});
+
+/* reset */
+document.getElementById('reset').addEventListener('click',()=>{
+  done.clear();
+  document.querySelectorAll('.card').forEach(c=>{ c.classList.remove('done'); c.querySelector('.mark').setAttribute('aria-pressed','false'); });
+  paint(); save();
+});
+
+/* ---------- data loading ---------- */
+const CACHE='vocab-words-cache', LOCAL='vocab-words-local', LOCALFIX='vocab-fix-local';
+const norm=s=>s.toLowerCase().normalize('NFKD').replace(/[^a-z\s-]/g,'').trim();
+const stem=s=>{let v=norm(s);for(let i=0;i<2;i++)v=v.replace(/(ingly|edly|ously|fully|ing|ed|ies|es|s|ly|ness|ment|tion|ion|ity|ous|ful)$/,'');return v;};
+
+function localAdds(){ try{ return JSON.parse(localStorage.getItem(LOCAL)||'[]'); }catch(e){ return []; } }
+function setLocal(a){ try{ localStorage.setItem(LOCAL, JSON.stringify(a)); }catch(e){} }
+/* Corrections caught on this device outlive a reload the same way new words do —
+   they are only truly saved once words.json is downloaded and committed. */
+function localFix(){ try{ return JSON.parse(localStorage.getItem(LOCALFIX)||'[]'); }catch(e){ return []; } }
+function setLocalFix(a){ try{ localStorage.setItem(LOCALFIX, JSON.stringify(a)); }catch(e){} }
+
+function apply(data){
+  FIELDS = data.fields;
+  const extra = localAdds();
+  W = data.words.concat(extra.filter(x=>!data.words.some(y=>norm(y.w)===norm(x.w))));
+  const fixed = data.corrections || [];
+  CORRECTIONS = fixed.concat(localFix().filter(c=>!fixed.some(d=>norm(d.wrong)===norm(c.wrong))));
+  render(); loadProgress(); showLocal(); renderFix(CORRECTIONS);
+  document.getElementById('app').hidden=false;
+  document.getElementById('foot').hidden=false;
+}
+
+/* The table is a reference, not a standing scold: once dismissed it stays
+   hidden until words.json brings a misspelling you have not seen before. */
+const FIXKEY='vocab-fix-seen';
+function fixSeen(){ try{ return JSON.parse(localStorage.getItem(FIXKEY)||'[]'); }catch(e){ return []; } }
+
+function renderFix(list){
+  const el=document.getElementById('fix');
+  if(!list || !list.length){ el.hidden=true; return; }
+  const seen=fixSeen(), unseen=list.filter(c=>!seen.includes(c.wrong));
+  const n=list.length, word=['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten'][n]||n;
+  el.hidden=false;
+  el.classList.toggle('dismissed', unseen.length===0);
+  el.innerHTML=`<h3>${word} you spelled slightly wrong</h3>
+    <p>These are easy to mishear, so they're worth fixing early — a misspelled word looks like a guess even when the meaning is right.</p>
+    <table><tr><th>You wrote</th><th>Correct</th></tr>${
+      list.map(c=>`<tr><td>${c.wrong}${seen.includes(c.wrong)?'':'<span class="fresh">new</span>'}</td><td><b>${c.right}</b>${c.hint?' — '+c.hint:''}</td></tr>`).join('')
+    }</table>
+    <button class="btn" id="fixok">Got it — hide this</button>`;
+}
+
+document.getElementById('fix').addEventListener('click',e=>{
+  if(!e.target.closest('#fixok')) return;
+  try{ localStorage.setItem(FIXKEY, JSON.stringify(CORRECTIONS.map(c=>c.wrong))); }catch(err){}
+  document.getElementById('fix').classList.add('dismissed');
+});
+
+function failed(msg){
+  const el=document.getElementById('loaderr');
+  el.style.display='block'; el.innerHTML=msg;
+}
+
+async function boot(){
+  let data=null, why='';
+  const local = location.protocol==='file:';
+  try{
+    const r = await fetch('words.json', {cache:'no-cache'});
+    if(r.ok) { data = await r.json(); localStorage.setItem(CACHE, JSON.stringify(data)); }
+    else why = `The server returned ${r.status} for <b>words.json</b> — check the file is uploaded next to index.html, spelled exactly like that.`;
+  }catch(e){
+    why = local
+      ? 'This page was opened directly from disk, so the browser blocks it from reading <b>words.json</b>.<br>Put it online, or run <code>python3 -m http.server</code> in this folder and open <b>localhost:8000</b>.'
+      : 'Could not reach <b>words.json</b>. Check your connection.';
+  }
+  if(!data){ try{ data = JSON.parse(localStorage.getItem(CACHE)); }catch(e){} }
+  if(!data){ failed(why||'Could not load words.json.'); return; }
+  apply(data);
+}
+boot();
+
+function showLocal(){
+  const adds = localAdds(), el = document.getElementById('local');
+  const ready = adds.filter(x=>x.d && x.d.trim()).length, bare = adds.length - ready;
+  const lines = [];
+  if(ready) lines.push(`${ready} word${ready>1?'s':''} added on this device only — download and commit to keep ${ready>1?'them':'it'}.`);
+  if(bare) lines.push(`${bare} more ${bare>1?'are':'is'} still waiting for detail: the download leaves ${bare>1?'them':'it'} out, so ${bare>1?'they stay':'it stays'} in this browser until you enrich ${bare>1?'them':'it'}.`);
+  el.textContent = lines.join(' ');
+  el.className = adds.length ? 'note warn' : 'note';
+  /* The add panel now sits behind Settings, so the count of uncommitted words has to
+     show on the way in — otherwise it is two clicks from anywhere you would notice it. */
+  const hint = document.getElementById('addhint');
+  if(hint){
+    hint.textContent = adds.length
+      ? `${adds.length} word${adds.length===1?'':'s'} added on this device, not yet committed.`
+      : 'Paste a list, take the prompt to Claude, bring the reply back.';
+    hint.style.color = adds.length ? 'var(--ink-1)' : '';
+  }
+  showQueue();
+}
+
+/* ---------- add words ---------- */
+const panel=document.getElementById('panel'), addBtn=document.getElementById('addbtn');
+const setBtn=document.getElementById('setbtn'), setPanel=document.getElementById('settings');
+
+/* The panels drop from the bar and may not fit the screen beneath it, so they need to know
+   how tall the bar is — which changes whenever it wraps to another line. */
+const barWrap=document.querySelector('.bar-wrap');
+new ResizeObserver(()=>document.documentElement.style
+  .setProperty('--barh', barWrap.getBoundingClientRect().height+'px')).observe(barWrap);
+
+/* the two panels share the space under the bar, so opening one closes the other */
+function openPanel(which){
+  [[addBtn,panel],[setBtn,setPanel]].forEach(([b,p])=>{
+    const on = p===which;
+    if(b!==setBtn) b.setAttribute('aria-pressed', String(on));
+    p.classList.toggle('on', on);
+  });
+  /* The bar button announces a menu, not a toggle, and add-words is a room inside that
+     menu — so the caret stays turned down for as long as either panel is on screen. */
+  setBtn.setAttribute('aria-expanded', String(!!which));
+  if(which) which.scrollTop = 0;   // a panel reopens at its own top, not where you left it
+}
+addBtn.addEventListener('click',()=>openPanel(panel.classList.contains('on') ? null : panel));
+setBtn.addEventListener('click',()=>openPanel(setPanel.classList.contains('on') ? null : setPanel));
+document.getElementById('backset').addEventListener('click',()=>openPanel(setPanel));
+
+/* A menu closes the way menus do — Escape, or a click anywhere off it. The add panel is
+   part of the same menu, so it obeys both too, and Escape hands focus back to the button. */
+function panelOpen(){ return panel.classList.contains('on') || setPanel.classList.contains('on'); }
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape' || !panelOpen()) return;
+  openPanel(null); setBtn.focus();
+});
+document.addEventListener('pointerdown',e=>{
+  if(!panelOpen()) return;
+  if(e.target.closest('#panel, #settings, #setbtn')) return;
+  openPanel(null);
+});
+
+/* Pictures are a preference, not data: the class hides them everywhere at once and the
+   cards keep their exact layout, since the watermark was never part of it. */
+const PKEY='vocab-pics', picBtn=document.getElementById('pics');
+function setPics(on){
+  document.body.classList.toggle('nopics', !on);
+  picBtn.setAttribute('aria-pressed', String(on));
+  picBtn.textContent = on ? 'Pictures on' : 'Pictures off';
+  try{ localStorage.setItem(PKEY, on?'1':'0'); }catch(e){}
+}
+let picsOn=true; try{ picsOn = localStorage.getItem(PKEY)!=='0'; }catch(e){}
+setPics(picsOn);
+picBtn.addEventListener('click',()=>setPics(document.body.classList.contains('nopics')));
+
+let fresh=[];
+
+/* Steps 2 and 3 are always on screen; this is what turns them from a preview of what is
+   coming into something you can actually use. */
+const IDLEPROMPT='The prompt is written here once you check a list above.';
+function setReady(on){
+  ['s2','s3'].forEach(id=>document.getElementById(id).classList.toggle('waiting', !on));
+  ['copyp','addnow','merge','incoming'].forEach(id=>document.getElementById(id).disabled = !on);
+  if(!on) document.getElementById('prompt').textContent=IDLEPROMPT;
+}
+
+/* Words already captured but not yet enriched are offered again rather than
+   dropped as duplicates — otherwise nothing in the panel could ever reach them. */
+function renderReport(dups, nears, again){
+  const bits=[`${fresh.length} to enrich`];
+  if(again.length) bits.push(`${again.length} waiting for detail`);
+  if(dups.length) bits.push(`${dups.length} already here`);
+  if(nears.length) bits.push(`${nears.length} similar to existing`);
+  document.getElementById('report').innerHTML =
+    `<p class="note ${fresh.length?'good':''}">${bits.join(' · ')}</p>` +
+    `<div class="chips">${
+      fresh.map(t=>{
+        const nx=nears.find(n=>n.t===t), ag=again.includes(t);
+        const tail = nx ? ` <span style="opacity:.7">≈ ${nx.like}</span>`
+                        : ag ? ` <span style="opacity:.7">waiting</span>` : '';
+        return `<span class="chip ${nx?'near':ag?'again':''}" data-t="${t}"><b>${t}</b>${tail}<button data-drop="${t}" aria-label="Remove ${t}">×</button></span>`;
+      }).join('') +
+      dups.map(t=>`<span class="chip dup">${t}</span>`).join('')
+    }</div>`;
+  setReady(!!fresh.length);
+  if(fresh.length) buildPrompt();
+}
+
+document.getElementById('check').addEventListener('click',()=>{
+  const raw=document.getElementById('raw').value;
+  const items=[...new Set(raw.split(/[\n,;]+/).map(s=>s.replace(/^\s*\d+[.)]\s*/,'').trim()).filter(Boolean))];
+  const have=new Map(W.filter(x=>x.d).map(x=>[norm(x.w),x.w]));
+  const pend=new Map(W.filter(x=>!x.d).map(x=>[norm(x.w),x.w]));
+  const stems=new Map(W.filter(x=>x.d).map(x=>[stem(x.w),x.w]));
+  fresh=[]; const dups=[], nears=[], again=[];
+  items.forEach(t=>{
+    if(have.has(norm(t))) dups.push(t);
+    else if(pend.has(norm(t))) again.push(t);
+    else if(stems.has(stem(t))) nears.push({t, like:stems.get(stem(t))});
+    else fresh.push(t);
+  });
+  again.forEach(t=>fresh.push(t));
+  nears.forEach(nx=>fresh.push(nx.t));
+  renderReport(dups, nears, again);
+});
+
+function showQueue(){
+  const btn=document.getElementById('queue'), pend=W.filter(x=>!x.d);
+  btn.style.display = pend.length ? '' : 'none';
+  btn.textContent = `Queue the ${pend.length} waiting`;
+}
+document.getElementById('queue').addEventListener('click',()=>{
+  const pend=W.filter(x=>!x.d).map(x=>x.w);
+  fresh=pend.slice();
+  renderReport([], [], pend);
+});
+
+document.getElementById('report').addEventListener('click',e=>{
+  const b=e.target.closest('[data-drop]'); if(!b) return;
+  fresh = fresh.filter(t=>t!==b.dataset.drop);
+  b.closest('.chip').remove();
+  if(fresh.length) buildPrompt(); else setReady(false);
+});
+
+function buildPrompt(){
+  const fl = FIELDS.map(f=>`${f.id} = ${f.name}: ${f.note}`).join('\n');
+  document.getElementById('prompt').textContent =
+`Add these to my vocabulary booklet. Return ONLY a raw JSON array — no prose, no markdown fences.
+
+Words:
+${fresh.map(t=>'- '+t).join('\n')}
+
+Fields — choose by the sense the word carries, not its topic:
+${fl}
+
+Where two fields fit, prefer the one matching the register a reader would meet the word in over the one matching its subject.
+
+Rules:
+1. One object per word above, in the same order. Never two objects with the same "w". If a word has two strong senses, take the one likelier in serious reading and mention the other in "n".
+2. "w" = base form (infinitive verb, singular noun), lowercase unless strictly a proper noun. Correct obvious misspellings. If your "w" differs from what I typed, add "x" holding the exact string I typed; otherwise leave "x" out.
+3. "f" = unquoted integer, one of the ids above.
+4. "p" = one of: noun, verb, adjective, adverb, phrase — or a slashed pair like "noun / verb" when both are common.
+5. "d" = exactly one plain-English sentence that does not restate the word inside itself.
+6. "e" = one natural, concrete sentence of 10-20 words in the register of the chosen field, wrapping the inflected target word in a single pair of *asterisks*. It has to demonstrate the sense given in "d".
+7. "a" = Modern Standard Arabic for that specific sense, with diacritics on the head word. Keep it short; add " — " and a brief clarifier only where the bare gloss is ambiguous.
+8. "n" = a short warning only where one is earned: archaic or offensive register, a stress or spelling trap, a false friend, or a near-synonym worth distinguishing. Otherwise null — most words get null.
+9. Plain text in "w", "d", "e", "a" and "n". No angle brackets, no ampersands, no HTML entities there: write "and", not "&".
+10. "s" = a drawing, and only where the word names a concrete thing you could photograph — a radish, a tankard, a loom. An abstraction gets none: there is no drawing of magnanimity or of nuance, and a vague one is worse than none. Most words here take no "s" at all, so leave the key out.
+    When you do draw: a flat SVG with viewBox="0 0 600 400", the subject filling most of the frame and touching no edge. No background rectangle — the card supplies the paper. Three colours at most, dark outlines, thick strokes, no text, no <style> blocks, presentation attributes only. Under 1800 characters.
+
+Schema: {"w":…, "x":…, "f":…, "p":…, "d":…, "e":…, "a":…, "n":…, "s":…}
+Straight quotes only, valid JSON, nothing before or after the array.`;
+}
+
+document.getElementById('copyp').addEventListener('click',async e=>{
+  try{ await navigator.clipboard.writeText(document.getElementById('prompt').textContent);
+       e.target.textContent='Copied'; setTimeout(()=>e.target.textContent='Copy prompt',1500); }catch(err){}
+});
+
+document.getElementById('addnow').addEventListener('click',()=>{
+  const add=fresh.map(t=>({w:t,f:0,p:'',d:'',e:'',a:''}));
+  setLocal(localAdds().concat(add)); W=W.concat(add);
+  render(); loadProgress(); showLocal();
+  document.getElementById('report').innerHTML='<p class="note good">Added — enrich them whenever you like.</p>';
+  fresh=[]; setReady(false);
+});
+
+/* A drawing arrives as "s": raw SVG typed by a model and pasted through a chat window.
+   It is never written into the card's HTML. It becomes the src of an <img>, where the
+   browser will not run script even if the markup carries some — and the strip below is
+   a second lock on top of that. Anything malformed, oversized or not an <svg> at all is
+   dropped, and the word simply keeps no picture. */
+const MAXART=2600;
+function artToSrc(src){
+  if(typeof src!=='string') return null;
+  const raw=src.trim();
+  if(!/^<svg[\s>]/i.test(raw) || raw.length>MAXART*2) return null;
+  let doc;
+  try{ doc = new DOMParser().parseFromString(raw,'image/svg+xml'); }catch(e){ return null; }
+  const svg = doc.documentElement;
+  if(!svg || svg.nodeName.toLowerCase()!=='svg') return null;
+  if(doc.getElementsByTagName('parsererror').length) return null;
+  if(!svg.getAttribute('viewBox')) return null;
+  doc.querySelectorAll('script,foreignObject,image,iframe,style,a,use,animate,set').forEach(n=>n.remove());
+  doc.querySelectorAll('*').forEach(n=>{
+    [...n.attributes].forEach(a=>{
+      const k=a.name.toLowerCase();
+      if(k.startsWith('on') || k.includes('href')) n.removeAttribute(a.name);
+    });
+  });
+  svg.setAttribute('xmlns','http://www.w3.org/2000/svg');
+  const out = new XMLSerializer().serializeToString(svg);
+  if(out.length>MAXART) return null;
+  return 'data:image/svg+xml,'+encodeURIComponent(out);
+}
+
+document.getElementById('merge').addEventListener('click',()=>{
+  const msg=document.getElementById('mergemsg');
+  const txt=document.getElementById('incoming').value.trim().replace(/^```(json)?|```$/g,'').trim();
+  let arr;
+  try{ arr=JSON.parse(txt); }catch(e){ msg.className='note bad'; msg.textContent='That is not valid JSON. Paste the whole array including the square brackets.'; return; }
+  if(!Array.isArray(arr)){ msg.className='note bad'; msg.textContent='Expected an array of objects.'; return; }
+  const ids=new Set(FIELDS.map(f=>f.id)); const bad=[];
+  arr.forEach((x,i)=>{
+    if(!x || typeof x.w!=='string' || !x.w.trim()) bad.push(`#${i+1} has no word`);
+    else if(!ids.has(x.f)) bad.push(`${x.w}: field ${x.f} does not exist`);
+    else if(typeof x.d!=='string' || !x.d.trim()) bad.push(`${x.w}: no definition`);
+  });
+  if(bad.length){ msg.className='note bad'; msg.textContent='Nothing merged — '+bad.slice(0,3).join('; '); return; }
+  /* A corrected spelling comes back as "x": the word as I actually typed it. It feeds
+     the misspellings table and retires the card filed under the wrong spelling, then
+     the key is dropped so it never reaches words.json. */
+  const typed=[];
+  arr.forEach(o=>{
+    const was = typeof o.x==='string' ? o.x.trim() : '';
+    delete o.x;
+    if(was && norm(was)!==norm(o.w)) typed.push({wrong:was, right:o.w});
+  });
+  const fixes = typed.filter((c,i)=>
+    typed.findIndex(d=>norm(d.wrong)===norm(c.wrong))===i &&
+    !CORRECTIONS.some(d=>norm(d.wrong)===norm(c.wrong)));
+  /* A drawing in the reply becomes the picture; a bad one is discarded without
+     blocking the merge, since the word is still worth having. */
+  let drawn=0, dropped=0;
+  arr.forEach(o=>{
+    if(!('s' in o)) return;
+    const art=artToSrc(o.s); delete o.s;
+    if(art){ o.i=art; drawn++; } else dropped++;
+  });
+  /* A picture already on a word is carried across a re-enrichment — including onto a
+     corrected spelling — unless this reply drew a new one. */
+  const pics=new Map(W.filter(o=>o.i).map(o=>[norm(o.w),o.i]));
+  typed.forEach(c=>{ if(pics.has(norm(c.wrong)) && !pics.has(norm(c.right))) pics.set(norm(c.right), pics.get(norm(c.wrong))); });
+  const enriched=new Set(arr.map(x=>norm(x.w)));
+  typed.forEach(c=>enriched.add(norm(c.wrong)));
+  const kept=W.filter(x=>!enriched.has(norm(x.w)));
+  const already=new Set(kept.map(x=>norm(x.w)));
+  const add=arr.filter(x=>!already.has(norm(x.w)));
+  add.forEach(o=>{ if(!o.i && pics.has(norm(o.w))) o.i = pics.get(norm(o.w)); });
+  W = kept.concat(add);
+  setLocal(localAdds().filter(x=>!enriched.has(norm(x.w))).concat(add));
+  if(fixes.length){
+    CORRECTIONS = CORRECTIONS.concat(fixes);
+    setLocalFix(localFix().concat(fixes));
+    renderFix(CORRECTIONS);
+  }
+  render(); loadProgress(); showLocal();
+  msg.className='note good';
+  msg.textContent = `Merged ${add.length} word${add.length===1?'':'s'}.`
+    + (fixes.length?` ${fixes.length} spelling${fixes.length===1?'':'s'} noted for the table.`:'')
+    + (drawn?` ${drawn} drawing${drawn===1?'':'s'} kept.`:'')
+    + (dropped?` ${dropped} discarded as unusable.`:'')
+    + ' Download the file and commit it.';
+  document.getElementById('incoming').value=''; document.getElementById('raw').value='';
+  /* the batch is spent: the chips and the prompt describe words that are now in the book */
+  document.getElementById('report').innerHTML=''; fresh=[]; setReady(false);
+});
+
+function download(name, text){
+  const b=new Blob([text],{type:'application/json'}), u=URL.createObjectURL(b);
+  const a=document.createElement('a'); a.href=u; a.download=name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(u),1000);
+}
+let CORRECTIONS=[];
+document.getElementById('dl').addEventListener('click',()=>{
+  const clean=W.filter(x=>x.d && x.d.trim());
+  download('words.json', JSON.stringify({
+    schema:1, updated:new Date().toISOString().slice(0,10),
+    fields:FIELDS, corrections:CORRECTIONS, words:clean
+  },null,1));
+});
+document.getElementById('dlprog').addEventListener('click',()=>{
+  download('progress.json', JSON.stringify([...done],null,1));
+});
+
+/* search */
+const empty=document.getElementById('empty');
+document.getElementById('q').addEventListener('input',e=>{
+  const q=e.target.value.trim().toLowerCase();
+  let hits=0;
+  document.querySelectorAll('.card').forEach(c=>{
+    const show = !q || c.dataset.s.includes(q);
+    c.style.display = show?'':'none'; if(show) hits++;
+  });
+  document.querySelectorAll('.sec').forEach(s=>{
+    s.style.display = [...s.querySelectorAll('.card')].some(c=>c.style.display!=='none') ? '' : 'none';
+  });
+  empty.style.display = hits?'none':'block';
+});
+</script>
