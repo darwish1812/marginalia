@@ -313,6 +313,24 @@
   }
   .panel textarea:focus{outline:none; border-color:var(--ink-1)}
   .panel .row{display:flex; gap:9px; flex-wrap:wrap; margin-top:12px; align-items:center}
+  /* a labelled single-line field — the panel had only textareas until sign-in arrived */
+  .fld{margin:0 0 4px; max-width:34ch}
+  .fld label{font-family:"Archivo",sans-serif; font-size:10px; letter-spacing:.14em;
+             text-transform:uppercase; color:var(--dim); display:block; margin:0 0 6px}
+  .fld input{
+    width:100%; background:var(--night); color:var(--paper);
+    border:1px solid var(--rule); border-radius:6px; padding:11px 13px;
+    font:15px/1.5 "Newsreader",serif;
+  }
+  .fld input:focus{outline:none; border-color:var(--ink-1)}
+  .acct + .acct{margin-top:18px; padding-top:18px; border-top:1px solid var(--rule)}
+  /* the sign-in gate stands where the book would be, so it is sized like a section head
+     rather than like a dialog — nobody is being interrupted, there is simply nothing yet */
+  .gate{max-width:56ch; padding:60px 0 40px}
+  .gate h2{font-family:"Fraunces",Georgia,serif; font-weight:500; font-size:clamp(26px,5vw,40px);
+           letter-spacing:-.02em; margin:0 0 18px; color:var(--paper)}
+  .gate p{font-size:17px; line-height:1.7; color:var(--dim); margin:0 0 16px}
+  .gate .fld{margin-top:26px}
   /* The add panel is opened from inside settings, so it needs a door back out —
      the bar button alone works but reads as a dead end once you are in here. */
   .back{margin:0 0 20px; padding:7px 13px; font-size:10.5px}
@@ -381,7 +399,7 @@
     @page{margin:14mm}
     body{background:#fff; color:#000; font-size:10.5pt}
     /* pictures are screen-only: they break the two-column pagination and drink ink */
-    .bar-wrap,.panel,.mark,.say,.arbtn,.say-ex,.hint,.pic,.swatch .num,#fixok,footer{display:none!important}
+    .bar-wrap,.panel,.gate,.mark,.say,.arbtn,.say-ex,.hint,.pic,.swatch .num,#fixok,footer{display:none!important}
     body.study .body{display:block!important}
     .cover{padding:0 0 18pt; border-color:#999}
     .cover h1{font-size:40pt; color:#000}
@@ -470,8 +488,8 @@
         </div>
 
         <div class="step">
-          <span class="stepno">Step 4 — save it</span>
-          <p>Download the updated file and paste it into <b>words.json</b> on GitHub.</p>
+          <span class="stepno">Step 4 — keep a copy</span>
+          <p id="step4">Your words save themselves. Download a copy whenever you want one of your own.</p>
           <div class="row">
             <button class="btn" id="dl">Download words.json</button>
             <button class="btn" id="dlprog">Export progress</button>
@@ -487,6 +505,14 @@
             <p class="set-d" id="addhint">Paste a list, take the prompt to Claude, bring the reply back.</p>
           </div>
           <button class="btn" id="addbtn" aria-pressed="false">+ Add words</button>
+        </div>
+
+        <div class="set">
+          <div>
+            <p class="set-t">Account</p>
+            <p class="set-d" id="accthint">Your words live in your account, so they follow you between devices.</p>
+          </div>
+          <button class="btn" id="acctbtn" aria-pressed="false">Sign in</button>
         </div>
 
         <div class="set">
@@ -515,8 +541,48 @@
           <button class="btn" id="speed">Speed 0.9×</button>
         </div>
       </section>
+
+      <section class="panel" id="account">
+        <button class="btn back">← Settings</button>
+
+        <div class="acct" id="acct-out">
+          <p class="set-t">Signed out</p>
+          <p class="set-d">Sign in to see your words and to keep new ones.</p>
+          <div class="row"><button class="btn" id="tosignin">Take me to sign in</button></div>
+        </div>
+
+        <div class="acct" id="acct-in" hidden>
+          <p class="set-t">Signed in</p>
+          <p class="set-d">You are signed in as <b id="who"></b>. Your words are saved to this
+            account as you add them; nothing needs downloading or committing.</p>
+          <div class="row"><button class="btn" id="signout">Sign out</button></div>
+          <p class="note" id="acctmsg2"></p>
+        </div>
+
+        <div class="acct" id="acct-off" hidden>
+          <p class="set-t">Accounts are not set up</p>
+          <p class="set-d">This copy has no Supabase project behind it yet, so it is running on
+            this device alone — words are kept in this browser and the Download button is how
+            they leave it. See <b>README.md</b> for the ten-minute setup.</p>
+        </div>
+      </section>
     </div>
   </div>
+
+  <!-- Shown instead of the book when accounts are on and nobody is signed in. It is the
+       only place the email form lives, so there is one sign-in in the app, not two. -->
+  <section class="gate" id="gate" hidden>
+    <h2>Your own booklet</h2>
+    <p>Sign in and you get your own copy of these words — a hundred and fifty to begin with,
+      yours to add to, mark up and mangle. Nothing you do to them touches anyone else's.</p>
+    <p>Enter your email and a link arrives. There is no password to remember and none to lose.</p>
+    <div class="fld">
+      <label for="email">Email</label>
+      <input type="email" id="email" autocomplete="email" placeholder="you@example.com">
+    </div>
+    <div class="row"><button class="btn" id="sendlink">Send me a link</button></div>
+    <p class="note" id="acctmsg"></p>
+  </section>
 
   <main id="book"></main>
   <p class="empty" id="empty">No entry matches that. Try a shorter word.</p>
@@ -530,7 +596,11 @@
 </div>
 
 <script>
-let FIELDS = [], W = [];
+/* SEED is the parsed words.json: the eight fields every account shares, and the words a
+   brand-new account is stocked with. CORRECTIONS lives up here rather than beside the
+   download button because apply() assigns it long before that line is reached — it only
+   worked before because boot() is async, which is too fine a thread to hang a global on. */
+let FIELDS = [], W = [], SEED = null, CORRECTIONS = [];
 
 /* ---------- speech ---------- */
 const SPK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.8-1-3.3-2.5-4v8c1.5-.7 2.5-2.2 2.5-4zM14 3.2v2.1c2.9.9 5 3.5 5 6.7s-2.1 5.8-5 6.7v2.1c4-1 7-4.5 7-8.8s-3-7.8-7-8.8z"/></svg>';
@@ -652,7 +722,10 @@ shown.forEach(f=>{
     n++;
     const id = 'w'+n;
     x.e=x.e||''; x.d=x.d||''; x.p=x.p||''; x.a=x.a||'';
-    const ex = x.e.replace(/\*(.+?)\*/g,'<span class="t">$1</span>');
+    /* Escape before the asterisk transform, never after: the text is model-authored and
+       arrives from a chat window, and once a session token lives in this browser an
+       unescaped card is how someone would take it. The asterisks survive esc() untouched. */
+    const ex = esc(x.e).replace(/\*(.+?)\*/g,'<span class="t">$1</span>');
     const el = document.createElement('article');
     el.className='card'+(x.d?'':' pending'); el.dataset.id=id; el.dataset.w=x.w;
     const plainEx = x.e.replace(/\*/g,'');
@@ -662,20 +735,20 @@ shown.forEach(f=>{
     el.dataset.ex = plainEx;
     el.innerHTML = `
       <div class="top">
-        <div><h3 class="word">${x.w}</h3><div class="pos">${posTags(x.p)}</div></div>
+        <div><h3 class="word">${esc(x.w)}</h3><div class="pos">${posTags(x.p)}</div></div>
         <div class="acts">
-          <button class="say" data-say="word" aria-label="Hear ${sayWord}">${SPK}</button>
-          ${x.a?`<button class="arbtn" aria-pressed="false" lang="ar" aria-label="Show the Arabic for ${x.w}">ع</button>`:''}
-          <button class="mark" aria-pressed="false" aria-label="Mark ${x.w} as learned">✓</button>
+          <button class="say" data-say="word" aria-label="Hear ${esc(sayWord)}">${SPK}</button>
+          ${x.a?`<button class="arbtn" aria-pressed="false" lang="ar" aria-label="Show the Arabic for ${esc(x.w)}">ع</button>`:''}
+          <button class="mark" aria-pressed="false" aria-label="Mark ${esc(x.w)} as learned">✓</button>
         </div>
       </div>
       <div class="hint">Tap to reveal</div>
       <div class="body">
-        ${x.d?`<p class="def">${x.d}</p>`:'<p class="def" style="opacity:.6">Captured — not enriched yet.</p>'}
-        ${x.a?`<p class="ar" lang="ar" dir="rtl">${x.a}</p>`:''}
+        ${x.d?`<p class="def">${esc(x.d)}</p>`:'<p class="def" style="opacity:.6">Captured — not enriched yet.</p>'}
+        ${x.a?`<p class="ar" lang="ar" dir="rtl">${esc(x.a)}</p>`:''}
         ${x.i?`<figure class="pic"><img src="${esc(x.i)}" alt="${esc(x.w)}" loading="lazy" decoding="async"></figure>`:''}
         ${x.e?`<p class="ex">${ex}</p><button class="say-ex" data-say="ex">${SPK}Hear the sentence</button>`:''}
-        ${x.n?`<p class="flag"><b>Careful:</b> ${x.n}</p>`:''}
+        ${x.n?`<p class="flag"><b>Careful:</b> ${esc(x.n)}</p>`:''}
       </div>
       <span class="no">${String(n).padStart(3,'0')}</span>`;
     grid.appendChild(el);
@@ -709,15 +782,15 @@ document.getElementById('swatches').addEventListener('click',e=>{
 const tally = document.getElementById('tally');
 const KEY='vocab-booklet-progress';
 function paint(){ tally.innerHTML=`<b>${done.size}</b> / ${W.length} learned`; }
-function save(){ try{ localStorage.setItem(KEY, JSON.stringify([...done])); }catch(e){} }
+/* Both go through the store: on this device that is still localStorage, on an account it
+   is a column on the word's own row, which is what finally makes a tick on the iPad
+   show up on the laptop. */
+function save(w, on){ store.setDone(w, on); }
 function loadProgress(){
-  try{
-    const r = localStorage.getItem(KEY);
-    if(r) JSON.parse(r).forEach(w=>{
-      const c=document.querySelector(`[data-w="${CSS.escape(w)}"]`);
-      if(c){ done.add(w); c.classList.add('done'); c.querySelector('.mark').setAttribute('aria-pressed','true'); }
-    });
-  }catch(e){}
+  store.doneList().forEach(w=>{
+    const c=document.querySelector(`[data-w="${CSS.escape(w)}"]`);
+    if(c){ done.add(w); c.classList.add('done'); c.querySelector('.mark').setAttribute('aria-pressed','true'); }
+  });
   paint();
 }
 
@@ -744,7 +817,7 @@ book.addEventListener('click',e=>{
     const card=m.closest('.card'), id=card.dataset.w;
     if(done.has(id)){ done.delete(id); card.classList.remove('done'); m.setAttribute('aria-pressed','false'); }
     else{ done.add(id); card.classList.add('done'); m.setAttribute('aria-pressed','true'); }
-    paint(); save(); return;
+    paint(); save(id, done.has(id)); return;
   }
   if(document.body.classList.contains('study')){
     const c=e.target.closest('.card'); if(c) c.classList.toggle('open');
@@ -793,7 +866,7 @@ sBtn.addEventListener('click',()=>{
 document.getElementById('reset').addEventListener('click',()=>{
   done.clear();
   document.querySelectorAll('.card').forEach(c=>{ c.classList.remove('done'); c.querySelector('.mark').setAttribute('aria-pressed','false'); });
-  paint(); save();
+  paint(); store.clearDone();
 });
 
 /* ---------- data loading ---------- */
@@ -808,12 +881,42 @@ function setLocal(a){ try{ localStorage.setItem(LOCAL, JSON.stringify(a)); }catc
 function localFix(){ try{ return JSON.parse(localStorage.getItem(LOCALFIX)||'[]'); }catch(e){ return []; } }
 function setLocalFix(a){ try{ localStorage.setItem(LOCALFIX, JSON.stringify(a)); }catch(e){} }
 
-function apply(data){
+/* ---------- the storage seam ----------
+   Every write a word makes goes through `store`. localStore is the behaviour this booklet
+   has always had — words.json plus a pile of localStorage. cloudStore below answers the
+   same four questions against Supabase. Nothing between here and the cards knows which
+   one is answering, which is the whole point: the merge path and the learned marks were
+   written once and never learn where they are saving to. */
+const localStore = {
+  id:'local',
+  savedNote:' Download the file and commit it.',
+  /* `seed` is the parsed words.json. Local mode treats it as the committed truth and
+     layers this device's unsaved additions on top, newest-wins-never: a word already in
+     the file beats the local copy, because the file is what everyone else sees. */
+  async load(seed){
+    const extra = localAdds();
+    const words = seed.words.concat(extra.filter(x=>!seed.words.some(y=>norm(y.w)===norm(x.w))));
+    const fixed = seed.corrections || [];
+    const corrections = fixed.concat(localFix().filter(c=>!fixed.some(d=>norm(d.wrong)===norm(c.wrong))));
+    return {words, corrections};
+  },
+  async addWords(add, retired){
+    setLocal(localAdds().filter(x=>!retired.has(norm(x.w))).concat(add));
+  },
+  async addFixes(fixes){ setLocalFix(localFix().concat(fixes)); },
+  doneList(){ try{ return JSON.parse(localStorage.getItem(KEY)||'[]'); }catch(e){ return []; } },
+  /* the arguments name which word changed — local mode doesn't need them, since it
+     rewrites the whole set, but the cloud store updates exactly that one row */
+  async setDone(w, on){ try{ localStorage.setItem(KEY, JSON.stringify([...done])); }catch(e){} },
+  async clearDone(){ try{ localStorage.setItem(KEY, '[]'); }catch(e){} }
+};
+let store = localStore;
+
+async function apply(data){
   FIELDS = data.fields;
-  const extra = localAdds();
-  W = data.words.concat(extra.filter(x=>!data.words.some(y=>norm(y.w)===norm(x.w))));
-  const fixed = data.corrections || [];
-  CORRECTIONS = fixed.concat(localFix().filter(c=>!fixed.some(d=>norm(d.wrong)===norm(c.wrong))));
+  const loaded = await store.load(data);
+  W = loaded.words;
+  CORRECTIONS = loaded.corrections;
   render(); loadProgress(); showLocal(); renderFix(CORRECTIONS);
   document.getElementById('app').hidden=false;
   document.getElementById('foot').hidden=false;
@@ -834,7 +937,9 @@ function renderFix(list){
   el.innerHTML=`<h3>${word} you spelled slightly wrong</h3>
     <p>These are easy to mishear, so they're worth fixing early — a misspelled word looks like a guess even when the meaning is right.</p>
     <table><tr><th>You wrote</th><th>Correct</th></tr>${
-      list.map(c=>`<tr><td>${c.wrong}${seen.includes(c.wrong)?'':'<span class="fresh">new</span>'}</td><td><b>${c.right}</b>${c.hint?' — '+c.hint:''}</td></tr>`).join('')
+      /* wrong/right are model-authored and get escaped; hint is hand-written in words.json
+         and is allowed its <i> tags, which is why it alone goes in raw. */
+      list.map(c=>`<tr><td>${esc(c.wrong)}${seen.includes(c.wrong)?'':'<span class="fresh">new</span>'}</td><td><b>${esc(c.right)}</b>${c.hint?' — '+c.hint:''}</td></tr>`).join('')
     }</table>
     <button class="btn" id="fixok">Got it — hide this</button>`;
 }
@@ -864,7 +969,8 @@ async function boot(){
   }
   if(!data){ try{ data = JSON.parse(localStorage.getItem(CACHE)); }catch(e){} }
   if(!data){ failed(why||'Could not load words.json.'); return; }
-  apply(data);
+  SEED = data;
+  await apply(data);
 }
 boot();
 
@@ -898,32 +1004,34 @@ const barWrap=document.querySelector('.bar-wrap');
 new ResizeObserver(()=>document.documentElement.style
   .setProperty('--barh', barWrap.getBoundingClientRect().height+'px')).observe(barWrap);
 
-/* the two panels share the space under the bar, so opening one closes the other */
+/* The panels share the space under the bar, so opening one closes the others. Kept as a
+   list rather than pairs because a panel can be opened from more than one button — the
+   account panel has an entrance in Settings and another from the signed-out cover. */
+const acctPanel=document.getElementById('account');
+const PANELS=[panel,setPanel,acctPanel];
+const OPENERS=[[addBtn,panel],[document.getElementById('acctbtn'),acctPanel]];
 function openPanel(which){
-  [[addBtn,panel],[setBtn,setPanel]].forEach(([b,p])=>{
-    const on = p===which;
-    if(b!==setBtn) b.setAttribute('aria-pressed', String(on));
-    p.classList.toggle('on', on);
-  });
-  /* The bar button announces a menu, not a toggle, and add-words is a room inside that
-     menu — so the caret stays turned down for as long as either panel is on screen. */
+  PANELS.forEach(p=>p.classList.toggle('on', p===which));
+  OPENERS.forEach(([b,p])=>{ if(b) b.setAttribute('aria-pressed', String(p===which)); });
+  /* The bar button announces a menu, not a toggle, and the rest are rooms inside that
+     menu — so the caret stays turned down for as long as any panel is on screen. */
   setBtn.setAttribute('aria-expanded', String(!!which));
   if(which) which.scrollTop = 0;   // a panel reopens at its own top, not where you left it
 }
 addBtn.addEventListener('click',()=>openPanel(panel.classList.contains('on') ? null : panel));
 setBtn.addEventListener('click',()=>openPanel(setPanel.classList.contains('on') ? null : setPanel));
-document.getElementById('backset').addEventListener('click',()=>openPanel(setPanel));
+document.querySelectorAll('.back').forEach(b=>b.addEventListener('click',()=>openPanel(setPanel)));
 
-/* A menu closes the way menus do — Escape, or a click anywhere off it. The add panel is
-   part of the same menu, so it obeys both too, and Escape hands focus back to the button. */
-function panelOpen(){ return panel.classList.contains('on') || setPanel.classList.contains('on'); }
+/* A menu closes the way menus do — Escape, or a click anywhere off it. The rooms inside
+   obey both too, and Escape hands focus back to the button. */
+function panelOpen(){ return PANELS.some(p=>p.classList.contains('on')); }
 document.addEventListener('keydown',e=>{
   if(e.key!=='Escape' || !panelOpen()) return;
   openPanel(null); setBtn.focus();
 });
 document.addEventListener('pointerdown',e=>{
   if(!panelOpen()) return;
-  if(e.target.closest('#panel, #settings, #setbtn')) return;
+  if(e.target.closest('#panel, #settings, #account, #setbtn')) return;
   openPanel(null);
 });
 
@@ -1044,11 +1152,14 @@ document.getElementById('copyp').addEventListener('click',async e=>{
        e.target.textContent='Copied'; setTimeout(()=>e.target.textContent='Copy prompt',1500); }catch(err){}
 });
 
-document.getElementById('addnow').addEventListener('click',()=>{
+document.getElementById('addnow').addEventListener('click',async ()=>{
   const add=fresh.map(t=>({w:t,f:0,p:'',d:'',e:'',a:''}));
-  setLocal(localAdds().concat(add)); W=W.concat(add);
+  const report=document.getElementById('report');
+  try{ await store.addWords(add, new Set()); }
+  catch(e){ report.innerHTML='<p class="note bad">Could not save them — '+esc(e && e.message ? e.message : 'try again.')+'</p>'; return; }
+  W=W.concat(add);
   render(); loadProgress(); showLocal();
-  document.getElementById('report').innerHTML='<p class="note good">Added — enrich them whenever you like.</p>';
+  report.innerHTML='<p class="note good">Added — enrich them whenever you like.</p>';
   fresh=[]; setReady(false);
 });
 
@@ -1081,19 +1192,28 @@ function artToSrc(src){
   return 'data:image/svg+xml,'+encodeURIComponent(out);
 }
 
-document.getElementById('merge').addEventListener('click',()=>{
-  const msg=document.getElementById('mergemsg');
-  const txt=document.getElementById('incoming').value.trim().replace(/^```(json)?|```$/g,'').trim();
-  let arr;
-  try{ arr=JSON.parse(txt); }catch(e){ msg.className='note bad'; msg.textContent='That is not valid JSON. Paste the whole array including the square brackets.'; return; }
-  if(!Array.isArray(arr)){ msg.className='note bad'; msg.textContent='Expected an array of objects.'; return; }
+/* ---------- merging a reply ----------
+   Split at the array, not at the text. Everything below takes a parsed array and knows
+   nothing about textareas, markdown fences or where the array came from — which is what
+   lets a reply pasted from a chat window and a reply fetched from an API arrive at
+   exactly the same validation, the same sanitising and the same save. */
+
+/* Rule 9 of the prompt forbids markup in these five, so anything containing < or & is
+   either a confused model or someone handing you a card that reads the page. */
+const PLAIN = ['w','d','e','a','n'];
+
+async function mergeArray(arr){
   const ids=new Set(FIELDS.map(f=>f.id)); const bad=[];
   arr.forEach((x,i)=>{
     if(!x || typeof x.w!=='string' || !x.w.trim()) bad.push(`#${i+1} has no word`);
     else if(!ids.has(x.f)) bad.push(`${x.w}: field ${x.f} does not exist`);
     else if(typeof x.d!=='string' || !x.d.trim()) bad.push(`${x.w}: no definition`);
+    else {
+      const h = PLAIN.find(k=>typeof x[k]==='string' && /[<&]/.test(x[k]));
+      if(h) bad.push(`${x.w}: "${h}" contains markup`);
+    }
   });
-  if(bad.length){ msg.className='note bad'; msg.textContent='Nothing merged — '+bad.slice(0,3).join('; '); return; }
+  if(bad.length) return {ok:false, errors:bad};
   /* A corrected spelling comes back as "x": the word as I actually typed it. It feeds
      the misspellings table and retires the card filed under the wrong spelling, then
      the key is dropped so it never reaches words.json. */
@@ -1110,7 +1230,9 @@ document.getElementById('merge').addEventListener('click',()=>{
      blocking the merge, since the word is still worth having. */
   let drawn=0, dropped=0;
   arr.forEach(o=>{
-    if(!('s' in o)) return;
+    /* An explicit null is "this word gets no drawing", not a drawing that failed —
+       counting it as discarded made the message accuse the model of nonsense. */
+    if(o.s == null){ delete o.s; return; }
     const art=artToSrc(o.s); delete o.s;
     if(art){ o.i=art; drawn++; } else dropped++;
   });
@@ -1125,19 +1247,38 @@ document.getElementById('merge').addEventListener('click',()=>{
   const add=arr.filter(x=>!already.has(norm(x.w)));
   add.forEach(o=>{ if(!o.i && pics.has(norm(o.w))) o.i = pics.get(norm(o.w)); });
   W = kept.concat(add);
-  setLocal(localAdds().filter(x=>!enriched.has(norm(x.w))).concat(add));
+  await store.addWords(add, enriched);
   if(fixes.length){
     CORRECTIONS = CORRECTIONS.concat(fixes);
-    setLocalFix(localFix().concat(fixes));
+    await store.addFixes(fixes);
     renderFix(CORRECTIONS);
   }
   render(); loadProgress(); showLocal();
+  return {ok:true, added:add.length, fixes:fixes.length, drawn, dropped};
+}
+
+function mergeMsg(res){
+  return `Merged ${res.added} word${res.added===1?'':'s'}.`
+    + (res.fixes?` ${res.fixes} spelling${res.fixes===1?'':'s'} noted for the table.`:'')
+    + (res.drawn?` ${res.drawn} drawing${res.drawn===1?'':'s'} kept.`:'')
+    + (res.dropped?` ${res.dropped} discarded as unusable.`:'')
+    + store.savedNote;
+}
+
+/* The paste path: strip fences, parse, hand the array over. Everything specific to
+   pasting — the textareas, the chips, the fence tolerance — stops here. */
+document.getElementById('merge').addEventListener('click',async ()=>{
+  const msg=document.getElementById('mergemsg');
+  const txt=document.getElementById('incoming').value.trim().replace(/^```(json)?|```$/g,'').trim();
+  let arr;
+  try{ arr=JSON.parse(txt); }catch(e){ msg.className='note bad'; msg.textContent='That is not valid JSON. Paste the whole array including the square brackets.'; return; }
+  if(!Array.isArray(arr)){ msg.className='note bad'; msg.textContent='Expected an array of objects.'; return; }
+  let res;
+  try{ res = await mergeArray(arr); }
+  catch(e){ msg.className='note bad'; msg.textContent='Nothing merged — '+(e && e.message ? e.message : 'the save failed.'); return; }
+  if(!res.ok){ msg.className='note bad'; msg.textContent='Nothing merged — '+res.errors.slice(0,3).join('; '); return; }
   msg.className='note good';
-  msg.textContent = `Merged ${add.length} word${add.length===1?'':'s'}.`
-    + (fixes.length?` ${fixes.length} spelling${fixes.length===1?'':'s'} noted for the table.`:'')
-    + (drawn?` ${drawn} drawing${drawn===1?'':'s'} kept.`:'')
-    + (dropped?` ${dropped} discarded as unusable.`:'')
-    + ' Download the file and commit it.';
+  msg.textContent = mergeMsg(res);
   document.getElementById('incoming').value=''; document.getElementById('raw').value='';
   /* the batch is spent: the chips and the prompt describe words that are now in the book */
   document.getElementById('report').innerHTML=''; fresh=[]; setReady(false);
@@ -1148,14 +1289,17 @@ function download(name, text){
   const a=document.createElement('a'); a.href=u; a.download=name; a.click();
   setTimeout(()=>URL.revokeObjectURL(u),1000);
 }
-let CORRECTIONS=[];
-document.getElementById('dl').addEventListener('click',()=>{
-  const clean=W.filter(x=>x.d && x.d.trim());
-  download('words.json', JSON.stringify({
+/* One definition of what a words.json is, so an export and a commit can never disagree
+   about it. Words still waiting for detail are left out: a blank definition is a note to
+   self, not a booklet entry. */
+function serialise(){
+  return JSON.stringify({
     schema:1, updated:new Date().toISOString().slice(0,10),
-    fields:FIELDS, corrections:CORRECTIONS, words:clean
-  },null,1));
-});
+    fields:FIELDS, corrections:CORRECTIONS,
+    words:W.filter(x=>x.d && x.d.trim())
+  },null,1);
+}
+document.getElementById('dl').addEventListener('click',()=>download('words.json', serialise()));
 document.getElementById('dlprog').addEventListener('click',()=>{
   download('progress.json', JSON.stringify([...done],null,1));
 });
