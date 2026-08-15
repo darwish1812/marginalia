@@ -1,12 +1,14 @@
 # Marginalia — the accounts version
 
 Words caught while watching, reading and playing — collected, translated and given context.
-A single-page vocabulary reader, no build step and no bundler. 150 words across eight themed
-fields, each with a definition, an example sentence, an Arabic gloss, and pronunciation audio.
+A single-page vocabulary reader, no build step and no bundler. Every word gets a definition,
+an example sentence, an Arabic gloss, and pronunciation audio, and lives in a field of your
+own choosing — or in none, until you know where it belongs.
 
-This copy adds sign-in. Everyone who signs in gets their **own** booklet, seeded with the same
-150 words and theirs to add to from then on. Nothing is downloaded, nothing is committed by
-hand: a word is saved the moment it is merged, and it is there on the other device too.
+This copy adds sign-in. Everyone who signs in gets their **own** booklet: their own words,
+and their own fields, chosen at the start from a handful of starter packs or named
+themselves as they go. Nothing is downloaded, nothing is committed by hand — a word is saved
+the moment it is merged, and it is there on the other device too.
 
 > The original single-user booklet lives on unchanged at
 > [darwish1812/marginalia](https://github.com/darwish1812/marginalia). This is a separate copy,
@@ -31,6 +33,12 @@ plan is enough; note the database password somewhere, though the app never uses 
 
 **2. Create the tables.** Dashboard → **SQL Editor** → New query → paste the whole of
 `supabase/schema.sql` → **Run**. It is safe to run more than once.
+
+**Run it again whenever the file changes.** `create table if not exists` leaves a table that
+already exists exactly as it was, so altered columns and new functions are stated separately
+at the foot of the file and only reach an older project when you re-run it. If you skip this
+the app will tell you rather than failing obscurely — *"this Supabase project has not been
+set up for this version of the booklet"* is what a missing function looks like.
 
 **3. Point the app at the project.** Dashboard → **Settings → API**, then copy the two values
 into the top of the `<script>` in `index.html`:
@@ -112,6 +120,25 @@ cards straight away in a "Waiting for detail" section at the top, searchable but
 them later and they move to their proper field. To come back to them, tap
 **Queue the N waiting** — it loads every bare word into a fresh prompt.
 
+## Filing, unfiling, removing
+
+A word that fits none of your fields is left **unfiled** rather than pushed into whichever
+one is least wrong — the prompt asks for that, and says why. Unfiled words sit in their own
+section at the top of the book: searchable, printable, and perfectly fine to leave there.
+
+Every card has a **⋯** button carrying the three things you can do to it: file it under any
+field, send it back to Unfiled, or remove it. An unfiled card also grows a dashed
+**File under** chip, which opens the same menu. Removing asks first, in the card.
+
+To change the fields themselves, **Settings → Edit fields**: rename them, give them a
+different ink, add one, or remove one. Removing a field never removes its words — they go
+to Unfiled, and the button says how many before you press it. Eight fields at most, and each
+ink can only belong to one of them, because the swatch strip along the top is the index of
+the whole book.
+
+**Settings → Account → Empty this booklet** clears every word at once and leaves your fields
+standing. It asks you to type the word `empty`, because it cannot be undone.
+
 ## Notes
 
 - **Everything you own follows you.** Words, corrections and the ✓ marks all live on your
@@ -132,10 +159,17 @@ them later and they move to their proper field. To come back to them, tap
 
 ## How the data is kept apart
 
-Every table has row level security on, with one policy: you can see and change a row only if
-its `user_id` is your own account. It is enforced by Postgres, not by the app — a doctored
-copy of this page, or a hand-written request with the anon key, gets exactly the same answer
-as the app does. `words.json` is the one thing everybody shares, and it is read-only.
+All four tables — words, fields, corrections, profiles — have row level security on, with
+one policy each: you can see and change a row only if its `user_id` is your own account. It
+is enforced by Postgres, not by the app — a doctored copy of this page, or a hand-written
+request with the anon key, gets exactly the same answer as the app does. The starter packs
+are the one thing everybody shares, and they are read-only.
+
+Three of the writes are several statements that are only correct together — stocking a new
+booklet, merging a reply, removing a field — so each is a Postgres function, which makes it
+one transaction. They run as **security invoker**, meaning the same policies apply to them
+as to everything else: a function there is a way to be atomic inside the rules, never a way
+around them.
 
 `supabase/schema.sql` is the whole of it, comments included; it is worth reading once before
 trusting it with anything.
@@ -154,7 +188,12 @@ screen without being translated on the way:
 }
 ```
 
-`f` is the field id, `n` a caution shown only where one is earned, `i` an optional picture —
-either a path in `img/` or a `data:` URI for a drawing that came back with the reply. A
-downloaded copy is byte-for-byte the format the original booklet used, so the two versions can
-still trade files.
+`f` is the field id — **or `null`** for a word you have not filed, which the booklet gathers
+under "Unfiled" and leaves alone until you do. `n` is a caution shown only where one is
+earned, `i` an optional picture: either a path in `img/` or a `data:` URI for a drawing that
+came back with the reply.
+
+A downloaded copy is the format the original booklet used, so the two versions can still
+trade files — with one exception worth knowing. An unfiled word exports as `"f": null`, and
+the original filters on a matching field id, so it would quietly skip those cards. File them
+first if you are sending a copy that way.

@@ -1551,6 +1551,15 @@ function errText(e){
   if(!navigator.onLine) return 'you appear to be offline.';
   const m = e && e.message ? e.message : '';
   if(/fetch|network|Failed to fetch/i.test(m)) return 'the database could not be reached. If it has been idle a week it may be waking up — try again in a moment.';
+  /* The project is older than this copy of the app: schema.sql has gained tables and
+     functions since it was last run there. Worth saying plainly, because the raw message
+     ("could not find the function … in the schema cache") reads like a fault in the app
+     to anyone who has not just edited the database. */
+  if(/Could not find the (function|table)|schema cache|PGRST20[0-9]/i.test(m) || (e && e.code==='PGRST202'))
+    return 'this Supabase project has not been set up for this version of the booklet. Run the whole of supabase/schema.sql in the SQL editor — it is safe to run again — then reload. See README.md, step 2.';
+  /* A column the app writes that the table has not got, for the same reason. */
+  if(/column .* does not exist|violates not-null constraint/i.test(m))
+    return 'the database is missing something this version expects ('+m+'). Re-run supabase/schema.sql in the SQL editor, then reload.';
   return m || 'the save failed.';
 }
 

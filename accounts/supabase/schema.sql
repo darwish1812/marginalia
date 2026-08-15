@@ -256,3 +256,10 @@ begin
   delete from public.fields where user_id = uid and id = p_id;
 end;
 $$;
+
+-- ---------------------------------------------------------------- last line
+-- PostgREST answers the browser from a cached picture of what this database offers, and
+-- it does not always notice a function that appeared a moment ago. Without this, a schema
+-- that ran perfectly can still be met with "could not find the function … in the schema
+-- cache" until the cache happens to refresh. Harmless to run at any time.
+notify pgrst, 'reload schema';

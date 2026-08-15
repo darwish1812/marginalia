@@ -21,8 +21,13 @@ Enrichment is deliberately not automated. The app builds a precise prompt, you t
 model, and you bring the reply back. That keeps the app free of API keys, free of a server,
 and free of a per-word cost — and it puts a human between the model and the booklet.
 
+A word does not have to be filed. Where none of the reader's fields genuinely fits, the
+prompt asks for `null` and the booklet gathers those under "Unfiled" — because a word filed
+wrongly is worse than a word not filed at all, and a taxonomy that quietly absorbs whatever
+does not fit stops meaning anything within a month.
+
 **One design decision explains most of the rest: a database row, a rendered card and a line
-in `words.json` are the same shape.** The single-letter column names (`w`, `f`, `p`, `d`,
+in a starter pack are the same shape.** The single-letter column names (`w`, `f`, `p`, `d`,
 `e`, `a`, `n`, `i`) are not shorthand for its own sake — they are the exact keys the model
 returns and the exact keys `render()` reads. A word travels from Postgres to the screen
 without being translated on the way, and the only mapping code in the app
@@ -37,14 +42,14 @@ without being translated on the way, and the only mapping code in the app
 | **Language** | Plain HTML, CSS and ES2020 JavaScript. No framework, no bundler, no build step, no transpiler. |
 | **Dependencies** | Exactly one: `@supabase/supabase-js@2`, loaded from jsDelivr as a classic `<script>`. Google Fonts are loaded but optional. |
 | **Hosting** | Any static file server. GitHub Pages in practice. |
-| **Backend** | Supabase — Postgres for data, GoTrue for auth. There is no server-side code of the project's own, and no Edge Functions. |
+| **Backend** | Supabase — Postgres for data, GoTrue for auth. No server of the project’s own and no Edge Functions; the only server-side code is three Postgres functions, for writes that must happen all at once. |
 | **Storage** | Postgres when signed in; `localStorage` when not, and as an offline mirror when signed in. |
 | **Speech** | The browser's own `speechSynthesis`. No audio files, no network. |
 | **Offline** | A hand-rolled cache in `localStorage`. There is no service worker; the app is *installable* via `manifest.json` but not precached. |
 
 ### The two modes
 
-The whole app hangs off one boolean, computed once at `index.html:674`:
+The whole app hangs off one boolean, computed once at the top of the `<script>`:
 
 ```js
 const ACCOUNTS = !!(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase);
@@ -60,23 +65,24 @@ paths above the storage seam cannot tell them apart.
 ### The three layers
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  UI — render() · search · speech · panels · the add-words    │
-│  loop · print styles.  Knows about cards, never about rows.  │
-└───────────────────────────┬─────────────────────────────────┘
-                            │  load · addWords · addFixes
-                            │  doneList · setDone · clearDone
-┌───────────────────────────▼─────────────────────────────────┐
-│  `store` — the seam.  One of two objects, chosen by whether  │
-│  a session exists.  Same five questions, either way.         │
-└───────┬─────────────────────────────────────┬───────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│ UI — render() · search · speech · panels · the add-words     │
+│ loop · print styles.  Knows about cards, never about rows.   │
+└───────────────────────────┬──────────────────────────────────┘
+                            │  load · addWords · saveField · setField
+                            │  removeWord · seeded · stock · setDone …
+┌───────────────────────────▼──────────────────────────────────┐
+│ `store` — the seam.  One of two objects, chosen by whether   │
+│ a session exists.  Same eleven questions, either way.        │
+└───────┬─────────────────────────────────────┬────────────────┘
         │                                     │
-┌───────▼──────────────────┐   ┌──────────────▼───────────────┐
+┌───────▼──────────────────┐   ┌──────────────▼────────────────┐
 │ localStore               │   │ cloudStore                    │
-│ words.json + localStorage│   │ Supabase — words, corrections, │
-│ Committed file is truth. │   │ profiles.  RLS scopes every    │
-│                          │   │ read and write to auth.uid().  │
-│                          │   │ Mirrors rows to localStorage.  │
+│ A starter pack plus      │   │ Supabase — words, fields,     │
+│ localStorage: additions, │   │ corrections, profiles.  RLS   │
+│ field edits, overrides,  │   │ scopes every read and write   │
+│ tombstones.              │   │ to auth.uid().  Mirrors rows  │
+│                          │   │ to localStorage for offline.  │
 └──────────────────────────┘   └───────────────────────────────┘
 ```
 
@@ -93,26 +99,29 @@ Consequently, none of the client's `select()` calls filter by user; they do not 
 
 ## 3. Core data flow & logic
 
-### 3.1 Boot — `boot()` at `index.html:1193`
+### 3.1 Boot — `boot()`
 
 1. `fetch('words.json')`. On success it is also written to `localStorage['vocab-words-cache']`.
    On failure, that cache is read instead; if neither works, `failed()` prints a diagnosis
    that distinguishes a `file://` open from a 404 from a dead network.
-2. The parsed file becomes the module-level `SEED`. It is needed for two things forever
-   after: `SEED.fields` (the eight fields, which are *not* stored per account) and
-   `SEED.words` (the 150 starter words, used only to stock a brand-new account).
-3. If `ACCOUNTS` is false — show the book, `store` stays `localStore`, `apply(SEED)`, done.
+2. The parsed file becomes the module-level `SEED` — the literary starter pack. It is used
+   for one thing only: stocking a booklet that has never been stocked. Fields and words both
+   belong to the booklet from that moment on, and `SEED` is not consulted again.
+3. If `ACCOUNTS` is false — show the book, `store` stays `localStore`. A device that has
+   never been stocked gets the first-run picker; otherwise `apply(SEED)`.
 4. Otherwise ask `sb.auth.getSession()` who is already here, hand the answer to `enter()`,
    and then subscribe to `onAuthStateChange` so every later change goes through the same
    function. A magic link, an OAuth return and a reset link all arrive as a session in the
    URL fragment which `supabase-js` picks up on its own.
 
-### 3.2 Signed in / signed out — `enter(session)` at `index.html:1240`
+### 3.2 Signed in / signed out — `enter(session)`
 
 One function owns the difference, and it is the only place `store` is reassigned.
 
 **With a session:** record `uid`/`email` on `cloudStore`, point `store` at it, clear the
-in-memory `done` set, hide the gate, then `apply(SEED)`. If the load throws, `failed()`
+in-memory `done` set, hide the gate, then ask `store.seeded()`. A booklet that has never been
+stocked gets the first-run picker; otherwise `apply(SEED)`. A network failure answers *yes* on
+purpose — nobody should be offered a fresh start because their connection hiccupped. If the load throws, `failed()`
 explains it — including the "a free project pauses after a week and may be waking up" case,
 which is the most likely reason a load fails in practice.
 
@@ -121,14 +130,16 @@ which is the most likely reason a load fails in practice.
 `SEED` here, because `render()` — which normally writes the real counts — never runs when
 signed out.
 
-`apply(data)` at `:1150` is the join: it sets `FIELDS`, calls `store.load()`, assigns the
-results to the globals `W` and `CORRECTIONS`, and then runs the four painters —
-`render()`, `loadProgress()`, `showLocal()`, `renderFix()`.
+`apply(data)` is the join: it calls `store.load()` and assigns all three results to the
+globals `FIELDS`, `W` and `CORRECTIONS` — fields come from the store now, not from the file —
+then runs the painters: `render()`, `loadProgress()`, `showLocal()`, `renderFix()`,
+`renderFields()`.
 
-### 3.3 The storage seam — `localStore` at `:968`, `cloudStore` at `:1012`
+### 3.3 The storage seam — `localStore`, `cloudStore`
 
-Both answer the same six calls. This is the most load-bearing structure in the file: the
-merge path and the learned-marks path were written once and never learn where they save to.
+Both answer the same eleven calls. This is the most load-bearing structure in the file: the
+merge path, the learned marks, filing, removal and the first-run stocking were each written
+once and none of them learns where it is saving to.
 
 | Call | `localStore` | `cloudStore` |
 |---|---|---|
@@ -175,14 +186,14 @@ decide whether a missing profile means "new" or "something broke mid-signup".
 
 This is where most of the app's real logic lives.
 
-**Step 1 — `check` (`:1603`).** The pasted blob is split on newlines, commas and semicolons,
+**Step 1 — `check`.** The pasted blob is split on newlines, commas and semicolons,
 numbering like `3.` or `4)` is stripped, and each item is sorted into one of four buckets
 using two normalisers:
 
-- `norm(s)` (`:952`) — lowercase, NFKD, strip everything but letters, spaces and hyphens.
+- `norm(s)` — lowercase, NFKD, strip everything but letters, spaces and hyphens.
   This is what "already have this word" means everywhere in the app, which is why the
   database carries the uniqueness on `norm` rather than on `w`.
-- `stem(s)` (`:953`) — `norm` plus two passes of suffix stripping. Used only to *suggest* a
+- `stem(s)` — `norm` plus two passes of suffix stripping. Used only to *suggest* a
   near-match; it never blocks anything.
 
 | Bucket | Meaning | Fate |
@@ -194,12 +205,22 @@ using two normalisers:
 
 Every offered chip can be removed individually. Steps 2 and 3 stay disabled until this runs.
 
-**Step 2 — `buildPrompt()` (`:1639`).** Writes a prompt carrying the field list with its
-notes and ten numbered rules covering base forms, misspelling correction (returned as `x`),
-field choice, part of speech, the shape of `d` and `e`, the Arabic, when a caution is earned,
-a no-markup rule, and when a drawing (`s`) is and is not appropriate.
+**Step 2 — `buildPrompt()`.** Writes a prompt carrying the field list with its notes and ten
+numbered rules covering base forms, misspelling correction (returned as `x`), field choice,
+part of speech, the shape of `d` and `e`, the Arabic, when a caution is earned, a no-markup
+rule, and when a drawing (`s`) is and is not appropriate. Rule 3 permits `"f": null` and
+explains when to use it: a word left unfiled is honest and easy to file later, a word filed
+wrongly is neither.
 
-**Step 3 — `mergeArray(arr)` (`:1724`).** Deliberately split from the paste handler: it takes
+There is a **second prompt**, `buildProposePrompt()`, used only when the booklet has no
+fields at all — a blank start, or every field deleted. It asks the model to propose the
+taxonomy from this first batch and then file into it, returning `{"fields":…, "words":…}`
+instead of a bare array. This is the one moment where that is the better question: nobody
+knows their eight fields before they own fifty words, and they do know them afterwards. The
+prompt is emphatic about the field `note`, because that sentence is the only thing telling
+anyone — model or reader — where a new word belongs later.
+
+**Step 3 — `mergeArray(arr)`.** Deliberately split from the paste handler: it takes
 a parsed array and knows nothing about textareas, markdown fences or where the array came
 from. That is the seam a future API call would use without touching any of the below.
 
@@ -210,7 +231,7 @@ from. That is the seam a future API call would use without touching any of the b
    `w`, a `{wrong, right}` pair is recorded for the misspellings table and the norm is added
    to the retired set, so the card filed under the wrong spelling does not linger. The `x`
    key is then deleted so it never reaches `words.json`.
-3. **Drawings.** An `s` key holds raw SVG typed by a model. `artToSrc()` (`:1691`) requires
+3. **Drawings.** An `s` key holds raw SVG typed by a model. `artToSrc()` requires
    it to parse as SVG with a `viewBox`, strips `script`, `foreignObject`, `image`, `iframe`,
    `style`, `a`, `use`, `animate` and `set`, removes every `on*` and every `href`-like
    attribute, re-serialises, enforces a 2,600-character ceiling, and returns a
@@ -224,12 +245,21 @@ from. That is the seam a future API call would use without touching any of the b
    and `store.addWords(add, retired)` writes them. Then `render()`, `loadProgress()`,
    `showLocal()`.
 
-**The escape hatch — "Add as needs-detail now" (`:1674`).** Inserts the words with `f: 0` and
-empty everything. `render()` treats field `0` as a synthetic "Waiting for detail" section at
-the top of the book; the words are searchable immediately and move to their real field when
-enriched. "Queue the N waiting" loads every bare word back into a fresh prompt.
+**The escape hatch — "Add as needs-detail now".** Inserts the words with `f: null` and empty
+everything. Anything without a definition renders in the synthetic "Waiting for detail"
+section at the top of the book; the words are searchable immediately and move to their real
+field when enriched. The batch is measured against the book *and against itself* first, so a
+word already captured, or two typings that normalise alike, cannot be inserted twice.
+"Queue the N waiting" loads every bare word back into a fresh prompt.
 
-### 3.6 Rendering — `render()` at `:787`
+**The object reply.** The paste handler unwraps `{fields, words}` before anything else,
+creating the proposed fields and then handing on the bare array — so `mergeArray` still
+receives an array and still knows nothing about where it came from. Every `"f"` in the reply
+is checked against the fields that are *about* to exist before any of them are written,
+because `mergeArray` can only validate against `FIELDS`, which is exactly what has not been
+saved yet. A reply that does not hang together writes nothing at all.
+
+### 3.6 Rendering — `render()`
 
 Rebuilds the entire book from `W` on every change. Sections come from `FIELDS`, plus up to
 two synthetic ones at the top:
@@ -253,7 +283,7 @@ hides sections with no visible card left.
 `loadProgress()` reads `store.doneList()` and re-applies the ✓ marks to the freshly built
 DOM, which is why it always runs immediately after `render()`.
 
-### 3.7 Auth gate — `:1322`–`:1454`
+### 3.7 Auth gate
 
 One form, three modes (`in`, `up`, `reset`), sharing the email and password fields because
 they are the same two questions asked for different reasons; only the heading, the button and
@@ -294,9 +324,12 @@ you to add to Supabase's redirect URLs.
 
 Four places, all covered step by step in `README.md`:
 
-1. `SUPABASE_URL` and `SUPABASE_ANON_KEY` at `index.html:671-672`. Both belong in the file
-   and in git.
-2. `supabase/schema.sql`, run whole in the SQL editor. It is idempotent.
+1. `SUPABASE_URL` and `SUPABASE_ANON_KEY` at the top of the `<script>`. Both belong in the
+   file and in git.
+2. `supabase/schema.sql`, run **whole** in the SQL editor. It is idempotent, and it must
+   be re-run after any change to it — `create table if not exists` leaves an existing table
+   alone, so altered columns and new functions are stated separately at the foot of the file.
+   The app recognises a project running an older schema and says so in plain words.
 3. **Authentication → URL Configuration** — Site URL, plus `http://localhost:8001` in
    Redirect URLs for local work. Confirmation, reset and OAuth links all land on these, and
    a URL not listed is refused.
@@ -328,8 +361,9 @@ matter. There is no build artefact and nothing to invalidate.
 
 | File | What it is |
 |---|---|
-| `index.html` | The entire application — markup, ~460 lines of CSS, and ~1,180 lines of JavaScript. |
-| `words.json` | 150 starter words, 8 fields, 5 corrections. Read on every load; used to stock new accounts and to supply `FIELDS`. Shared and read-only. |
+| `index.html` | The entire application — markup, ~800 lines of CSS, and ~1,950 lines of JavaScript. |
+| `words.json` | The literary starter pack — 150 words, 8 fields, 5 corrections. Kept at the root under its own name so a booklet can still trade files with the original. |
+| `packs/` | The other starter packs, same shape. A new one is a file; nothing in the app needs changing. |
 | `supabase/schema.sql` | Four tables, four RLS policies, one index, one signup trigger, and three functions for the writes that must happen all at once. Idempotent. |
 | `img/` | Optional drawings for a few concrete words. A missing file removes the figure rather than showing a broken icon. |
 | `manifest.json`, `icon.svg`, `icon-512.png`, `apple-touch-icon.png` | Make "Add to Home Screen" work. |
@@ -339,24 +373,31 @@ matter. There is no build artefact and nothing to invalidate.
 ### Logical modules inside `index.html`
 
 The script is one scope with no module boundaries; these are the sections it is organised
-into, in source order.
+into, in source order. **These line numbers are the only ones in this document** — prose
+elsewhere names functions instead, because a line reference is wrong the moment anything
+above it changes and a function name is not.
 
 | Lines | Module | Responsibility |
 |---|---|---|
-| 671–681 | **Config & globals** | The two Supabase constants, the `ACCOUNTS` flag, the client, and the four globals `FIELDS`, `W`, `SEED`, `CORRECTIONS`. |
-| 683–767 | **Speech** | Voice discovery and filtering, the remembered choice, rate, and `speak()`. Degrades to nothing where `speechSynthesis` is absent. |
-| 769–857 | **Render** | `esc()`, `posTags()`, `render()`, the swatch strip. Rebuilds the whole book from `W`. |
-| 859–948 | **Progress & card interaction** | The `done` set, the tally, the delegated click handler covering speak / Arabic / ✓ / study-mode reveal, and reset. |
-| 950–990 | **Local storage helpers + `localStore`** | `norm`, `stem`, the `localStorage` accessors, and the device-only half of the seam. |
-| 992–1104 | **`cloudStore`** | `rowToWord`/`wordToRow`, the Supabase half of the seam, and the offline row mirror. |
-| 1106–1148 | **Errors & seeding** | `asError`, `errText`, and `seedAccount()`. |
-| 1150–1234 | **Load & boot** | `apply()`, `renderFix()`, `failed()`, `boot()`. |
-| 1236–1301 | **Session** | `enter()`, `setAcctState()`, `syncNote()`. |
-| 1303–1467 | **Auth gate** | The three-mode form, OAuth provider discovery, sign-out, `authText()`. |
-| 1468–1568 | **Panels & preferences** | `showLocal()`, `openPanel()`, the outside-click and Escape handling, pictures toggle. |
-| 1570–1712 | **Add words** | `check`, `renderReport()`, `buildPrompt()`, `showQueue()`, `addnow`, `artToSrc()`. |
-| 1714–1809 | **Merge** | `mergeArray()`, `mergeMsg()`, and the paste handler that feeds it. |
-| 1811–1845 | **Export & search** | `download()`, `serialise()`, the two download buttons, the search filter. |
+| 828–839 | **Config & globals** | The two Supabase constants, the `ACCOUNTS` flag, the client, and the four globals `FIELDS`, `W`, `SEED`, `CORRECTIONS`. |
+| 840–925 | **Speech** | Voice discovery and filtering, the remembered choice, rate, and `speak()`. Degrades to nothing where `speechSynthesis` is absent. |
+| 926–1113 | **Render** | `esc()`, `posTags()`, `render()`, the swatch strip. Rebuilds the whole book from `W`. |
+| 1114–1206 | **Card menu** | The `⋯` overflow menu, filing and unfiling, and the in-card removal confirm. |
+| 1207–1251 | **Progress & card interaction** | The `done` set, the tally, the delegated click handler covering speak / Arabic / ✓ / menu / study-mode reveal, and reset. |
+| 1252–1304 | **Norms, inks, local keys** | `norm`, `stem`, the eight-ink palette and `inkHex()`, and every `localStorage` accessor. |
+| 1305–1380 | **`localStore`** | The device-only half of the seam, including the overrides and tombstones that let a committed file be edited around. |
+| 1381–1538 | **`cloudStore`** | `rowToWord`/`wordToRow`, the Supabase half of the seam, and the offline row mirror. |
+| 1539–1582 | **Errors & seeding** | `asError`, `errText`, and `seedAccount()`. |
+| 1583–1678 | **First run & packs** | The pack list, `loadPack()`, `showFirstRun()` and the picker. |
+| 1679–1772 | **Load & boot** | `apply()`, `renderFix()`, `failed()`, `boot()`. |
+| 1773–1848 | **Session** | `enter()`, `setAcctState()`, `syncNote()`. |
+| 1849–2061 | **Auth gate** | The three-mode form, OAuth provider discovery, sign-out, `authText()`. |
+| 2062–2237 | **Fields panel** | `renderFields()`, the inline editor, the ink palette and the eight-field cap. |
+| 2238–2289 | **Emptying** | The one bulk action, behind a typed confirmation. |
+| 2290–2353 | **Panels & preferences** | `showLocal()`, `openPanel()`, the outside-click and Escape handling, pictures toggle. |
+| 2354–2589 | **Add words** | `check`, `renderReport()`, both prompt modes, `showQueue()`, `addnow`, `artToSrc()`. |
+| 2590–2737 | **Merge** | `mergeArray()`, `mergeMsg()`, and the paste handler that unwraps and feeds it. |
+| 2738–2772 | **Export & search** | `download()`, `serialise()`, the two download buttons, the search filter. |
 
 ---
 
@@ -394,6 +435,6 @@ Two conventions are worth knowing because code depends on them:
   wrote, and the two versions can still trade files.
 - **Key order is fixed** — `w`, `f`, `[i]`, `p`, `d`, `e`, `a`, `[n]` — for the same reason.
 
-`serialise()` (`:1819`) is the single definition of what a `words.json` is, so an export and
+`serialise()` is the single definition of what a `words.json` is, so an export and
 a commit can never disagree. Words still waiting for detail are deliberately left out: a
 blank definition is a note to self, not a booklet entry.
