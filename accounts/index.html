@@ -334,6 +334,11 @@
   /* the three account states are mutually exclusive, so no divider between them —
      a rule above the only visible one is a line separating it from nothing */
   .acct .set-d{margin-bottom:4px}
+  .dash{color:var(--ink-1); text-underline-offset:3px}
+  .dash:hover{color:var(--paper)}
+  #projrow{display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:10px}
+  .dash-btn{text-decoration:none; display:inline-block}
+  .dash-btn:hover{color:var(--paper); border-color:rgba(241,239,233,.4)}
   /* the sign-in gate stands where the book would be, so it is sized like a section head
      rather than like a dialog — nobody is being interrupted, there is simply nothing yet */
   .gate{max-width:56ch; padding:60px 0 40px}
@@ -753,6 +758,17 @@
           </div>
         </div>
 
+        <!-- Not a reader's concern, but this booklet's reader is also its keeper, and a
+             paused project is the one fault they will actually meet. Two taps, always
+             here, rather than only appearing once something has already gone wrong. -->
+        <div class="acct" id="acct-proj" hidden>
+          <p class="set-t">The project</p>
+          <p class="set-d">A free Supabase project is paused after about a week of no use, and
+            does not resume on its own. If the booklet stops loading, this is the first place
+            to look — press <b>Resume</b> and reload. A paid plan removes the pausing.</p>
+          <div class="row" id="projrow"></div>
+        </div>
+
         <div class="acct" id="acct-off" hidden>
           <p class="set-t">Accounts are not set up</p>
           <p class="set-d">This copy has no Supabase project behind it yet, so it is running on
@@ -829,6 +845,23 @@ const SUPABASE_URL      = 'https://pnsmrzlncqlbrkpamnyq.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_lH1l_wn_b45JvzFE7ZeIDg_4FQdjb-2';
 
 const ACCOUNTS = !!(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase);
+
+/* A free project is paused after about a week of no use, and it does not come back on its
+   own: somebody has to press Resume in the dashboard. The project ref is the first label of
+   the API host and it is what the dashboard URL is keyed on, so the app can point straight
+   at the page with that button rather than leaving you to go and find it. */
+const PROJECT_REF = (String(SUPABASE_URL).match(/^https:\/\/([a-z0-9]+)\.supabase\./i)||[])[1]||'';
+const DASHBOARD = PROJECT_REF ? 'https://supabase.com/dashboard/project/'+PROJECT_REF
+                              : 'https://supabase.com/dashboard';
+/* Built as a node, never as a string of HTML, so it can be dropped into a message that is
+   otherwise set with textContent without opening the door the rest of the app keeps shut. */
+function dashLink(text){
+  const a=document.createElement('a');
+  a.href=DASHBOARD; a.target='_blank'; a.rel='noopener noreferrer';
+  a.textContent=text||'Open the project dashboard';
+  a.className='dash';
+  return a;
+}
 const sb = ACCOUNTS ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
 /* SEED is the parsed words.json: the eight fields every account shares, and the words a
@@ -1550,7 +1583,10 @@ function asError(e){
 function errText(e){
   if(!navigator.onLine) return 'you appear to be offline.';
   const m = e && e.message ? e.message : '';
-  if(/fetch|network|Failed to fetch/i.test(m)) return 'the database could not be reached. If it has been idle a week it may be waking up — try again in a moment.';
+  /* This used to say the project might be "waking up — try again in a moment", which was
+     wrong in the way that wastes the most time: a paused free project stays paused until
+     somebody resumes it, so waiting and reloading achieves nothing at all. */
+  if(/fetch|network|Failed to fetch/i.test(m)) return 'the database could not be reached. Either this device has no connection, or the project is paused — a free one pauses after about a week unused and has to be resumed by hand.';
   /* The project is older than this copy of the app: schema.sql has gained tables and
      functions since it was last run there. Worth saying plainly, because the raw message
      ("could not find the function … in the schema cache") reads like a fault in the app
@@ -1795,8 +1831,11 @@ async function enter(session){
       if(offline) syncNote('Offline — showing the last copy saved on this device.');
       else syncNote('');
     }catch(e){
-      failed('Signed in, but your words could not be loaded — '+esc(errText(e))
-        +'<br><br>If the database has been idle for a week it may be waking up; give it a moment and reload.');
+      failed('Signed in, but your words could not be loaded — '+esc(errText(e)));
+      const el=document.getElementById('loaderr');
+      el.append(document.createElement('br'), document.createElement('br'));
+      el.append(dashLink('Open this project in the Supabase dashboard'));
+      el.append(' — if it says Paused, press Resume, then reload this page.');
     }
   }else{
     cloudStore.uid = null; cloudStore.email = null;
@@ -1823,6 +1862,19 @@ function setAcctState(email){
   const btn=document.getElementById('acctbtn'), hint=document.getElementById('accthint');
   const out=document.getElementById('acct-out'), inn=document.getElementById('acct-in'), off=document.getElementById('acct-off');
   out.hidden = inn.hidden = off.hidden = true;
+  /* Shown whenever there is a project at all, signed in or not — it is about the project,
+     not about the person. Filled once; the link never changes. */
+  const proj=document.getElementById('acct-proj'), row=document.getElementById('projrow');
+  proj.hidden = !ACCOUNTS;
+  if(ACCOUNTS && !row.firstChild){
+    const a=dashLink('Open the project dashboard');
+    a.className='btn dash-btn';
+    row.appendChild(a);
+    const ref=document.createElement('span');
+    ref.className='note'; ref.style.margin='0';
+    ref.textContent = PROJECT_REF ? 'Project '+PROJECT_REF : '';
+    row.appendChild(ref);
+  }
   if(!ACCOUNTS){
     off.hidden = false;
     btn.textContent = 'Not set up';
@@ -1873,7 +1925,18 @@ if(ACCOUNTS){
   let mode='in';                                   // 'in' | 'up' | 'reset'
   const back = () => location.origin + location.pathname;
 
-  function say(kind, text){ msg.className='note '+kind; msg.textContent=text; }
+  /* Paused is the one failure you cannot sign in your way out of, and the whole bar —
+     Settings, and the account panel behind it — is hidden while signed out. So the way to
+     fix it has to be here, on the gate, or it is nowhere. */
+  function say(kind, text){
+    msg.className='note '+kind;
+    msg.textContent=text;
+    if(kind==='bad' && /could not be reached|paused/i.test(text)){
+      msg.append(' ');
+      msg.append(dashLink('Open the project dashboard'));
+      msg.append(' and press Resume if it is paused.');
+    }
+  }
 
   function setMode(m){
     mode=m;

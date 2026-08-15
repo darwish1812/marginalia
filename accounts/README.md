@@ -147,9 +147,14 @@ standing. It asks you to type the word `empty`, because it cannot be undone.
 - **Offline** the booklet still opens: the last load is mirrored into the browser, so you can
   read, search, print and take the Arabic on a train with no signal. Saving needs a
   connection, and says so plainly rather than pretending.
-- **A free Supabase project pauses after about a week of no use.** The first load afterwards
-  may fail while it wakes up — the cached copy is shown meanwhile, and reloading a minute
-  later picks it up. The paid plan removes the pausing; nothing else changes.
+- **A free Supabase project pauses after about a week of no use, and does not resume on its
+  own.** Waiting and reloading will not bring it back: someone has to open the project in the
+  [Supabase dashboard](https://supabase.com/dashboard) and press **Resume**, which takes a
+  minute or two. The booklet links straight to your project's page — from **Settings →
+  Account → The project**, and in the message it shows when a load fails, including on the
+  sign-in screen, since a paused project is the one fault you cannot sign in your way past.
+  Meanwhile the last cached copy still opens, so you can read; saving waits. A paid plan
+  removes the pausing entirely and changes nothing else.
 - **Audio** uses your device's built-in speech engine, so voices differ between iPad and
   laptop. Rare words are occasionally mispronounced — verify anything that sounds odd.
 - **Printing** (Ctrl/Cmd+P) reflows into a two-column paper booklet, one field per page.
