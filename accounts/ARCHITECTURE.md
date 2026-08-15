@@ -219,8 +219,19 @@ enriched. "Queue the N waiting" loads every bare word back into a fresh prompt.
 
 ### 3.6 Rendering — `render()` at `:787`
 
-Rebuilds the entire book from `W` on every change. Sections come from `FIELDS`, plus the
-synthetic inbox when any word lacks a definition. Cards are built as HTML strings and
+Rebuilds the entire book from `W` on every change. Sections come from `FIELDS`, plus up to
+two synthetic ones at the top:
+
+- **Waiting for detail** (id `0`) — any word with no definition.
+- **Unfiled** (id `-1`) — a word that has a definition but no field, *or* a field id that
+  is not in `FIELDS`.
+
+That second clause is the load-bearing one. Together the three tests are exhaustive and
+disjoint, so every word in `W` renders exactly once no matter what `f` holds — which is
+what lets a field be deleted without its words falling off the page. They are released to
+Unfiled rather than lost.
+
+Cards are built as HTML strings and
 everything model-authored goes through `esc()` first — including before the `*asterisk*`
 transform, never after, because a signed-in session token lives in this browser and an
 unescaped card is how someone would take it. Each card also carries a flattened
@@ -353,7 +364,7 @@ A word, in all three of its homes:
 | Key | Column | Meaning |
 |---|---|---|
 | `w` | `w` | The word, base form, lowercase unless a proper noun. |
-| `f` | `f` | Field id, matching `fields[]` in `words.json`. `0` is the synthetic inbox and never appears in the file. |
+| `f` | `f` | Field id, matching `fields[]` in `words.json` — or `null` for a word with no field. |
 | `p` | `p` | Part of speech. A slashed pair like `"noun / verb"` renders as two pills. |
 | `d` | `d` | One plain sentence. Its absence is what makes a word "waiting for detail". |
 | `e` | `e` | An example sentence, with the inflected target word in `*asterisks*`. |

@@ -32,10 +32,15 @@ create policy "own profile" on public.profiles
 -- prose: they match the JSON the model returns and the keys render() reads, so a row
 -- travels from Postgres to a card without being translated on the way.
 --
---   w  the word            f  field id (matches fields[] in words.json)
+--   w  the word            f  field id, or null for unfiled
 --   p  part of speech      d  definition
 --   e  example sentence    a  the Arabic
 --   n  a caution, or null  i  a picture: img/… path, or a data: URI
+--
+-- `f` is nullable on purpose. A word with no field is a normal thing to own: it was
+-- captured before there were any fields, or the model was asked to choose and honestly
+-- could not. The app gathers those under "Unfiled" and lets them sit there as long as
+-- they like. Forcing a field would only mean filing words wrongly and calling it done.
 --
 -- `norm` is the app's norm(w) — lowercased, stripped of everything but letters, spaces
 -- and hyphens. It is what "already have this word" means everywhere in the app, so it
@@ -45,7 +50,7 @@ create table if not exists public.words (
   user_id    uuid not null references auth.users on delete cascade default auth.uid(),
   w          text not null,
   norm       text not null,
-  f          integer not null,
+  f          integer,
   p          text,
   d          text,
   e          text,
@@ -70,6 +75,12 @@ create policy "own words" on public.words
 -- collides against.
 create index if not exists words_user_created_idx
   on public.words (user_id, created_at);
+
+-- `create table if not exists` leaves a table that already exists exactly as it was, so
+-- a column that changed after the first run has to be stated again here or the change
+-- never reaches a database made before it. Running this on a new database does nothing:
+-- the column is already nullable.
+alter table public.words alter column f drop not null;
 
 -- ---------------------------------------------------------------- corrections
 -- The misspellings table: what you typed, what it should have been. `hint` is written by

@@ -24,6 +24,7 @@
     --rule:rgba(241,239,233,.14);
     --dim:rgba(241,239,233,.55);
 
+    --ink-0:#8E93A8; /* unfiled   — drained   */
     --ink-1:#C9922F; /* feudal    — ochre     */
     --ink-2:#3F9A85; /* faith     — verdigris */
     --ink-3:#C4485C; /* conflict  — oxblood   */
@@ -787,13 +788,26 @@ let n = 0;
 function render(){
 book.innerHTML=''; n=0;
 const INBOX={id:0,name:"Waiting for detail",ink:"var(--ink-1)",note:"Words you have captured but not yet enriched. They are searchable now; run them through step 2 when you have a batch."};
-const shown = W.some(x=>!x.d) ? [INBOX].concat(FIELDS) : FIELDS;
+const UNFILED={id:-1,name:"Unfiled",ink:"var(--ink-0)",note:"Words with no field yet. They are searchable, printable and read exactly as they are — give them a home when you know where they belong, or leave them here."};
+/* Two sections that are not fields, and one rule that keeps every word on the page
+   exactly once: no definition puts a word in the inbox; a definition with no field —
+   or with a field that no longer exists — puts it in Unfiled; everything else files
+   normally. Without the second half of that test, deleting a field would take its
+   words off the page rather than releasing them. */
+const fieldIds = new Set(FIELDS.map(f=>f.id));
+const unfiled = x => x.d && (x.f==null || !fieldIds.has(x.f));
+const shown = [];
+if(W.some(x=>!x.d)) shown.push(INBOX);
+if(W.some(unfiled))  shown.push(UNFILED);
+FIELDS.forEach(f=>shown.push(f));
 shown.forEach(f=>{
-  const items = W.filter(x=> f.id===0 ? !x.d : (x.f===f.id && x.d));
+  const items = f.id===0  ? W.filter(x=>!x.d)
+              : f.id===-1 ? W.filter(unfiled)
+              :             W.filter(x=>x.f===f.id && x.d);
   const sec = document.createElement('section');
   sec.className='sec'; sec.id='f'+f.id; sec.style.setProperty('--c',f.ink);
-  sec.innerHTML = `<div class="sec-head"><h2>${f.name}</h2><span class="count">${items.length} words</span></div>
-                   <p class="sec-note">${f.note}</p><div class="grid"></div>`;
+  sec.innerHTML = `<div class="sec-head"><h2>${esc(f.name)}</h2><span class="count">${items.length} words</span></div>
+                   <p class="sec-note">${esc(f.note)}</p><div class="grid"></div>`;
   const grid = sec.querySelector('.grid');
 
   items.forEach(x=>{
@@ -840,11 +854,14 @@ book.querySelectorAll('.pic img').forEach(im=>{
   im.addEventListener('error',()=>{ const f=im.closest('.pic'); if(f) f.remove(); });
 });
 
-/* swatches */
-document.getElementById('swatches').innerHTML = FIELDS.map(f=>{
-  const c = W.filter(x=>x.f===f.id).length;
-  return `<button class="swatch" style="--c:${f.ink}" data-go="f${f.id}">
-            <span class="bar"></span><span class="lbl">${f.name}</span><span class="num">${c}</span></button>`;
+/* swatches — Unfiled earns one too when it has anything in it, so the strip is a true
+   index of the book rather than of the fields alone. Its ink is the drained slate: the
+   same family as the rest, with the colour taken out. */
+const strip = W.some(unfiled) ? [UNFILED].concat(FIELDS) : FIELDS;
+document.getElementById('swatches').innerHTML = strip.map(f=>{
+  const c = f.id===-1 ? W.filter(unfiled).length : W.filter(x=>x.f===f.id).length;
+  return `<button class="swatch" style="--c:${esc(f.ink)}" data-go="f${f.id}">
+            <span class="bar"></span><span class="lbl">${esc(f.name)}</span><span class="num">${c}</span></button>`;
 }).join('');
 document.getElementById('eyebrow').textContent =
   `A working vocabulary · ${W.length} entries · ${FIELDS.length} fields`;
@@ -998,7 +1015,9 @@ const localStore = {
    account is indistinguishable from one made before accounts existed. Absent rather than
    null for n and i, because that is how the file has always written them. */
 function rowToWord(r){
-  const o = {w:r.w, f:r.f};
+  /* f is written explicitly even when empty: undefined would be dropped by
+     JSON.stringify and an unfiled word would export with no field key at all. */
+  const o = {w:r.w, f:r.f==null ? null : r.f};
   if(r.i) o.i = r.i;
   o.p = r.p||''; o.d = r.d||''; o.e = r.e||''; o.a = r.a||'';
   if(r.n) o.n = r.n;
@@ -1673,7 +1692,12 @@ document.getElementById('report').addEventListener('click',e=>{
 });
 
 function buildPrompt(){
-  const fl = FIELDS.map(f=>`${f.id} = ${f.name}: ${f.note}`).join('\n');
+  /* A booklet with no fields yet is a real state — a blank start, or every field
+     deleted — and the prompt has to say something true in it rather than printing an
+     empty list under a heading that promises one. */
+  const fl = FIELDS.length
+    ? FIELDS.map(f=>`${f.id} = ${f.name}: ${f.note}`).join('\n')
+    : '(none yet — return null for every "f")';
   document.getElementById('prompt').textContent =
 `Add these to my vocabulary booklet. Return ONLY a raw JSON array — no prose, no markdown fences.
 
@@ -1688,7 +1712,7 @@ Where two fields fit, prefer the one matching the register a reader would meet t
 Rules:
 1. One object per word above, in the same order. Never two objects with the same "w". If a word has two strong senses, take the one likelier in serious reading and mention the other in "n".
 2. "w" = base form (infinitive verb, singular noun), lowercase unless strictly a proper noun. Correct obvious misspellings. If your "w" differs from what I typed, add "x" holding the exact string I typed; otherwise leave "x" out.
-3. "f" = unquoted integer, one of the ids above.
+3. "f" = unquoted integer, one of the ids above — or null if none of them genuinely fits. Never force a word into the closest field: a word left unfiled is honest and easy to file later, a word filed wrongly is neither.
 4. "p" = one of: noun, verb, adjective, adverb, phrase — or a slashed pair like "noun / verb" when both are common.
 5. "d" = exactly one plain-English sentence that does not restate the word inside itself.
 6. "e" = one natural, concrete sentence of 10-20 words in the register of the chosen field, wrapping the inflected target word in a single pair of *asterisks*. It has to demonstrate the sense given in "d".
@@ -1720,7 +1744,7 @@ document.getElementById('addnow').addEventListener('click',async ()=>{
     const k=norm(t);
     if(seen.has(k)) return;
     seen.add(k);
-    add.push({w:t,f:0,p:'',d:'',e:'',a:''});
+    add.push({w:t,f:null,p:'',d:'',e:'',a:''});
   });
   /* Nothing new in the batch: say so and leave the chips and the prompt standing, since
      step 2 is exactly where these words still want to go. */
@@ -1782,7 +1806,10 @@ async function mergeArray(arr){
   const ids=new Set(FIELDS.map(f=>f.id)); const bad=[];
   arr.forEach((x,i)=>{
     if(!x || typeof x.w!=='string' || !x.w.trim()) bad.push(`#${i+1} has no word`);
-    else if(!ids.has(x.f)) bad.push(`${x.w}: field ${x.f} does not exist`);
+    /* No field is a legitimate answer now, and the prompt asks for it rather than
+       letting a word be pushed into the nearest field that half fits. A field that
+       does not exist is still an error — that is a mistake, not a decision. */
+    else if(x.f!=null && !ids.has(x.f)) bad.push(`${x.w}: field ${x.f} does not exist`);
     else if(typeof x.d!=='string' || !x.d.trim()) bad.push(`${x.w}: no definition`);
     else {
       const h = PLAIN.find(k=>typeof x[k]==='string' && /[<&]/.test(x[k]));
