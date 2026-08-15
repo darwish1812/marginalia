@@ -407,6 +407,28 @@
   .note.warn{color:var(--ink-1)}
   .note.bad{color:var(--ink-3)}
   .note.good{color:var(--ink-2)}
+  /* ---------- fields ---------- */
+  .fld-row{display:flex; align-items:flex-start; gap:13px; padding:13px 0; border-bottom:1px solid var(--rule)}
+  .fld-row:last-child{border-bottom:0}
+  .fld-row.editing{background:rgba(201,146,47,.06); border-radius:9px; padding:14px 12px; border-bottom:0; margin:2px 0}
+  .fld-chip{width:22px; height:22px; border-radius:6px; flex:none; margin-top:2px; background:var(--fc)}
+  .fld-main{flex:1; min-width:0}
+  .fld-name{font-family:"Fraunces",Georgia,serif; font-size:18px; font-weight:600; letter-spacing:-.01em}
+  .fld-note{font-size:13px; color:var(--dim); margin-top:3px; line-height:1.45}
+  .fld-ct{font-family:"Archivo",sans-serif; font-size:10px; font-weight:700; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--dim); margin-left:auto; flex:none; white-space:nowrap; margin-top:5px}
+  .fld-row input{display:block; width:100%; background:var(--night-2); border:1px solid var(--ink-1);
+    border-radius:7px; padding:8px 11px; color:var(--paper); font:16px/1.4 "Newsreader",Georgia,serif}
+  .fld-row input.note-in{font-size:14px; margin-top:8px; border-color:var(--rule)}
+  .palette{display:flex; gap:7px; margin-top:11px; flex-wrap:wrap}
+  .palette button{width:26px; height:26px; border-radius:7px; border:0; cursor:pointer; padding:0; background:var(--pc)}
+  .palette button[aria-pressed="true"]{outline:2px solid var(--paper); outline-offset:2px}
+  /* an ink another field wears: shown, so the palette is a map of the book, but not offered */
+  .palette button:disabled{opacity:.22; cursor:default}
+  .palette button:focus-visible{outline:2px solid var(--paper); outline-offset:2px}
+  .fld-acts{display:flex; gap:8px; margin-top:13px; flex-wrap:wrap}
+  .fld-del{color:var(--ink-3); border-color:rgba(196,72,92,.4)}
+  .fld-del:hover{color:var(--paper); background:var(--ink-3); border-color:var(--ink-3)}
   .chips{display:flex; flex-wrap:wrap; gap:7px; margin-top:12px}
   .chip{
     font-family:"Archivo",sans-serif; font-size:12px; padding:5px 10px; border-radius:99px;
@@ -568,6 +590,14 @@
 
         <div class="set">
           <div>
+            <p class="set-t">Fields</p>
+            <p class="set-d" id="fldhint">The inks down the side of the page. Rename them, recolour them, or make your own.</p>
+          </div>
+          <button class="btn" id="fldbtn" aria-pressed="false">Edit fields</button>
+        </div>
+
+        <div class="set">
+          <div>
             <p class="set-t">Pictures</p>
             <p class="set-d">A few words carry a drawing, watermarked into the corner of the card.
               Turning them off leaves the text exactly as it was.</p>
@@ -590,6 +620,21 @@
             <p class="set-d">Slower is easier to shadow aloud when a word is new.</p>
           </div>
           <button class="btn" id="speed">Speed 0.9×</button>
+        </div>
+      </section>
+
+      <section class="panel" id="fields">
+        <button class="btn back">← Settings</button>
+        <div class="step">
+          <span class="stepno">Your fields</span>
+          <p id="fldcap">Eight at most. The swatch strip, the printed booklet and the prompt that
+            enriches your words all lean on that number.</p>
+          <div id="fldlist"></div>
+          <div class="row">
+            <button class="btn" id="fldadd">＋ Add a field</button>
+            <span class="note" id="fldcount"></span>
+          </div>
+          <p class="note" id="fldmsg"></p>
         </div>
       </section>
 
@@ -967,6 +1012,24 @@ document.getElementById('reset').addEventListener('click',()=>{
 /* ---------- data loading ---------- */
 const CACHE='vocab-words-cache', LOCAL='vocab-words-local', LOCALFIX='vocab-fix-local';
 const norm=s=>s.toLowerCase().normalize('NFKD').replace(/[^a-z\s-]/g,'').trim();
+
+/* The eight inks, as values rather than as stylesheet variables. A field the reader made
+   has no --ink-9 waiting for it, so the table keeps a real colour and the settings panel
+   offers these eight to choose from. Eight, and a palette rather than a colour picker,
+   because the inks are most of what the booklet looks like and a free choice is a licence
+   to make it ugly. INK_NONE is the drained slate Unfiled wears — it is not in the palette,
+   since it means "no ink yet" rather than being one. */
+const INKS=['#C9922F','#3F9A85','#C4485C','#8C6FD4','#4E8AD6','#C77FB0','#6E9E4E','#6E7899'];
+const INK_NONE='#8E93A8';
+const MAXFIELDS=8;
+/* words.json writes an ink as "var(--ink-3)", from when the fields were the file's and the
+   stylesheet knew all of them by name. Both spellings arrive here; one leaves. */
+function inkHex(v){
+  if(typeof v!=='string') return INKS[0];
+  const s=v.trim(), m=s.match(/^var\(--ink-(\d+)\)$/);
+  if(m){ const i=+m[1]; return i===0 ? INK_NONE : (INKS[i-1]||INKS[0]); }
+  return /^#[0-9A-Fa-f]{3,8}$/.test(s) ? s : INKS[0];
+}
 const stem=s=>{let v=norm(s);for(let i=0;i<2;i++)v=v.replace(/(ingly|edly|ously|fully|ing|ed|ies|es|s|ly|ness|ment|tion|ion|ity|ous|ful)$/,'');return v;};
 
 function localAdds(){ try{ return JSON.parse(localStorage.getItem(LOCAL)||'[]'); }catch(e){ return []; } }
@@ -975,6 +1038,19 @@ function setLocal(a){ try{ localStorage.setItem(LOCAL, JSON.stringify(a)); }catc
    they are only truly saved once words.json is downloaded and committed. */
 function localFix(){ try{ return JSON.parse(localStorage.getItem(LOCALFIX)||'[]'); }catch(e){ return []; } }
 function setLocalFix(a){ try{ localStorage.setItem(LOCALFIX, JSON.stringify(a)); }catch(e){} }
+
+/* Three more, all for the same reason: on this device the committed file is the truth and
+   cannot be edited, so anything done to a word that came out of it has to be recorded
+   beside the file and laid over the top on the way in. Fields the reader made, words moved
+   to a different field, and words removed altogether. An account needs none of this — it
+   simply changes the row. */
+const LOCALFLD='vocab-fields-local', LOCALWF='vocab-wordfield-local', LOCALGONE='vocab-gone-local';
+function localFields(){ try{ return JSON.parse(localStorage.getItem(LOCALFLD)||'null'); }catch(e){ return null; } }
+function setLocalFields(a){ try{ localStorage.setItem(LOCALFLD, JSON.stringify(a)); }catch(e){} }
+function localWF(){ try{ return JSON.parse(localStorage.getItem(LOCALWF)||'{}'); }catch(e){ return {}; } }
+function setLocalWF(o){ try{ localStorage.setItem(LOCALWF, JSON.stringify(o)); }catch(e){} }
+function localGone(){ try{ return JSON.parse(localStorage.getItem(LOCALGONE)||'[]'); }catch(e){ return []; } }
+function setLocalGone(a){ try{ localStorage.setItem(LOCALGONE, JSON.stringify(a)); }catch(e){} }
 
 /* ---------- the storage seam ----------
    Every write a word makes goes through `store`. localStore is the behaviour this booklet
@@ -990,15 +1066,56 @@ const localStore = {
      the file beats the local copy, because the file is what everyone else sees. */
   async load(seed){
     const extra = localAdds();
-    const words = seed.words.concat(extra.filter(x=>!seed.words.some(y=>norm(y.w)===norm(x.w))));
+    const gone = new Set(localGone());
+    const wf = localWF();
+    const words = seed.words.concat(extra.filter(x=>!seed.words.some(y=>norm(y.w)===norm(x.w))))
+      .filter(x=>!gone.has(norm(x.w)))
+      /* copied, not mutated: seed is the parsed file and boot() keeps it as SEED for the
+         life of the page, so laying this device's changes onto it in place would make
+         them look like they had been in the file all along. */
+      .map(x=>{ const k=norm(x.w); return (k in wf) ? Object.assign({}, x, {f:wf[k]}) : x; });
     const fixed = seed.corrections || [];
     const corrections = fixed.concat(localFix().filter(c=>!fixed.some(d=>norm(d.wrong)===norm(c.wrong))));
-    return {words, corrections};
+    const fields = (localFields() || seed.fields || [])
+      .map(f=>Object.assign({}, f, {ink:inkHex(f.ink), note:f.note||''}));
+    return {words, corrections, fields};
   },
   async addWords(add, retired){
+    /* a word coming back is no longer removed */
+    if(retired.size) setLocalGone(localGone().filter(k=>!retired.has(k)));
     setLocal(localAdds().filter(x=>!retired.has(norm(x.w))).concat(add));
   },
   async addFixes(fixes){ setLocalFix(localFix().concat(fixes)); },
+  async saveField(f){
+    const list = (localFields() || (SEED&&SEED.fields) || []).slice();
+    const i = list.findIndex(x=>x.id===f.id);
+    if(i>-1) list[i]=f; else list.push(f);
+    setLocalFields(list);
+  },
+  async removeField(id, moveTo){
+    setLocalFields((localFields() || (SEED&&SEED.fields) || []).filter(f=>f.id!==id));
+    const wf = localWF();
+    W.filter(x=>x.f===id).forEach(x=>{ wf[norm(x.w)] = moveTo==null ? null : moveTo; });
+    setLocalWF(wf);
+  },
+  async setField(w, f){
+    const wf = localWF(); wf[norm(w)] = f==null ? null : f; setLocalWF(wf);
+    /* a word this device added is edited where it lives, so the override and the
+       stored copy can never drift apart */
+    const adds = localAdds(); const hit = adds.find(x=>norm(x.w)===norm(w));
+    if(hit){ hit.f = f==null ? null : f; setLocal(adds); }
+  },
+  async removeWord(w){
+    const k = norm(w);
+    setLocal(localAdds().filter(x=>norm(x.w)!==k));
+    /* a word out of the committed file cannot be taken out of it from here, so it is
+       remembered as gone and left out on the way in */
+    if(!localGone().includes(k)) setLocalGone(localGone().concat(k));
+  },
+  async removeAllWords(){
+    setLocal([]);
+    setLocalGone([...new Set(localGone().concat(W.map(x=>norm(x.w))))]);
+  },
   doneList(){ try{ return JSON.parse(localStorage.getItem(KEY)||'[]'); }catch(e){ return []; } },
   /* the arguments name which word changed — local mode doesn't need them, since it
      rewrites the whole set, but the cloud store updates exactly that one row */
@@ -1041,47 +1158,81 @@ const cloudStore = {
   writeCache(v){ try{ localStorage.setItem(this.cacheKey(), JSON.stringify(v)); }catch(e){} },
 
   async load(seed){
-    let words, corrections;
+    let words, corrections, fields;
     try{
       /* Inside the try, not before it: stocking a new account is just another thing that
          needs the database, and failing it should fall back to the cached booklet like
          any other read — not slam the door on someone with no signal. */
       await seedAccount(seed, this.uid);
-      const [a,b] = await Promise.all([
+      const [a,b,c] = await Promise.all([
         sb.from('words').select('*').order('created_at'),
-        sb.from('corrections').select('*').order('created_at')
+        sb.from('corrections').select('*').order('created_at'),
+        sb.from('fields').select('*').order('sort')
       ]);
       if(a.error) throw a.error;
       if(b.error) throw b.error;
-      words = a.data; corrections = b.data;
-      this.writeCache({words, corrections, at:Date.now()});
+      if(c.error) throw c.error;
+      words = a.data; corrections = b.data; fields = c.data;
+      this.writeCache({words, corrections, fields, at:Date.now()});
       offline = false;
     }catch(e){
       const cached = this.readCache();
       if(!cached) throw e;              // nothing to fall back to — let boot() say so
       words = cached.words; corrections = cached.corrections;
+      /* a cache written before fields were per-account has no fields in it; the file's
+         own are the right answer there, and the next good load replaces them */
+      fields = cached.fields || seed.fields || [];
       offline = true;
     }
     this.ready = words.filter(r=>r.done).map(r=>r.w);
     return {
       words: words.map(rowToWord),
-      corrections: corrections.map(c=>({wrong:c.wrong, right:c.right, hint:c.hint||undefined}))
+      corrections: corrections.map(c=>({wrong:c.wrong, right:c.right, hint:c.hint||undefined})),
+      fields: fields.map(f=>({id:f.id, name:f.name, ink:f.ink, note:f.note||'', sort:f.sort}))
     };
   },
 
   /* `retired` holds the norms this merge replaces — a re-enriched word, or the misspelled
-     card a correction supersedes. Deleting them first is what keeps the unique index from
-     rejecting the insert, and what stops the wrong spelling lingering as its own card. */
+     card a correction supersedes. Retiring them is what keeps the unique index from
+     rejecting the insert, and what stops the wrong spelling lingering as its own card.
+     Both halves go down as one call: as two requests, a connection lost in between took
+     the retired words away for good and never delivered what was meant to replace them,
+     while the panel said nothing had been merged. merge_words() is one transaction. */
   async addWords(add, retired){
-    const gone = [...retired];
-    if(gone.length){
-      const {error} = await sb.from('words').delete().in('norm', gone);
-      if(error) throw asError(error);
-    }
-    if(add.length){
-      const {error} = await sb.from('words').insert(add.map(o=>wordToRow(o, this.uid)));
-      if(error) throw asError(error);
-    }
+    const {error} = await sb.rpc('merge_words', {
+      p_add: add.map(o=>wordToRow(o, this.uid)),
+      p_retire: [...retired]
+    });
+    if(error) throw asError(error);
+    await this.refreshCache();
+  },
+  async saveField(f){
+    const {error} = await sb.from('fields').upsert(
+      {user_id:this.uid, id:f.id, name:f.name, ink:f.ink, note:f.note||'', sort:f.sort==null?f.id:f.sort},
+      {onConflict:'user_id,id'});
+    if(error) throw asError(error);
+    await this.refreshCache();
+  },
+  async removeField(id, moveTo){
+    const {error} = await sb.rpc('remove_field', {p_id:id, p_move_to:moveTo==null?null:moveTo});
+    if(error) throw asError(error);
+    await this.refreshCache();
+  },
+  async setField(w, f){
+    const {error} = await sb.from('words').update({f:f==null?null:f}).eq('norm', norm(w));
+    if(error) throw asError(error);
+    await this.refreshCache();
+  },
+  async removeWord(w){
+    const {error} = await sb.from('words').delete().eq('norm', norm(w));
+    if(error) throw asError(error);
+    await this.refreshCache();
+  },
+  /* The one bulk action. Fields are left standing: the reader is clearing the words out,
+     not dismantling the booklet. */
+  async removeAllWords(){
+    const {error} = await sb.from('words').delete().eq('user_id', this.uid);
+    if(error) throw asError(error);
     await this.refreshCache();
   },
   async addFixes(fixes){
@@ -1113,11 +1264,13 @@ const cloudStore = {
   },
   async refreshCache(){
     try{
-      const [a,b] = await Promise.all([
+      const [a,b,c] = await Promise.all([
         sb.from('words').select('*').order('created_at'),
-        sb.from('corrections').select('*').order('created_at')
+        sb.from('corrections').select('*').order('created_at'),
+        sb.from('fields').select('*').order('sort')
       ]);
-      if(!a.error && !b.error) this.writeCache({words:a.data, corrections:b.data, at:Date.now()});
+      if(!a.error && !b.error && !c.error)
+        this.writeCache({words:a.data, corrections:b.data, fields:c.data, at:Date.now()});
     }catch(e){}
   }
 };
@@ -1141,37 +1294,31 @@ function errText(e){
 }
 
 /* ---------- stocking a new account ----------
-   The starter words come from words.json, which the browser has already fetched, so the
-   database never needs a copy of them. Guarded by profiles.seeded_at rather than by "are
-   there any words yet", so an account emptied on purpose stays empty. The upsert makes a
-   half-finished seed harmless: the next sign-in simply completes it. */
+   The starter pack comes from words.json, which the browser has already fetched, so the
+   database never needs a copy of it. Four writes that are only correct together — fields,
+   words, corrections, then the stamp saying it is done — so they go down as one call to
+   seed_account(), which is one transaction. Guarded there by profiles.seeded_at rather
+   than by "are there any words yet", so an account emptied on purpose stays empty, and
+   every insert ignores conflicts so a seed interrupted halfway is simply completed by the
+   next sign-in. */
 async function seedAccount(seed, uid){
-  const {data:prof, error} = await sb.from('profiles').select('seeded_at').eq('id', uid).maybeSingle();
+  const {error} = await sb.rpc('seed_account', {
+    p_fields: (seed.fields||[]).map(f=>({id:f.id, name:f.name, ink:inkHex(f.ink), note:f.note||'', sort:f.sort==null?f.id:f.sort})),
+    p_words: (seed.words||[]).map(o=>wordToRow(o, uid)),
+    p_corrections: (seed.corrections||[]).map(c=>({wrong:c.wrong, norm_wrong:norm(c.wrong), right:c.right, hint:c.hint||null}))
+  });
   if(error) throw asError(error);
-  if(prof && prof.seeded_at) return;
-
-  await sb.from('profiles').upsert({id:uid}, {onConflict:'id', ignoreDuplicates:true});
-
-  const rows = seed.words.map(o=>wordToRow(o, uid));
-  if(rows.length){
-    const {error:e1} = await sb.from('words').upsert(rows, {onConflict:'user_id,norm', ignoreDuplicates:true});
-    if(e1) throw asError(e1);
-  }
-  const cr = (seed.corrections||[]).map(c=>({user_id:uid, wrong:c.wrong, norm_wrong:norm(c.wrong), right:c.right, hint:c.hint||null}));
-  if(cr.length){
-    const {error:e2} = await sb.from('corrections').upsert(cr, {onConflict:'user_id,norm_wrong', ignoreDuplicates:true});
-    if(e2) throw asError(e2);
-  }
-  const {error:e3} = await sb.from('profiles').update({seeded_at:new Date().toISOString()}).eq('id', uid);
-  if(e3) throw asError(e3);
 }
 
 async function apply(data){
-  FIELDS = data.fields;
   const loaded = await store.load(data);
+  /* Fields come from the store now, not from the file. The file only supplies them to an
+     account that has never been stocked; after that they are the reader's own, renamed
+     and recoloured and deleted as they like. */
+  FIELDS = loaded.fields || [];
   W = loaded.words;
   CORRECTIONS = loaded.corrections;
-  render(); loadProgress(); showLocal(); renderFix(CORRECTIONS);
+  render(); loadProgress(); showLocal(); renderFix(CORRECTIONS); renderFields();
   document.getElementById('app').hidden=false;
   document.getElementById('foot').hidden=false;
 }
@@ -1532,6 +1679,187 @@ function showLocal(){
   showQueue();
 }
 
+/* ---------- fields ----------
+   Built as nodes throughout: a field's name and note are the reader's own prose and go
+   nowhere near a string of HTML. Editing happens in place rather than in a dialog, the
+   way the panels themselves open where you are standing. */
+let editingField = null;          // the id being edited, or 'new'
+
+function fieldCount(id){ return W.filter(x=>x.f===id).length; }
+
+function fieldMsg(text, kind){
+  const el=document.getElementById('fldmsg');
+  el.className='note'+(kind?' '+kind:''); el.textContent=text||'';
+}
+
+function nextFieldId(){
+  /* ids are reused once a field is gone, since they mean nothing outside this account and
+     a low number keeps the enrichment prompt readable */
+  for(let i=1;i<=MAXFIELDS;i++) if(!FIELDS.some(f=>f.id===i)) return i;
+  return null;
+}
+
+function renderFields(){
+  const list=document.getElementById('fldlist');
+  list.textContent='';
+  FIELDS.forEach(f=>list.appendChild(editingField===f.id ? fieldEditor(f) : fieldRow(f)));
+  if(editingField==='new'){
+    const id=nextFieldId();
+    const free=INKS.find(i=>!FIELDS.some(f=>String(f.ink).toLowerCase()===i.toLowerCase()));
+    list.appendChild(fieldEditor({id, name:'', ink:free||INKS[0], note:'', sort:id}, true));
+  }
+  const add=document.getElementById('fldadd');
+  const full=FIELDS.length>=MAXFIELDS;
+  add.disabled = full || editingField!=null;
+  document.getElementById('fldcount').textContent =
+    full ? `All ${MAXFIELDS} used — remove one to make another.`
+         : `${FIELDS.length} of ${MAXFIELDS} used.`;
+  const hint=document.getElementById('fldhint');
+  if(hint) hint.textContent = FIELDS.length
+    ? `${FIELDS.length} field${FIELDS.length===1?'':'s'} — rename, recolour, or make your own.`
+    : 'No fields yet. Everything you add sits in Unfiled until you make some.';
+}
+
+function fieldRow(f){
+  const row=document.createElement('div');
+  row.className='fld-row';
+  const chip=document.createElement('span');
+  chip.className='fld-chip'; chip.style.setProperty('--fc', f.ink);
+  const main=document.createElement('div');
+  main.className='fld-main';
+  const nm=document.createElement('div'); nm.className='fld-name'; nm.textContent=f.name;
+  const nt=document.createElement('div'); nt.className='fld-note'; nt.textContent=f.note||'';
+  main.append(nm, nt);
+  const ct=document.createElement('span');
+  ct.className='fld-ct'; ct.textContent=fieldCount(f.id)+' words';
+  const edit=document.createElement('button');
+  edit.className='btn'; edit.textContent='Edit'; edit.dataset.edit=String(f.id);
+  edit.setAttribute('aria-label','Edit '+f.name);
+  row.append(chip, main, ct, edit);
+  return row;
+}
+
+function fieldEditor(f, isNew){
+  const row=document.createElement('div');
+  row.className='fld-row editing';
+  row.dataset.editing=String(f.id);
+
+  const chip=document.createElement('span');
+  chip.className='fld-chip'; chip.style.setProperty('--fc', f.ink);
+
+  const main=document.createElement('div');
+  main.className='fld-main';
+
+  const name=document.createElement('input');
+  name.type='text'; name.value=f.name; name.maxLength=40;
+  name.placeholder='What is this field called?';
+  name.setAttribute('aria-label','Field name');
+
+  const note=document.createElement('input');
+  note.type='text'; note.className='note-in'; note.value=f.note||''; note.maxLength=160;
+  note.placeholder='One sentence on what belongs here';
+  note.setAttribute('aria-label','Field note');
+
+  /* An ink another field is already wearing is not offered: the swatch strip is the index
+     of the book, and two fields the same colour make it a worse one. There are as many
+     inks as the cap allows fields, so there is always one free and this can never corner
+     anybody. */
+  const taken=new Set(FIELDS.filter(x=>x.id!==f.id).map(x=>String(x.ink).toLowerCase()));
+  const pal=document.createElement('div');
+  pal.className='palette';
+  INKS.forEach(ink=>{
+    const b=document.createElement('button');
+    b.style.setProperty('--pc', ink);
+    b.dataset.ink=ink;
+    const mine = ink.toLowerCase()===String(f.ink).toLowerCase();
+    b.disabled = taken.has(ink.toLowerCase());
+    b.setAttribute('aria-pressed', String(mine));
+    b.setAttribute('aria-label', b.disabled ? 'Ink already used by another field' : 'Use this ink');
+    pal.appendChild(b);
+  });
+
+  const acts=document.createElement('div');
+  acts.className='fld-acts';
+  const save=document.createElement('button');
+  save.className='btn'; save.dataset.save='1'; save.textContent='Save';
+  const cancel=document.createElement('button');
+  cancel.className='btn'; cancel.dataset.cancel='1'; cancel.textContent='Cancel';
+  acts.append(save, cancel);
+  if(!isNew){
+    const del=document.createElement('button');
+    del.className='btn fld-del'; del.dataset.del=String(f.id);
+    const n=fieldCount(f.id);
+    del.textContent = n ? `Remove — ${n} to Unfiled` : 'Remove';
+    acts.appendChild(del);
+  }
+
+  main.append(name, note, pal, acts);
+  row.append(chip, main);
+  setTimeout(()=>name.focus(), 0);
+  return row;
+}
+
+/* The note is not decoration: it is what the model classifies against, so a field with a
+   blank one quietly makes every later enrichment worse. Asked for, not demanded. */
+document.getElementById('fldlist').addEventListener('click', async e=>{
+  const t=e.target;
+  const ed=t.closest('[data-edit]');
+  if(ed){ editingField=+ed.dataset.edit; fieldMsg(''); renderFields(); return; }
+
+  const ink=t.closest('[data-ink]');
+  if(ink){
+    const row=ink.closest('.fld-row');
+    row.querySelectorAll('[data-ink]').forEach(b=>b.setAttribute('aria-pressed', String(b===ink)));
+    row.querySelector('.fld-chip').style.setProperty('--fc', ink.dataset.ink);
+    return;
+  }
+
+  if(t.closest('[data-cancel]')){ editingField=null; fieldMsg(''); renderFields(); return; }
+
+  const del=t.closest('[data-del]');
+  if(del){
+    const id=+del.dataset.del, f=FIELDS.find(x=>x.id===id);
+    if(del.dataset.sure!=='1'){
+      del.dataset.sure='1';
+      del.textContent='Really remove? Tap again';
+      return;
+    }
+    try{ await store.removeField(id, null); }
+    catch(err){ return fieldMsg('Could not remove that field — '+errText(err), 'bad'); }
+    W.forEach(x=>{ if(x.f===id) x.f=null; });
+    FIELDS=FIELDS.filter(x=>x.id!==id);
+    editingField=null;
+    render(); loadProgress(); renderFields();
+    fieldMsg(`"${f?f.name:'That field'}" is gone. Its words are in Unfiled.`, 'warn');
+    return;
+  }
+
+  if(t.closest('[data-save]')){
+    const row=t.closest('.fld-row');
+    const id=+row.dataset.editing;
+    const name=row.querySelector('input').value.trim();
+    const note=row.querySelector('.note-in').value.trim();
+    const ink=row.querySelector('[data-ink][aria-pressed="true"]');
+    if(!name) return fieldMsg('Give the field a name first.', 'bad');
+    if(FIELDS.some(f=>f.id!==id && f.name.toLowerCase()===name.toLowerCase()))
+      return fieldMsg('You already have a field called that.', 'bad');
+    const f={id, name, ink:ink?ink.dataset.ink:INKS[0], note, sort:id};
+    try{ await store.saveField(f); }
+    catch(err){ return fieldMsg('Could not save that field — '+errText(err), 'bad'); }
+    const i=FIELDS.findIndex(x=>x.id===id);
+    if(i>-1) FIELDS[i]=f; else FIELDS.push(f);
+    FIELDS.sort((a,b)=>(a.sort==null?a.id:a.sort)-(b.sort==null?b.id:b.sort));
+    editingField=null;
+    render(); loadProgress(); renderFields();
+    fieldMsg(note ? '' : 'Saved. A field with no note is harder for the model to file into — worth a sentence when you have one.', note?'':'warn');
+  }
+});
+
+document.getElementById('fldadd').addEventListener('click',()=>{
+  if(FIELDS.length>=MAXFIELDS) return;
+  editingField='new'; fieldMsg(''); renderFields();
+});
+
 /* ---------- add words ---------- */
 const panel=document.getElementById('panel'), addBtn=document.getElementById('addbtn');
 const setBtn=document.getElementById('setbtn'), setPanel=document.getElementById('settings');
@@ -1545,9 +1873,10 @@ new ResizeObserver(()=>document.documentElement.style
 /* The panels share the space under the bar, so opening one closes the others. Kept as a
    list rather than pairs because a panel can be opened from more than one button — the
    account panel has an entrance in Settings and another from the signed-out cover. */
-const acctPanel=document.getElementById('account');
-const PANELS=[panel,setPanel,acctPanel];
-const OPENERS=[[addBtn,panel],[document.getElementById('acctbtn'),acctPanel]];
+const acctPanel=document.getElementById('account'), fldPanel=document.getElementById('fields');
+const PANELS=[panel,setPanel,acctPanel,fldPanel];
+const OPENERS=[[addBtn,panel],[document.getElementById('acctbtn'),acctPanel],
+               [document.getElementById('fldbtn'),fldPanel]];
 function openPanel(which){
   PANELS.forEach(p=>p.classList.toggle('on', p===which));
   OPENERS.forEach(([b,p])=>{ if(b) b.setAttribute('aria-pressed', String(p===which)); });
@@ -1559,6 +1888,11 @@ function openPanel(which){
 addBtn.addEventListener('click',()=>openPanel(panel.classList.contains('on') ? null : panel));
 setBtn.addEventListener('click',()=>openPanel(setPanel.classList.contains('on') ? null : setPanel));
 document.querySelectorAll('.back').forEach(b=>b.addEventListener('click',()=>openPanel(setPanel)));
+document.getElementById('fldbtn').addEventListener('click',()=>{
+  /* a half-typed field does not survive leaving the room */
+  editingField=null; fieldMsg(''); renderFields();
+  openPanel(fldPanel.classList.contains('on') ? null : fldPanel);
+});
 
 /* A menu closes the way menus do — Escape, or a click anywhere off it. The rooms inside
    obey both too, and Escape hands focus back to the button. */
@@ -1569,7 +1903,7 @@ document.addEventListener('keydown',e=>{
 });
 document.addEventListener('pointerdown',e=>{
   if(!panelOpen()) return;
-  if(e.target.closest('#panel, #settings, #account, #setbtn')) return;
+  if(e.target.closest('#panel, #settings, #account, #fields, #setbtn')) return;
   openPanel(null);
 });
 

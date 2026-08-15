@@ -82,6 +82,38 @@ create index if not exists words_user_created_idx
 -- the column is already nullable.
 alter table public.words alter column f drop not null;
 
+-- ---------------------------------------------------------------- fields
+-- The eight inks down the side of the page, and the one table that took longest to
+-- arrive. Words went per-account when accounts did; the taxonomy did not, so everybody
+-- read their own words filed under one person's categories. A booklet about medicine or
+-- contracts had nowhere to put anything, and the two vaguest fields became junk drawers.
+--
+-- `id` is small and per-account rather than a uuid, because it is what `words.f` holds and
+-- what the enrichment prompt prints as a menu for the model to choose from. It means
+-- nothing outside one account.
+--
+-- `ink` is a real colour now, not "var(--ink-1)". A field the reader made has no stylesheet
+-- variable waiting for it, and the app offers the same eight inks as a fixed palette —
+-- picking from a palette keeps the booklet looking like itself.
+create table if not exists public.fields (
+  user_id    uuid not null references auth.users on delete cascade default auth.uid(),
+  id         integer not null,
+  name       text not null,
+  ink        text not null,
+  note       text not null default '',
+  sort       integer not null default 0,
+  created_at timestamptz not null default now(),
+  primary key (user_id, id)
+);
+
+alter table public.fields enable row level security;
+
+drop policy if exists "own fields" on public.fields;
+create policy "own fields" on public.fields
+  for all to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
 -- ---------------------------------------------------------------- corrections
 -- The misspellings table: what you typed, what it should have been. `hint` is written by
 -- hand and is the one field allowed to carry markup, so the app renders it raw and
@@ -126,3 +158,101 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
+
+-- ---------------------------------------------------------------- writes that must
+--                                                                  happen all at once
+-- Everything above is one statement at a time, which PostgREST does perfectly well. The
+-- three below are not: each is several statements that are only correct together, and a
+-- browser that loses its connection between them leaves an account in a state no screen
+-- describes. A plpgsql function body is one transaction, so either all of it lands or
+-- none of it does.
+--
+-- All three are security invoker (the default, stated because it matters): they run as
+-- the caller, so row level security applies to them exactly as it applies to the app.
+-- A function is not a way around the policies, only a way to be atomic inside them.
+
+-- Stocking a new account: fields, words, corrections, then the stamp that says it is
+-- done. Guarded by profiles.seeded_at rather than by "are there any words yet", so an
+-- account emptied on purpose stays empty. Every insert ignores conflicts, so a seed
+-- interrupted halfway is simply completed by the next sign-in.
+create or replace function public.seed_account(p_fields jsonb, p_words jsonb, p_corrections jsonb)
+returns void
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  uid     uuid := auth.uid();
+  already timestamptz;
+begin
+  if uid is null then raise exception 'seed_account: nobody is signed in'; end if;
+
+  insert into public.profiles (id) values (uid) on conflict (id) do nothing;
+  select seeded_at into already from public.profiles where id = uid;
+  if already is not null then return; end if;
+
+  insert into public.fields (user_id, id, name, ink, note, sort)
+  select uid, f.id, f.name, f.ink, coalesce(f.note, ''), coalesce(f.sort, f.id)
+    from jsonb_to_recordset(coalesce(p_fields, '[]'::jsonb))
+      as f(id integer, name text, ink text, note text, sort integer)
+  on conflict (user_id, id) do nothing;
+
+  insert into public.words (user_id, w, norm, f, p, d, e, a, n, i)
+  select uid, x.w, x.norm, x.f, x.p, x.d, x.e, x.a, x.n, x.i
+    from jsonb_to_recordset(coalesce(p_words, '[]'::jsonb))
+      as x(w text, norm text, f integer, p text, d text, e text, a text, n text, i text)
+  on conflict (user_id, norm) do nothing;
+
+  insert into public.corrections (user_id, wrong, norm_wrong, "right", hint)
+  select uid, c.wrong, c.norm_wrong, c."right", c.hint
+    from jsonb_to_recordset(coalesce(p_corrections, '[]'::jsonb))
+      as c(wrong text, norm_wrong text, "right" text, hint text)
+  on conflict (user_id, norm_wrong) do nothing;
+
+  update public.profiles set seeded_at = now() where id = uid;
+end;
+$$;
+
+-- Merging a reply. The delete retires the words this batch replaces — a re-enriched card,
+-- or the misspelling a correction supersedes — and the insert puts the new ones in. Done
+-- from the browser as two requests, a connection dropped between them destroyed the
+-- retired words and never delivered their replacements, while the panel reported that
+-- nothing had been merged. Here they are one statement or none.
+create or replace function public.merge_words(p_add jsonb, p_retire text[])
+returns void
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare uid uuid := auth.uid();
+begin
+  if uid is null then raise exception 'merge_words: nobody is signed in'; end if;
+
+  if p_retire is not null and array_length(p_retire, 1) > 0 then
+    delete from public.words where user_id = uid and norm = any(p_retire);
+  end if;
+
+  insert into public.words (user_id, w, norm, f, p, d, e, a, n, i)
+  select uid, x.w, x.norm, x.f, x.p, x.d, x.e, x.a, x.n, x.i
+    from jsonb_to_recordset(coalesce(p_add, '[]'::jsonb))
+      as x(w text, norm text, f integer, p text, d text, e text, a text, n text, i text);
+end;
+$$;
+
+-- Removing a field. Its words are moved first and the field goes second, so there is no
+-- instant where a word points at a field that has already gone. p_move_to null sends them
+-- to Unfiled, which is the honest default: the reader deleted the category, not the words.
+create or replace function public.remove_field(p_id integer, p_move_to integer)
+returns void
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare uid uuid := auth.uid();
+begin
+  if uid is null then raise exception 'remove_field: nobody is signed in'; end if;
+
+  update public.words set f = p_move_to where user_id = uid and f = p_id;
+  delete from public.fields where user_id = uid and id = p_id;
+end;
+$$;

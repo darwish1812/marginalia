@@ -132,8 +132,11 @@ merge path and the learned-marks path were written once and never learn where th
 
 | Call | `localStore` | `cloudStore` |
 |---|---|---|
-| `load(seed)` | `seed.words` plus this device's unsaved additions layered on top. A word already in the committed file always wins. | `seedAccount()`, then `select *` from `words` and `corrections`. Writes the rows to a per-account cache. On any failure, falls back to that cache and sets the global `offline`. |
-| `addWords(add, retired)` | Rewrites the local additions list, dropping retired norms. | `delete().in('norm', retired)` then `insert(add)`. |
+| `load(seed)` | `seed.words` plus this device's unsaved additions, with its overrides and removals laid over the top. A word already in the committed file otherwise wins. | `seedAccount()`, then `select *` from `words`, `corrections` and `fields`. Writes the rows to a per-account cache. On any failure, falls back to that cache and sets the global `offline`. |
+| `addWords(add, retired)` | Rewrites the local additions list, dropping retired norms. | One `merge_words()` call — retire and insert in a single transaction. |
+| `saveField(f)` / `removeField(id, moveTo)` | Rewrites the local field list; `removeField` records the moves. | `upsert` / one `remove_field()` call. |
+| `setField(w, f)` / `removeWord(w)` | Records an override or a tombstone beside the file. | `update` / `delete` on that one row. |
+| `removeAllWords()` | Clears local additions and tombstones the rest. | `delete` across the account. Fields are left standing. |
 | `addFixes(fixes)` | Appends to the local corrections list. | `upsert` on `(user_id, norm_wrong)`, ignoring duplicates. |
 | `doneList()` | The `vocab-booklet-progress` array. | `this.ready`, taken straight off the loaded rows' `done` column. |
 | `setDone(w, on)` | Rewrites the whole array from the in-memory set; the arguments are ignored. | Updates that one row. Optimistic — the tick has already moved on screen, and a failure is reported in the status line rather than snatched back. |
@@ -145,15 +148,24 @@ says "Download the file and commit it" locally and "Saved to your account" in th
 The offline mirror (`vocab-rows-<uid>`) is what lets the booklet open on a train. Reads come
 from it when the network does not answer; writes always require a connection and say so.
 
-### 3.4 Stocking a new account — `seedAccount(seed, uid)` at `:1129`
+### 3.4 Stocking a new account — `seedAccount(seed, uid)`
 
-The starter words come from `words.json`, which the browser has already fetched, so the
+The starter pack comes from `words.json`, which the browser has already fetched, so the
 database never needs its own copy. The guard is `profiles.seeded_at` — not "does this
 account have any words" — because an account whose words were all deleted on purpose would
 otherwise be re-stocked on the next sign-in and the deletions would undo themselves.
 
-Both inserts are upserts with `ignoreDuplicates`, so a seed interrupted halfway is harmless:
-the next sign-in completes it. `seeded_at` is stamped last.
+Fields, words, corrections and the stamp are four writes that are only correct together, so
+the client makes one call to `seed_account()` and Postgres does them in one transaction.
+Every insert ignores conflicts, so a seed interrupted halfway is harmless: the next sign-in
+completes it. `seeded_at` is stamped last.
+
+**Three functions exist for exactly this reason** — `seed_account`, `merge_words` and
+`remove_field`. Each is several statements that are only right as a unit, and a browser
+that loses its connection partway through would otherwise leave an account in a state no
+screen describes. All three are `security invoker`, so row level security applies to them
+exactly as it applies to the app: a function here is a way to be atomic *inside* the
+policies, never a way around them.
 
 The `profiles` row itself is created by a Postgres trigger (`handle_new_user`, a
 `security definer` function) the instant the auth user exists, so the client never has to
@@ -318,7 +330,7 @@ matter. There is no build artefact and nothing to invalidate.
 |---|---|
 | `index.html` | The entire application — markup, ~460 lines of CSS, and ~1,180 lines of JavaScript. |
 | `words.json` | 150 starter words, 8 fields, 5 corrections. Read on every load; used to stock new accounts and to supply `FIELDS`. Shared and read-only. |
-| `supabase/schema.sql` | Three tables, three RLS policies, one index, one signup trigger. Idempotent. |
+| `supabase/schema.sql` | Four tables, four RLS policies, one index, one signup trigger, and three functions for the writes that must happen all at once. Idempotent. |
 | `img/` | Optional drawings for a few concrete words. A missing file removes the figure rather than showing a broken icon. |
 | `manifest.json`, `icon.svg`, `icon-512.png`, `apple-touch-icon.png` | Make "Add to Home Screen" work. |
 | `README.md` | Setup and use. |
