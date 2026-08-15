@@ -1585,17 +1585,53 @@ function renderReport(dups, nears, again){
   if(again.length) bits.push(`${again.length} waiting for detail`);
   if(dups.length) bits.push(`${dups.length} already here`);
   if(nears.length) bits.push(`${nears.length} similar to existing`);
-  document.getElementById('report').innerHTML =
-    `<p class="note ${fresh.length?'good':''}">${bits.join(' · ')}</p>` +
-    `<div class="chips">${
-      fresh.map(t=>{
-        const nx=nears.find(n=>n.t===t), ag=again.includes(t);
-        const tail = nx ? ` <span style="opacity:.7">≈ ${nx.like}</span>`
-                        : ag ? ` <span style="opacity:.7">waiting</span>` : '';
-        return `<span class="chip ${nx?'near':ag?'again':''}" data-t="${t}"><b>${t}</b>${tail}<button data-drop="${t}" aria-label="Remove ${t}">×</button></span>`;
-      }).join('') +
-      dups.map(t=>`<span class="chip dup">${t}</span>`).join('')
-    }</div>`;
+  const el = document.getElementById('report');
+  el.textContent = '';
+  const p = document.createElement('p');
+  p.className = 'note'+(fresh.length?' good':'');
+  p.textContent = bits.join(' · ');
+  el.appendChild(p);
+
+  /* Assembled as nodes rather than as a string, and this is the one place in the panel
+     where that matters: a chip is whatever was typed into step 1, so a "word" carrying
+     markup would be read as markup — with a session token sitting in this browser for it
+     to leave with. textContent and dataset carry any characters and mean none of them,
+     which also spares the round trip a word containing a quote used to break. */
+  const box = document.createElement('div');
+  box.className = 'chips';
+  fresh.forEach(t=>{
+    const nx = nears.find(n=>n.t===t), ag = again.includes(t);
+    const chip = document.createElement('span');
+    chip.className = 'chip'+(nx?' near':ag?' again':'');
+    chip.dataset.t = t;
+
+    const b = document.createElement('b');
+    b.textContent = t;
+    chip.appendChild(b);
+
+    if(nx || ag){
+      const tail = document.createElement('span');
+      tail.style.opacity = '.7';
+      tail.textContent = nx ? '≈ '+nx.like : 'waiting';
+      chip.append(' ', tail);
+    }
+
+    const drop = document.createElement('button');
+    drop.dataset.drop = t;
+    drop.setAttribute('aria-label','Remove '+t);
+    drop.textContent = '×';
+    chip.appendChild(drop);
+
+    box.appendChild(chip);
+  });
+  dups.forEach(t=>{
+    const chip = document.createElement('span');
+    chip.className = 'chip dup';
+    chip.textContent = t;
+    box.appendChild(chip);
+  });
+  el.appendChild(box);
+
   setReady(!!fresh.length);
   if(fresh.length) buildPrompt();
 }
@@ -1671,14 +1707,35 @@ document.getElementById('copyp').addEventListener('click',async e=>{
        e.target.textContent='Copied'; setTimeout(()=>e.target.textContent='Copy prompt',1500); }catch(err){}
 });
 
+/* The check step offers words that are already here but still bare, so they can be sent
+   back through step 2 — not so they can be captured a second time. Inserting one twice
+   collides with the unique index on an account, which lost the whole batch, and doubled
+   the card on a device. Two words that normalise alike do the same, so the batch is
+   measured against itself as well as against the book. */
 document.getElementById('addnow').addEventListener('click',async ()=>{
-  const add=fresh.map(t=>({w:t,f:0,p:'',d:'',e:'',a:''}));
   const report=document.getElementById('report');
+  const seen=new Set(W.map(x=>norm(x.w)));
+  const add=[];
+  fresh.forEach(t=>{
+    const k=norm(t);
+    if(seen.has(k)) return;
+    seen.add(k);
+    add.push({w:t,f:0,p:'',d:'',e:'',a:''});
+  });
+  /* Nothing new in the batch: say so and leave the chips and the prompt standing, since
+     step 2 is exactly where these words still want to go. */
+  if(!add.length){
+    const note=report.querySelector('.note');
+    if(note){ note.className='note'; note.textContent='All of those are here already, waiting for detail — step 2 still has them.'; }
+    return;
+  }
+  const skipped=fresh.length-add.length;
   try{ await store.addWords(add, new Set()); }
   catch(e){ report.innerHTML='<p class="note bad">Could not save them — '+esc(errText(e))+'</p>'; return; }
   W=W.concat(add);
   render(); loadProgress(); showLocal();
-  report.innerHTML='<p class="note good">Added — enrich them whenever you like.</p>';
+  report.innerHTML='<p class="note good">Added — enrich them whenever you like.'
+    +(skipped?` ${skipped} ${skipped===1?'was':'were'} already waiting.`:'')+'</p>';
   fresh=[]; setReady(false);
 });
 
