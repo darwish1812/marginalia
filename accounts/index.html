@@ -375,12 +375,20 @@
   .linkbtn:hover{color:var(--paper)}
   /* Signed out there is no booklet to search, mark or print, so the whole apparatus goes
      rather than sitting there greyed: the cover and the gate are the entire page. */
-  body.signed-out .bar-wrap,
-  body.signed-out .swatches,
-  body.signed-out #book,
-  body.signed-out #fix,
-  body.signed-out #empty,
-  body.signed-out footer{display:none!important}
+  /* Two states with no booklet behind them: waiting to sign in, and being asked what to
+     stock. Neither has anything for a search box, a study toggle or a reset button to act
+     on, so the whole bar goes rather than standing there greyed and inert. */
+  body:is(.signed-out,.first-run) .bar-wrap,
+  body:is(.signed-out,.first-run) .swatches,
+  body:is(.signed-out,.first-run) #book,
+  body:is(.signed-out,.first-run) #fix,
+  body:is(.signed-out,.first-run) #empty,
+  body:is(.signed-out,.first-run) footer{display:none!important}
+  /* The gate keeps the cover — it is the first thing anyone sees, and the booklet should
+     introduce itself. Setting up is past that: they have signed in, they know what this
+     is, and 430px of title above the only question on the screen just pushes it under
+     the fold on a laptop. The screen carries its own eyebrow instead. */
+  body.first-run .cover{display:none!important}
   /* The add panel is opened from inside settings, so it needs a door back out —
      the bar button alone works but reads as a dead end once you are in here. */
   .back{margin:0 0 20px; padding:7px 13px; font-size:10.5px}
@@ -408,14 +416,21 @@
   .note.bad{color:var(--ink-3)}
   .note.good{color:var(--ink-2)}
   /* ---------- first run ---------- */
-  .firstrun{max-width:760px; margin:52px auto 0; padding:0 4px}
-  .firstrun h2{font-family:"Fraunces",Georgia,serif; font-weight:600; font-size:clamp(30px,5vw,44px);
-    line-height:1.04; letter-spacing:-.022em; margin:14px 0 0}
+  .firstrun{max-width:920px; margin:70px auto 0; padding:0 4px}
+  .firstrun h2{font-family:"Fraunces",Georgia,serif; font-weight:600; font-size:clamp(32px,5vw,52px);
+    line-height:1.04; letter-spacing:-.022em; margin:16px 0 0}
   .firstrun h2 em{font-style:italic; color:var(--ink-1); font-weight:400}
-  .firstrun .lede{max-width:52ch; margin:14px 0 0; color:var(--dim); font-size:17px}
-  .packs{display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:12px; margin-top:24px}
+  .firstrun .lede{max-width:54ch; margin:16px 0 0; color:var(--dim); font-size:17px}
+  /* Four tiles want two rows of two, not whatever auto-fit lands on: at 760px it chose
+     two columns and left the block adrift in a page twice its width, and at other widths
+     it would have made a row of three and one straggler. Stated, so it is the same
+     shape on every laptop. */
+  .packs{display:grid; grid-template-columns:1fr; gap:14px; margin-top:28px}
+  /* one row taller than the other because a blurb runs to a second line reads as an
+     accident; four equal tiles read as a choice */
+  @media(min-width:680px){ .packs{grid-template-columns:repeat(2,minmax(0,1fr)); grid-auto-rows:1fr} }
   .pack{background:var(--night-2); border:1px solid var(--rule); border-radius:10px;
-    padding:15px 16px; cursor:pointer; text-align:left; color:inherit; font:inherit; display:block}
+    padding:19px 21px; cursor:pointer; text-align:left; color:inherit; font:inherit; display:block}
   .pack:hover{border-color:rgba(241,239,233,.4)}
   .pack[aria-pressed="true"]{border-color:var(--ink-1); background:rgba(201,146,47,.08)}
   .pack:focus-visible{outline:2px solid var(--ink-1); outline-offset:2px}
@@ -1610,11 +1625,11 @@ async function loadPack(p){
 }
 
 async function showFirstRun(){
+  document.body.classList.add('first-run');
   document.getElementById('firstrun').hidden=false;
   document.getElementById('book').innerHTML='';
   document.getElementById('fix').hidden=true;
   document.getElementById('foot').hidden=true;
-  document.getElementById('eyebrow').textContent='A working vocabulary';
   chosenPack=null;
   renderPacks();
   /* the ink strips are only honest once the packs have been read, so they arrive late
@@ -1659,6 +1674,7 @@ async function apply(data){
   W = loaded.words;
   CORRECTIONS = loaded.corrections;
   render(); loadProgress(); showLocal(); renderFix(CORRECTIONS); renderFields();
+  document.body.classList.remove('first-run');
   document.getElementById('firstrun').hidden=true;
   document.getElementById('app').hidden=false;
   document.getElementById('foot').hidden=false;
@@ -1776,6 +1792,7 @@ async function enter(session){
     store = localStore;
     W = []; CORRECTIONS = []; done.clear();
     document.body.classList.add('signed-out');
+    document.body.classList.remove('first-run');
     document.getElementById('gate').hidden = false;
     document.getElementById('firstrun').hidden = true;
     document.getElementById('book').innerHTML = '';
