@@ -21,6 +21,7 @@ hand: a word is saved the moment it is merged, and it is there on the other devi
 | `supabase/schema.sql` | Tables and the security policies that keep accounts apart. |
 | `img/` | Optional pictures for the few words that can have one. |
 | `manifest.json`, `icon.svg` | Make "Add to Home Screen" work on iPad. |
+| `ARCHITECTURE.md` | How it is put together inside, for whoever has to change it. |
 
 ## Setup — about ten minutes
 
