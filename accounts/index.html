@@ -407,6 +407,28 @@
   .note.warn{color:var(--ink-1)}
   .note.bad{color:var(--ink-3)}
   .note.good{color:var(--ink-2)}
+  /* ---------- first run ---------- */
+  .firstrun{max-width:760px; margin:52px auto 0; padding:0 4px}
+  .firstrun h2{font-family:"Fraunces",Georgia,serif; font-weight:600; font-size:clamp(30px,5vw,44px);
+    line-height:1.04; letter-spacing:-.022em; margin:14px 0 0}
+  .firstrun h2 em{font-style:italic; color:var(--ink-1); font-weight:400}
+  .firstrun .lede{max-width:52ch; margin:14px 0 0; color:var(--dim); font-size:17px}
+  .packs{display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:12px; margin-top:24px}
+  .pack{background:var(--night-2); border:1px solid var(--rule); border-radius:10px;
+    padding:15px 16px; cursor:pointer; text-align:left; color:inherit; font:inherit; display:block}
+  .pack:hover{border-color:rgba(241,239,233,.4)}
+  .pack[aria-pressed="true"]{border-color:var(--ink-1); background:rgba(201,146,47,.08)}
+  .pack:focus-visible{outline:2px solid var(--ink-1); outline-offset:2px}
+  .pack.blank{border-style:dashed}
+  .pack-t{font-family:"Fraunces",Georgia,serif; font-weight:600; font-size:18px; letter-spacing:-.01em}
+  .pack-d{font-size:13.5px; color:var(--dim); margin-top:5px; line-height:1.5}
+  .pack-inks{display:flex; gap:4px; margin-top:12px}
+  .pack-inks span{height:7px; flex:1; border-radius:99px}
+  .pack .badge{font-family:"Archivo",sans-serif; font-size:9px; font-weight:700; letter-spacing:.13em;
+    text-transform:uppercase; color:var(--ink-1); border:1px solid rgba(201,146,47,.5);
+    border-radius:99px; padding:2px 8px; margin-left:8px; vertical-align:3px}
+  #packgo{margin-top:20px; align-items:center}
+
   /* the one bulk action, kept away from the rest of the account panel by a rule */
   .empty-all{margin-top:22px; padding-top:18px; border-top:1px solid var(--rule)}
   .empty-all .set-t{color:var(--ink-3)}
@@ -751,6 +773,19 @@
       <button class="linkbtn" id="toggle">New here? Create an account</button>
       <button class="linkbtn" id="forgot">Forgot password?</button>
     </p>
+  </section>
+
+  <!-- First run. Shown in place of the book to a booklet that has never been stocked,
+       and never again after. The question is "what do you read", not "do you want my
+       words" — a yes/no where no feels rude gets you a yes and then a resentment. -->
+  <section class="firstrun" id="firstrun" hidden>
+    <div class="eyebrow">Marginalia · setting up</div>
+    <h2>What do you <em>read</em>?</h2>
+    <p class="lede">A booklet is built out of fields — the inks running down the side of the
+      page. Start from one of these, or start with none and name your own as you go.</p>
+    <div class="packs" id="packs"></div>
+    <div class="row" id="packgo"></div>
+    <p class="note" id="packmsg"></p>
   </section>
 
   <main id="book"></main>
@@ -1233,6 +1268,10 @@ function setLocalFix(a){ try{ localStorage.setItem(LOCALFIX, JSON.stringify(a));
    to a different field, and words removed altogether. An account needs none of this — it
    simply changes the row. */
 const LOCALFLD='vocab-fields-local', LOCALWF='vocab-wordfield-local', LOCALGONE='vocab-gone-local';
+/* Which pack this device started from, and whether it has started at all. An account keeps
+   the same two answers in profiles.seeded_at and its own fields rows. */
+const LOCALSEED='vocab-seeded-local', LOCALPACK='vocab-pack-local';
+function localPack(){ try{ return JSON.parse(localStorage.getItem(LOCALPACK)||'null'); }catch(e){ return null; } }
 function localFields(){ try{ return JSON.parse(localStorage.getItem(LOCALFLD)||'null'); }catch(e){ return null; } }
 function setLocalFields(a){ try{ localStorage.setItem(LOCALFLD, JSON.stringify(a)); }catch(e){} }
 function localWF(){ try{ return JSON.parse(localStorage.getItem(LOCALWF)||'{}'); }catch(e){ return {}; } }
@@ -1252,7 +1291,18 @@ const localStore = {
   /* `seed` is the parsed words.json. Local mode treats it as the committed truth and
      layers this device's unsaved additions on top, newest-wins-never: a word already in
      the file beats the local copy, because the file is what everyone else sees. */
-  async load(seed){
+  /* On this device "stocked" is a flag, and the pack chosen at the start replaces
+     words.json as the base the additions are layered onto. */
+  async seeded(){ try{ return localStorage.getItem(LOCALSEED)==='1'; }catch(e){ return true; } },
+  async stock(pack){
+    try{
+      localStorage.setItem(LOCALPACK, JSON.stringify({words:pack.words||[], corrections:pack.corrections||[]}));
+      setLocalFields((pack.fields||[]).map(f=>({id:f.id, name:f.name, ink:inkHex(f.ink), note:f.note||'', sort:f.sort==null?f.id:f.sort})));
+      localStorage.setItem(LOCALSEED,'1');
+    }catch(e){ throw new Error('This browser would not save that — check it allows storage.'); }
+  },
+  async load(seedFile){
+    const seed = localPack() || seedFile;
     const extra = localAdds();
     const gone = new Set(localGone());
     const wf = localWF();
@@ -1264,7 +1314,7 @@ const localStore = {
       .map(x=>{ const k=norm(x.w); return (k in wf) ? Object.assign({}, x, {f:wf[k]}) : x; });
     const fixed = seed.corrections || [];
     const corrections = fixed.concat(localFix().filter(c=>!fixed.some(d=>norm(d.wrong)===norm(c.wrong))));
-    const fields = (localFields() || seed.fields || [])
+    const fields = (localFields() || seedFile.fields || [])
       .map(f=>Object.assign({}, f, {ink:inkHex(f.ink), note:f.note||''}));
     return {words, corrections, fields};
   },
@@ -1345,13 +1395,19 @@ const cloudStore = {
   readCache(){ try{ return JSON.parse(localStorage.getItem(this.cacheKey())||'null'); }catch(e){ return null; } },
   writeCache(v){ try{ localStorage.setItem(this.cacheKey(), JSON.stringify(v)); }catch(e){} },
 
+  /* An account that has never been stocked is the one the picker is for. A network failure
+     answers "yes" on purpose: nobody should be shown a first-run screen, and offered a
+     fresh start, because their connection hiccupped on the way in. */
+  async seeded(){
+    const {data, error} = await sb.from('profiles').select('seeded_at').eq('id', this.uid).maybeSingle();
+    if(error) throw asError(error);
+    return !!(data && data.seeded_at);
+  },
+  async stock(pack){ await seedAccount(pack, this.uid); },
+
   async load(seed){
     let words, corrections, fields;
     try{
-      /* Inside the try, not before it: stocking a new account is just another thing that
-         needs the database, and failing it should fall back to the cached booklet like
-         any other read — not slam the door on someone with no signal. */
-      await seedAccount(seed, this.uid);
       const [a,b,c] = await Promise.all([
         sb.from('words').select('*').order('created_at'),
         sb.from('corrections').select('*').order('created_at'),
@@ -1498,6 +1554,102 @@ async function seedAccount(seed, uid){
   if(error) throw asError(error);
 }
 
+/* ---------- first run ----------
+   The packs are files beside words.json, which stays where it is and keeps its name: the
+   README promises a booklet can trade files with the original, and tidiness is not worth
+   a promise. It is simply the literary pack, read from the root. */
+const PACKS = [
+  {file:null,                 name:'Literary & historical', badge:'Original',
+   blurb:'Castles, scripture, rhetoric and temperament. Comes with 150 words.'},
+  {file:'packs/business.json', name:'Business & professional',
+   blurb:'Meetings, negotiation, finance, management. Six fields, no words yet.'},
+  {file:'packs/academic.json', name:'Academic & exam',
+   blurb:'Argument, hedging, evidence, register. Six fields, no words yet.'},
+  {file:'BLANK',               name:"I'll build my own", blank:true,
+   blurb:'An empty booklet and no fields. Name the first one when you add the first word.'}
+];
+let chosenPack = null;
+
+function renderPacks(){
+  const box=document.getElementById('packs');
+  box.textContent='';
+  PACKS.forEach((p,i)=>{
+    const b=document.createElement('button');
+    b.className='pack'+(p.blank?' blank':'');
+    b.dataset.pack=String(i);
+    b.setAttribute('aria-pressed', String(chosenPack===i));
+    const t=document.createElement('div'); t.className='pack-t'; t.textContent=p.name;
+    if(p.badge){ const s=document.createElement('span'); s.className='badge'; s.textContent=p.badge; t.appendChild(s); }
+    const d=document.createElement('div'); d.className='pack-d'; d.textContent=p.blurb;
+    b.append(t,d);
+    if(p.inks && p.inks.length){
+      const strip=document.createElement('div'); strip.className='pack-inks';
+      p.inks.forEach(ink=>{ const s=document.createElement('span'); s.style.background=ink; strip.appendChild(s); });
+      b.appendChild(strip);
+    }
+    box.appendChild(b);
+  });
+  const go=document.getElementById('packgo');
+  go.textContent='';
+  const btn=document.createElement('button');
+  btn.className='btn'; btn.id='packstart'; btn.textContent='Open my booklet';
+  /* Nothing is chosen for you. A preselected pack quietly makes every other answer the
+     odd one out, and "I'll build my own" is not the odd one out. */
+  btn.disabled = chosenPack===null;
+  const hint=document.createElement('span'); hint.className='note'; hint.style.margin='0';
+  hint.textContent = chosenPack===null ? 'Pick one to begin.' : 'You can change every one of these later.';
+  go.append(btn, hint);
+}
+
+async function loadPack(p){
+  if(p.blank) return {fields:[], words:[], corrections:[]};
+  if(!p.file) return SEED;                       // words.json, already fetched
+  const r = await fetch(p.file, {cache:'no-cache'});
+  if(!r.ok) throw new Error('That pack could not be read (' + r.status + ').');
+  return await r.json();
+}
+
+async function showFirstRun(){
+  document.getElementById('firstrun').hidden=false;
+  document.getElementById('book').innerHTML='';
+  document.getElementById('fix').hidden=true;
+  document.getElementById('foot').hidden=true;
+  document.getElementById('eyebrow').textContent='A working vocabulary';
+  chosenPack=null;
+  renderPacks();
+  /* the ink strips are only honest once the packs have been read, so they arrive late
+     rather than being guessed at in the markup */
+  await Promise.all(PACKS.map(async p=>{
+    try{ const d=await loadPack(p); p.inks=(d.fields||[]).map(f=>inkHex(f.ink)); }catch(e){ p.inks=[]; }
+  }));
+  renderPacks();
+}
+
+document.getElementById('packs').addEventListener('click',e=>{
+  const b=e.target.closest('[data-pack]'); if(!b) return;
+  chosenPack=+b.dataset.pack;
+  document.getElementById('packmsg').textContent='';
+  renderPacks();
+});
+
+document.getElementById('packgo').addEventListener('click', async e=>{
+  if(!e.target.closest('#packstart') || chosenPack===null) return;
+  const btn=document.getElementById('packstart'), msg=document.getElementById('packmsg');
+  btn.disabled=true; btn.textContent='One moment…';
+  msg.className='note'; msg.textContent='';
+  try{
+    const pack = await loadPack(PACKS[chosenPack]);
+    await store.stock(pack);
+  }catch(err){
+    msg.className='note bad';
+    msg.textContent='That did not take — '+errText(err);
+    btn.disabled=false; btn.textContent='Open my booklet';
+    return;
+  }
+  document.getElementById('firstrun').hidden=true;
+  await apply(SEED);
+});
+
 async function apply(data){
   const loaded = await store.load(data);
   /* Fields come from the store now, not from the file. The file only supplies them to an
@@ -1507,6 +1659,7 @@ async function apply(data){
   W = loaded.words;
   CORRECTIONS = loaded.corrections;
   render(); loadProgress(); showLocal(); renderFix(CORRECTIONS); renderFields();
+  document.getElementById('firstrun').hidden=true;
   document.getElementById('app').hidden=false;
   document.getElementById('foot').hidden=false;
 }
@@ -1560,10 +1713,13 @@ async function boot(){
   if(!data){ failed(why||'Could not load words.json.'); return; }
   SEED = data;
 
-  /* No project configured: this is the booklet as it always was, on this device. */
+  /* No project configured: this is the booklet as it always was, on this device — except
+     that a device which has never been stocked gets asked the same first question an
+     account does, since it is just as much a first run. */
   if(!ACCOUNTS){
     document.getElementById('app').hidden=false;
     setAcctState(null);
+    if(!(await store.seeded())){ await showFirstRun(); return; }
     await apply(SEED);
     return;
   }
@@ -1601,6 +1757,13 @@ async function enter(session){
     document.getElementById('gate').hidden = true;
     setAcctState(session.user.email);
     try{
+      /* A brand-new account is asked what it reads before anything is put in it. If the
+         question cannot be reached, the answer is taken to be "already stocked": a first
+         run offered to somebody who has a booklet already would be alarming, and load()
+         falls back to their cached copy on the same failure. */
+      let stocked = true;
+      try{ stocked = await store.seeded(); }catch(e){}
+      if(!stocked){ await showFirstRun(); return; }
       await apply(SEED);
       if(offline) syncNote('Offline — showing the last copy saved on this device.');
       else syncNote('');
@@ -1614,6 +1777,7 @@ async function enter(session){
     W = []; CORRECTIONS = []; done.clear();
     document.body.classList.add('signed-out');
     document.getElementById('gate').hidden = false;
+    document.getElementById('firstrun').hidden = true;
     document.getElementById('book').innerHTML = '';
     document.getElementById('fix').hidden = true;
     /* render() writes the real counts; signed out it never runs, and the placeholder in
@@ -2264,13 +2428,43 @@ document.getElementById('report').addEventListener('click',e=>{
   if(fresh.length) buildPrompt(); else setReady(false);
 });
 
+/* A booklet with no fields is a real state — a blank start, or every field deleted — and
+   it is the one moment where asking the model to propose the taxonomy is better than
+   asking the reader to invent one. Nobody knows their eight fields before they have fifty
+   words; they know them afterwards. So there are two prompts, and this is the other one. */
+function buildProposePrompt(){
+  document.getElementById('prompt').textContent =
+`These are the first words in a new vocabulary booklet, which has no fields yet. Return ONLY a raw JSON object — no prose, no markdown fences.
+
+Words:
+${fresh.map(t=>'- '+t).join('\n')}
+
+First propose the fields. At most ${MAXFIELDS}, and fewer is better than padding to the limit. Judge them by the register and sense these words carry, not by their topic — a field should be somewhere a reader would recognise meeting a word, not a subject heading. Each needs:
+  "id"   = a small integer, 1 upwards
+  "name" = two or three words, the way a chapter is named
+  "note" = one sentence saying what belongs there. Write it carefully: it is the only thing that tells anyone, later, where a new word should go.
+
+Then file every word above into one of them, or into null where none genuinely fits.
+
+Return: {"fields":[{"id":…,"name":…,"note":…}], "words":[ … ]}
+
+Each object in "words" follows these rules:
+1. One object per word above, in the same order. Never two objects with the same "w". If a word has two strong senses, take the one likelier in serious reading and mention the other in "n".
+2. "w" = base form (infinitive verb, singular noun), lowercase unless strictly a proper noun. Correct obvious misspellings. If your "w" differs from what I typed, add "x" holding the exact string I typed; otherwise leave "x" out.
+3. "f" = unquoted integer, one of the ids you just proposed — or null if none of them genuinely fits.
+4. "p" = one of: noun, verb, adjective, adverb, phrase — or a slashed pair like "noun / verb" when both are common.
+5. "d" = exactly one plain-English sentence that does not restate the word inside itself.
+6. "e" = one natural, concrete sentence of 10-20 words in the register of the chosen field, wrapping the inflected target word in a single pair of *asterisks*. It has to demonstrate the sense given in "d".
+7. "a" = Modern Standard Arabic for that specific sense, with diacritics on the head word. Keep it short; add " — " and a brief clarifier only where the bare gloss is ambiguous.
+8. "n" = a short warning only where one is earned: archaic or offensive register, a stress or spelling trap, a false friend, or a near-synonym worth distinguishing. Otherwise null — most words get null.
+9. Plain text in "w", "d", "e", "a" and "n". No angle brackets, no ampersands, no HTML entities there: write "and", not "&". Field names and notes are ordinary prose and may use "&" freely.
+
+Straight quotes only, valid JSON, nothing before or after the object.`;
+}
+
 function buildPrompt(){
-  /* A booklet with no fields yet is a real state — a blank start, or every field
-     deleted — and the prompt has to say something true in it rather than printing an
-     empty list under a heading that promises one. */
-  const fl = FIELDS.length
-    ? FIELDS.map(f=>`${f.id} = ${f.name}: ${f.note}`).join('\n')
-    : '(none yet — return null for every "f")';
+  if(!FIELDS.length) return buildProposePrompt();
+  const fl = FIELDS.map(f=>`${f.id} = ${f.name}: ${f.note}`).join('\n');
   document.getElementById('prompt').textContent =
 `Add these to my vocabulary booklet. Return ONLY a raw JSON array — no prose, no markdown fences.
 
@@ -2451,15 +2645,63 @@ function mergeMsg(res){
 document.getElementById('merge').addEventListener('click',async ()=>{
   const msg=document.getElementById('mergemsg');
   const txt=document.getElementById('incoming').value.trim().replace(/^```(json)?|```$/g,'').trim();
-  let arr;
-  try{ arr=JSON.parse(txt); }catch(e){ msg.className='note bad'; msg.textContent='That is not valid JSON. Paste the whole array including the square brackets.'; return; }
-  if(!Array.isArray(arr)){ msg.className='note bad'; msg.textContent='Expected an array of objects.'; return; }
+  let parsed;
+  try{ parsed=JSON.parse(txt); }catch(e){ msg.className='note bad'; msg.textContent='That is not valid JSON. Paste the whole reply, brackets and all.'; return; }
+
+  /* The blank-booklet reply arrives as {fields, words} rather than as a bare array. It is
+     unwrapped here and nowhere else: the fields are made first, so that by the time the
+     array is handed on, mergeArray can validate every "f" against fields that exist. It
+     still receives a bare array and still knows nothing about where it came from. */
+  let arr = parsed, madeFields = 0;
+  if(parsed && !Array.isArray(parsed) && Array.isArray(parsed.words)){
+    const proposed = Array.isArray(parsed.fields) ? parsed.fields.slice(0, MAXFIELDS) : [];
+    /* An ampersand is fine here and forbidden in a word: half the fields this booklet
+       shipped with are called "X & Y". The rule that bans it from w/d/e/a/n exists because
+       that text was once written into a string of HTML; a field name is set with
+       textContent and escaped in the book, so only an angle bracket is worth refusing,
+       and only because it means the model has misunderstood the question. */
+    const bad = proposed.find(f=>typeof f.name!=='string' || !f.name.trim() || /</.test(f.name+(f.note||'')));
+    if(bad){ msg.className='note bad'; msg.textContent='Nothing merged — a proposed field has no name, or contains markup.'; return; }
+    /* Every "f" is checked against the fields that are about to exist, before any of them
+       do. mergeArray cannot do this check for us — it validates against FIELDS, which is
+       exactly what has not been written yet — and without it a reply naming a field it
+       never proposed would leave the fields created under a message saying nothing had
+       been merged. Nothing is written until the whole reply hangs together. */
+    const willExist = new Set(FIELDS.map(f=>f.id)
+      .concat(proposed.map((f,i)=>f.id!=null?+f.id:i+1)));
+    const orphan = parsed.words.find(x=>x && x.f!=null && !willExist.has(+x.f));
+    if(orphan){
+      msg.className='note bad';
+      msg.textContent='Nothing merged — '+String(orphan.w||'a word')+' is filed under field '+orphan.f+', which the reply never proposed.';
+      return;
+    }
+    try{
+      for(let i=0;i<proposed.length;i++){
+        const f={id:proposed[i].id!=null?+proposed[i].id:i+1, name:String(proposed[i].name).trim(),
+                 ink:INKS[i%INKS.length], note:String(proposed[i].note||'').trim(), sort:i+1};
+        if(FIELDS.some(x=>x.id===f.id)) continue;      // never overwrite a field already there
+        await store.saveField(f);
+        FIELDS.push(f); madeFields++;
+      }
+    }catch(e){ msg.className='note bad'; msg.textContent='Nothing merged — the fields could not be saved: '+errText(e); return; }
+    FIELDS.sort((a,b)=>(a.sort==null?a.id:a.sort)-(b.sort==null?b.id:b.sort));
+    renderFields();
+    arr = parsed.words;
+  }
+
+  if(!Array.isArray(arr)){ msg.className='note bad'; msg.textContent='Expected an array of objects, or an object with a "words" array.'; return; }
   let res;
   try{ res = await mergeArray(arr); }
   catch(e){ msg.className='note bad'; msg.textContent='Nothing merged — '+errText(e)+' Your reply is still in the box.'; return; }
-  if(!res.ok){ msg.className='note bad'; msg.textContent='Nothing merged — '+res.errors.slice(0,3).join('; '); return; }
+  if(!res.ok){
+    msg.className='note bad';
+    /* if fields were made on the way in, say so rather than claiming nothing happened */
+    msg.textContent='No words merged — '+res.errors.slice(0,3).join('; ')
+      + (madeFields?` Your ${madeFields} new field${madeFields===1?'':'s'} were kept.`:'');
+    return;
+  }
   msg.className='note good';
-  msg.textContent = mergeMsg(res);
+  msg.textContent = (madeFields ? `${madeFields} field${madeFields===1?'':'s'} made. ` : '') + mergeMsg(res);
   document.getElementById('incoming').value=''; document.getElementById('raw').value='';
   /* the batch is spent: the chips and the prompt describe words that are now in the book */
   document.getElementById('report').innerHTML=''; fresh=[]; setReady(false);

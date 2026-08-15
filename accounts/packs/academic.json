@@ -1,0 +1,15 @@
+{
+ "schema": 1,
+ "pack": "Academic & exam",
+ "blurb": "Argument, hedging, evidence and register — aimed at IELTS and TOEFL writing.",
+ "fields": [
+  { "id": 1, "name": "Argument & Claim", "ink": "#C9922F", "note": "Stating a position and holding it: assert, contend, posit, and the shape of a thesis." },
+  { "id": 2, "name": "Hedging & Caution", "ink": "#3F9A85", "note": "Saying something without overstating it. The half of academic English that marks a careful writer." },
+  { "id": 3, "name": "Evidence & Method", "ink": "#C4485C", "note": "How a claim is supported — corroborate, replicate, and the vocabulary of showing your working." },
+  { "id": 4, "name": "Cause & Consequence", "ink": "#8C6FD4", "note": "What follows from what: precipitate, engender, and the difference between correlation and cause." },
+  { "id": 5, "name": "Comparison & Contrast", "ink": "#4E8AD6", "note": "Setting two things beside each other — notwithstanding, conversely, disproportionate." },
+  { "id": 6, "name": "Register & Formality", "ink": "#C77FB0", "note": "Words that mark writing as academic rather than spoken, and the traps of reaching too high." }
+ ],
+ "words": [],
+ "corrections": []
+}

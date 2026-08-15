@@ -1,0 +1,15 @@
+{
+ "schema": 1,
+ "pack": "Business & professional",
+ "blurb": "Meetings, negotiation, finance and management — the register of work.",
+ "fields": [
+  { "id": 1, "name": "Meetings & Process", "ink": "#C9922F", "note": "How work is organised and talked about: agendas, escalation, the words that move a decision along." },
+  { "id": 2, "name": "Negotiation & Persuasion", "ink": "#3F9A85", "note": "Getting to terms — leverage, concession, and the careful language of not quite agreeing yet." },
+  { "id": 3, "name": "Finance & Risk", "ink": "#C4485C", "note": "Money, exposure and what might go wrong: the vocabulary of budgets, runway and liability." },
+  { "id": 4, "name": "Strategy & Positioning", "ink": "#8C6FD4", "note": "Where a business says it stands and why — markets, moats, and the language of intent." },
+  { "id": 5, "name": "People & Management", "ink": "#4E8AD6", "note": "Hiring, reviewing, delegating and letting go: what is said about people at work, and how carefully." },
+  { "id": 6, "name": "Law & Obligation", "ink": "#C77FB0", "note": "Contracts and what they bind you to — indemnity, breach, and the words that carry consequences." }
+ ],
+ "words": [],
+ "corrections": []
+}

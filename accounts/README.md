@@ -17,7 +17,8 @@ hand: a word is saved the moment it is merged, and it is there on the other devi
 | File | What it is |
 |---|---|
 | `index.html` | The whole app. One dependency, loaded from a CDN: the Supabase client. |
-| `words.json` | The starter words and the eight fields. Read once, to stock new accounts. |
+| `words.json` | The literary starter pack — 150 words and eight fields. Read once, to stock a new booklet. |
+| `packs/` | The other starter packs. Same shape as `words.json`; add your own by dropping a file in. |
 | `supabase/schema.sql` | Tables and the security policies that keep accounts apart. |
 | `img/` | Optional pictures for the few words that can have one. |
 | `manifest.json`, `icon.svg` | Make "Add to Home Screen" work on iPad. |
@@ -60,8 +61,17 @@ down, not a broken state.
 An email and a password, or a social account if you switch one on. **Create an account**
 takes an address and a password of at least six characters, sends one confirmation email,
 and that is that. **Forgot password?** sends a reset link that brings you back here to
-choose a new one. The first sign-in stocks the account with the 150 starter words — after
-that they are yours, and editing, marking or deleting them affects nobody else's copy.
+choose a new one.
+
+The first sign-in asks one question — **what do you read?** — and stocks the booklet from
+the pack you pick: the original 150 words on castles and scripture and rhetoric, a set of
+fields fitted to business or to exam writing, or nothing at all if you would rather name
+your own. After that everything in it is yours, and editing, filing, marking or removing
+affects nobody else's copy. Nothing is chosen for you and every answer is a good one.
+
+If you start blank, the prompt in step 2 changes: it asks the model to **propose** your
+fields from your first batch of words and then file them, so you get a taxonomy drawn from
+your own reading instead of having to invent eight categories before you own fifty words.
 
 ### Social sign-in
 
