@@ -41,6 +41,9 @@
     font-family:"Newsreader",Georgia,serif; font-size:17px; line-height:1.55;
     -webkit-font-smoothing:antialiased;
   }
+  /* An author rule that sets display beats the browser's own [hidden] rule, so anything
+     given display:flex here would ignore its hidden attribute. Said once, at the top. */
+  [hidden]{display:none !important}
   .wrap{max-width:1080px; margin:0 auto; padding:0 22px}
   @media(min-width:1180px){ .wrap{max-width:1380px} }
   @media(min-width:1400px){ .wrap{max-width:1500px} }   /* wider gutter-to-gutter so three columns are not cramped */
@@ -345,6 +348,7 @@
   .oauth,.or,.gate .fld,.gate .row,.gate-alt{max-width:38ch}
   .btn.wide{flex:1}
   .oauth{display:flex; flex-direction:column; gap:10px; margin-top:28px}
+  .oauth:empty{display:none}   /* no providers switched on: no box, and no margin either */
   .oauth button{
     display:flex; align-items:center; justify-content:center; gap:10px; width:100%;
     background:var(--paper); color:var(--night); border:1px solid var(--paper);
@@ -1258,6 +1262,11 @@ async function enter(session){
     document.getElementById('gate').hidden = false;
     document.getElementById('book').innerHTML = '';
     document.getElementById('fix').hidden = true;
+    /* render() writes the real counts; signed out it never runs, and the placeholder in
+       the markup would sit there claiming seven fields for a booklet that has eight. */
+    document.getElementById('eyebrow').textContent = SEED
+      ? `A working vocabulary · ${SEED.words.length} words · ${SEED.fields.length} fields`
+      : 'A working vocabulary';
     setAcctState(null);
     openPanel(null);
   }
