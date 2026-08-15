@@ -318,7 +318,7 @@
   .panel textarea:focus{outline:none; border-color:var(--ink-1)}
   .panel .row{display:flex; gap:9px; flex-wrap:wrap; margin-top:12px; align-items:center}
   /* a labelled single-line field — the panel had only textareas until sign-in arrived */
-  .fld{margin:0 0 4px; max-width:34ch}
+  .fld{margin:0 0 4px; max-width:38ch}
   .fld label{font-family:"Archivo",sans-serif; font-size:10px; letter-spacing:.14em;
              text-transform:uppercase; color:var(--dim); display:block; margin:0 0 6px}
   .fld input{
@@ -336,7 +336,38 @@
   .gate h2{font-family:"Fraunces",Georgia,serif; font-weight:500; font-size:clamp(26px,5vw,40px);
            letter-spacing:-.02em; margin:0 0 18px; color:var(--paper)}
   .gate p{font-size:17px; line-height:1.7; color:var(--dim); margin:0 0 16px}
-  .gate .fld{margin-top:26px}
+  .gate .fld{margin-top:18px}
+  /* Provider buttons: full width and stacked, the shape everyone already recognises from
+     every other sign-in. Wider than the app's usual pill because they are the first thing
+     on the page, not a control tucked into a bar. */
+  /* one column width for every control, so the buttons, the fields and the divider all
+     line up — the prose above stays at reading width and is the only thing that doesn't */
+  .oauth,.or,.gate .fld,.gate .row,.gate-alt{max-width:38ch}
+  .btn.wide{flex:1}
+  .oauth{display:flex; flex-direction:column; gap:10px; margin-top:28px}
+  .oauth button{
+    display:flex; align-items:center; justify-content:center; gap:10px; width:100%;
+    background:var(--paper); color:var(--night); border:1px solid var(--paper);
+    border-radius:99px; padding:13px 18px; cursor:pointer;
+    font-family:"Archivo",system-ui,sans-serif; font-size:13.5px; font-weight:600; letter-spacing:.02em;
+  }
+  .oauth button:hover{background:#fff; border-color:#fff}
+  .oauth button:disabled{opacity:.6; cursor:default}
+  .oauth svg{width:17px; height:17px; flex:none}
+  /* a rule with the word sitting in the gap, rather than a line then a word then a line */
+  .or{display:flex; align-items:center; gap:14px; margin:26px 0 4px; color:var(--dim)}
+  .or::before,.or::after{content:""; height:1px; background:var(--rule); flex:1}
+  .or span{font-family:"Archivo",sans-serif; font-size:11px; letter-spacing:.14em; text-transform:uppercase}
+  .btn.wide{width:100%; justify-content:center; padding:13px 18px; font-size:12px;
+            background:var(--paper); color:var(--night); border-color:var(--paper)}
+  .btn.wide:hover{background:#fff; border-color:#fff; color:var(--night)}
+  .btn.wide:disabled{opacity:.55; cursor:default}
+  /* the two escape hatches under the form — text, not buttons, because neither is the
+     thing you came here to press */
+  .gate-alt{display:flex; gap:20px; flex-wrap:wrap; margin-top:18px}
+  .linkbtn{background:none; border:0; padding:0; cursor:pointer; color:var(--dim);
+           font:14px/1.5 "Newsreader",serif; text-decoration:underline; text-underline-offset:3px}
+  .linkbtn:hover{color:var(--paper)}
   /* Signed out there is no booklet to search, mark or print, so the whole apparatus goes
      rather than sitting there greyed: the cover and the gate are the entire page. */
   body.signed-out .bar-wrap,
@@ -587,16 +618,30 @@
   <!-- Shown instead of the book when accounts are on and nobody is signed in. It is the
        only place the email form lives, so there is one sign-in in the app, not two. -->
   <section class="gate" id="gate" hidden>
-    <h2>Your own booklet</h2>
-    <p>Sign in and you get your own copy of these words — a hundred and fifty to begin with,
-      yours to add to, mark up and mangle. Nothing you do to them touches anyone else's.</p>
-    <p>Enter your email and a link arrives. There is no password to remember and none to lose.</p>
+    <h2 id="gate-h">Your own booklet</h2>
+    <p id="gate-p">Sign in and you get your own copy of these words — a hundred and fifty to
+      begin with, yours to add to, mark up and mangle. Nothing you do to them touches
+      anyone else's.</p>
+
+    <!-- Filled from the project's own auth settings, so a button only exists for a
+         provider that is actually switched on. Nothing here to keep in step by hand. -->
+    <div class="oauth" id="oauth"></div>
+    <div class="or" id="or" hidden><span>or</span></div>
+
     <div class="fld">
       <label for="email">Email</label>
       <input type="email" id="email" autocomplete="email" placeholder="you@example.com">
     </div>
-    <div class="row"><button class="btn" id="sendlink">Send me a link</button></div>
+    <div class="fld" id="pwfld">
+      <label for="pw">Password</label>
+      <input type="password" id="pw" autocomplete="current-password" placeholder="••••••••">
+    </div>
+    <div class="row"><button class="btn wide" id="go">Continue with email</button></div>
     <p class="note" id="acctmsg"></p>
+    <p class="gate-alt">
+      <button class="linkbtn" id="toggle">New here? Create an account</button>
+      <button class="linkbtn" id="forgot">Forgot password?</button>
+    </p>
   </section>
 
   <main id="book"></main>
@@ -1055,6 +1100,8 @@ const cloudStore = {
 };
 
 let store = localStore, offline = false;
+/* True between following a reset link and choosing the new password — see the gate. */
+let recovering = false;
 
 /* Supabase hands back {message, code, details}, not an Error, and a dead network throws a
    bare TypeError with no status at all. Both end up here so the callers can just throw. */
@@ -1171,6 +1218,10 @@ async function boot(){
   try{ ({data:{session}} = await sb.auth.getSession()); }catch(e){}
   await enter(session);
   sb.auth.onAuthStateChange((_evt, s)=>{
+    /* A reset link arrives as a perfectly good session. Following it into the booklet
+       would skip the new-password form it was sent to open, so the gate holds on to
+       them until the password is actually changed. */
+    if(recovering) return;
     const same = (s && s.user.id) === (cloudStore.uid);
     if(same) return;              // token refreshes fire this too; nothing to redraw
     enter(s);
@@ -1240,28 +1291,144 @@ function syncNote(text){
   el.className = text ? 'note warn' : 'note';
 }
 
-/* ---------- the sign-in gate ---------- */
+/* ---------- the sign-in gate ----------
+   Three modes in one form: signing in, creating an account, and setting a new password
+   after a reset. They share the email and password fields because they are the same two
+   questions asked for different reasons — only the button, the heading and what happens
+   on submit change. */
+const PROVIDERS = {
+  google:    {label:'Google',    mark:'<svg viewBox="0 0 48 48"><path fill="#4285F4" d="M45 24c0-1.6-.1-2.7-.4-4H24v8h12c-.2 2-1.6 5-4.5 7l7 5.4C42.6 36.5 45 30.8 45 24z"/><path fill="#34A853" d="M24 46c6 0 11-2 14.6-5.4l-7-5.4C29.7 36.5 27.1 37.4 24 37.4c-5.8 0-10.7-3.9-12.5-9.1l-7.2 5.6C8 40.9 15.4 46 24 46z"/><path fill="#FBBC05" d="M11.5 28.3c-.5-1.4-.7-2.8-.7-4.3s.3-3 .7-4.3l-7.2-5.6C2.8 17 2 20.4 2 24s.8 7 2.3 9.9l7.2-5.6z"/><path fill="#EA4335" d="M24 10.6c3.3 0 6.2 1.1 8.5 3.3l6.3-6.3C35 4.1 30 2 24 2 15.4 2 8 7.1 4.3 14.1l7.2 5.6c1.8-5.2 6.7-9.1 12.5-9.1z"/></svg>'},
+  apple:     {label:'Apple',     mark:'<svg viewBox="0 0 24 24"><path d="M16.4 12.8c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.8-2-1.6-.2-3.1 1-3.9 1-.8 0-2.1-.9-3.4-.9-1.7 0-3.3 1-4.2 2.6-1.8 3.1-.5 7.7 1.3 10.2.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.3-.8 1.5 0 2 .8 3.4.8 1.4 0 2.3-1.2 3.1-2.5.6-.9.9-1.8 1.1-2.3-2.4-.9-2.3-4.7-2.3-4.8zM14 5.2c.7-.9 1.2-2.1 1.1-3.2-1 0-2.3.7-3 1.6-.7.8-1.3 2-1.1 3.1 1.1.1 2.3-.6 3-1.5z"/></svg>'},
+  azure:     {label:'Microsoft', mark:'<svg viewBox="0 0 24 24"><path fill="#F25022" d="M2 2h9.5v9.5H2z"/><path fill="#7FBA00" d="M12.5 2H22v9.5h-9.5z"/><path fill="#00A4EF" d="M2 12.5h9.5V22H2z"/><path fill="#FFB900" d="M12.5 12.5H22V22h-9.5z"/></svg>'},
+  github:    {label:'GitHub',    mark:'<svg viewBox="0 0 24 24"><path d="M12 1.5A10.5 10.5 0 001.5 12c0 4.6 3 8.5 7.2 9.9.5.1.7-.2.7-.5v-1.9c-2.9.6-3.5-1.3-3.5-1.3-.5-1.2-1.2-1.5-1.2-1.5-.9-.6.1-.6.1-.6 1 .1 1.6 1 1.6 1 .9 1.6 2.4 1.1 3 .9.1-.7.4-1.1.7-1.4-2.3-.3-4.8-1.2-4.8-5.2 0-1.2.4-2.1 1-2.9-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.7 1.1a9.3 9.3 0 015 0c1.9-1.4 2.7-1.1 2.7-1.1.5 1.4.2 2.4.1 2.7.6.8 1 1.7 1 2.9 0 4-2.5 4.9-4.8 5.2.4.3.7 1 .7 2v3c0 .3.2.6.7.5A10.5 10.5 0 0022.5 12 10.5 10.5 0 0012 1.5z"/></svg>'},
+  facebook:  {label:'Facebook',  mark:''},
+  twitter:   {label:'X',         mark:''},
+  discord:   {label:'Discord',   mark:''},
+  gitlab:    {label:'GitLab',    mark:''},
+  notion:    {label:'Notion',    mark:''},
+  slack_oidc:{label:'Slack',     mark:''},
+  linkedin_oidc:{label:'LinkedIn', mark:''}
+};
+
 if(ACCOUNTS){
-  const send=document.getElementById('sendlink'), mail=document.getElementById('email'), msg=document.getElementById('acctmsg');
-  async function sendLink(){
-    const email=mail.value.trim();
-    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ msg.className='note bad'; msg.textContent='That does not look like an email address.'; return; }
-    send.disabled=true; send.textContent='Sending…';
-    msg.className='note'; msg.textContent='';
-    try{
-      /* Back to this page, without the fragment a previous link may have left behind. */
-      const {error} = await sb.auth.signInWithOtp({email, options:{emailRedirectTo: location.origin+location.pathname}});
-      if(error) throw asError(error);
-      msg.className='note good';
-      msg.textContent='Check '+email+' — the link is on its way. It opens straight back here.';
-    }catch(e){
-      msg.className='note bad';
-      msg.textContent='Could not send it — '+errText(e);
+  const mail=document.getElementById('email'), pw=document.getElementById('pw');
+  const go=document.getElementById('go'), msg=document.getElementById('acctmsg');
+  const toggle=document.getElementById('toggle'), forgot=document.getElementById('forgot');
+  const head=document.getElementById('gate-h'), lede=document.getElementById('gate-p');
+  let mode='in';                                   // 'in' | 'up' | 'reset'
+  const back = () => location.origin + location.pathname;
+
+  function say(kind, text){ msg.className='note '+kind; msg.textContent=text; }
+
+  function setMode(m){
+    mode=m;
+    document.getElementById('pwfld').hidden = false;
+    pw.autocomplete = m==='in' ? 'current-password' : 'new-password';
+    if(m==='in'){
+      head.textContent='Your own booklet';
+      lede.textContent="Sign in and you get your own copy of these words — a hundred and fifty to begin with, yours to add to, mark up and mangle. Nothing you do to them touches anyone else's.";
+      go.textContent='Continue with email';
+      toggle.textContent='New here? Create an account';
+      forgot.hidden=false;
+    }else if(m==='up'){
+      head.textContent='Make an account';
+      lede.textContent='Pick an email and a password of at least six characters. You will get one message asking you to confirm the address, and then the hundred and fifty words are yours.';
+      go.textContent='Create my account';
+      toggle.textContent='Already have an account? Sign in';
+      forgot.hidden=true;
+    }else{
+      head.textContent='Set a new password';
+      lede.textContent='You followed a reset link. Choose the password you want from now on.';
+      go.textContent='Save my new password';
+      toggle.textContent='Back to signing in';
+      forgot.hidden=true;
+      document.getElementById('email').closest('.fld').hidden = true;
     }
-    send.disabled=false; send.textContent='Send me a link';
+    if(m!=='reset') document.getElementById('email').closest('.fld').hidden = false;
+    say('', '');
   }
-  send.addEventListener('click', sendLink);
-  mail.addEventListener('keydown', e=>{ if(e.key==='Enter') sendLink(); });
+  setMode('in');
+
+  toggle.addEventListener('click',()=>setMode(mode==='in' ? 'up' : 'in'));
+
+  const looksEmail = s => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s);
+
+  async function submit(){
+    const email=mail.value.trim(), pass=pw.value;
+    if(mode!=='reset' && !looksEmail(email)) return say('bad','That does not look like an email address.');
+    if(pass.length < 6) return say('bad','Passwords need at least six characters.');
+    const label=go.textContent;
+    go.disabled=true; go.textContent='One moment…'; say('','');
+    try{
+      if(mode==='in'){
+        const {error} = await sb.auth.signInWithPassword({email, password:pass});
+        if(error) throw asError(error);
+        /* onAuthStateChange takes it from here — the gate is about to be replaced */
+      }else if(mode==='up'){
+        const {data, error} = await sb.auth.signUp({email, password:pass, options:{emailRedirectTo:back()}});
+        if(error) throw asError(error);
+        if(data.session) say('good','Account made — loading your words.');
+        else say('good','Check '+email+' and click the link to confirm the address. Then sign in here.');
+      }else{
+        const {error} = await sb.auth.updateUser({password:pass});
+        if(error) throw asError(error);
+        /* They are already authenticated by the link they followed, so there is nothing
+           to sign in to — the new password is saved and the booklet opens. */
+        say('good','Saved. That is your password from now on.');
+        recovering=false;
+        setMode('in');
+        const {data:{session}} = await sb.auth.getSession();
+        await enter(session);
+      }
+    }catch(e){ say('bad', authText(e)); }
+    go.disabled=false; go.textContent=label;
+  }
+  go.addEventListener('click', submit);
+  [mail,pw].forEach(el=>el.addEventListener('keydown', e=>{ if(e.key==='Enter') submit(); }));
+
+  forgot.addEventListener('click', async ()=>{
+    const email=mail.value.trim();
+    if(!looksEmail(email)) return say('bad','Put your email in the box first, then press this.');
+    try{
+      const {error} = await sb.auth.resetPasswordForEmail(email, {redirectTo:back()});
+      if(error) throw asError(error);
+      say('good','A reset link is on its way to '+email+'. It brings you back here to choose a new one.');
+    }catch(e){ say('bad', authText(e)); }
+  });
+
+  /* A reset link comes back as a session plus this event; the form becomes the
+     new-password form rather than sending them into the booklet half-finished. */
+  sb.auth.onAuthStateChange((evt)=>{
+    if(evt==='PASSWORD_RECOVERY'){
+      recovering=true;
+      document.getElementById('gate').hidden=false;
+      document.body.classList.add('signed-out');
+      setMode('reset');
+      document.getElementById('gate').scrollIntoView({behavior:'smooth'});
+    }
+  });
+
+  /* One button per provider the project actually has switched on. */
+  (async ()=>{
+    let on=[];
+    try{
+      const r=await fetch(SUPABASE_URL+'/auth/v1/settings',{headers:{apikey:SUPABASE_ANON_KEY}});
+      const j=await r.json();
+      on=Object.keys(PROVIDERS).filter(k=>j.external && j.external[k]);
+    }catch(e){}
+    if(!on.length) return;
+    const box=document.getElementById('oauth');
+    box.innerHTML = on.map(k=>`<button data-p="${k}">${PROVIDERS[k].mark}Continue with ${esc(PROVIDERS[k].label)}</button>`).join('');
+    document.getElementById('or').hidden=false;
+    box.addEventListener('click', async e=>{
+      const b=e.target.closest('[data-p]'); if(!b) return;
+      b.disabled=true;
+      try{
+        const {error} = await sb.auth.signInWithOAuth({provider:b.dataset.p, options:{redirectTo:back()}});
+        if(error) throw asError(error);
+      }catch(err){ b.disabled=false; say('bad', authText(err)); }
+    });
+  })();
 
   document.getElementById('tosignin').addEventListener('click',()=>{
     openPanel(null);
@@ -1275,6 +1442,19 @@ if(ACCOUNTS){
     try{ await sb.auth.signOut(); m.textContent=''; }
     catch(e){ m.className='note bad'; m.textContent='Could not sign out — '+errText(e); }
   });
+}
+
+/* Supabase's auth errors are already written for a reader, but three of them are worth
+   saying better: the wrong password, an address that never confirmed, and a second
+   account on an address that already has one. */
+function authText(e){
+  const m = (e && e.message) || '';
+  if(/Invalid login credentials/i.test(m)) return 'That email and password do not match an account. Check the password, or create an account if you have not yet.';
+  if(/Email not confirmed/i.test(m))       return 'That address has not been confirmed yet — the link is in your inbox from when you signed up.';
+  if(/already registered|User already/i.test(m)) return 'There is already an account on that address. Sign in instead, or use the reset link.';
+  if(/should be at least/i.test(m))        return 'That password is too short.';
+  if(/rate limit|too many/i.test(m))       return 'Too many attempts in a row — wait a minute and try again.';
+  return errText(e);
 }
 document.getElementById('acctbtn').addEventListener('click',()=>{
   openPanel(document.getElementById('account').classList.contains('on') ? null : document.getElementById('account'));

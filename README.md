@@ -44,8 +44,8 @@ nothing without a signed-in session.
 
 **4. Tell Supabase where the app lives.** Dashboard → **Authentication → URL Configuration**.
 Set **Site URL** to your deployed address, and add `http://localhost:8001` to **Redirect URLs**
-if you want to sign in while working on it locally. Sign-in links land back on these; a URL
-that isn't listed here is refused.
+if you want to sign in while working on it locally. Confirmation, reset and social sign-in
+links all land back on these; a URL that isn't listed here is refused.
 
 **5. Put it online.** Same as before — a public repo, then
 **Settings → Pages → Source: Deploy from a branch → `main` / `root`.**
@@ -56,9 +56,31 @@ down, not a broken state.
 
 ## Signing in
 
-Enter an email, get a link, click it. No password to remember and none to lose. The first
-sign-in stocks the account with the 150 starter words — after that they are yours, and
-editing, marking or deleting them affects nobody else's copy.
+An email and a password, or a social account if you switch one on. **Create an account**
+takes an address and a password of at least six characters, sends one confirmation email,
+and that is that. **Forgot password?** sends a reset link that brings you back here to
+choose a new one. The first sign-in stocks the account with the 150 starter words — after
+that they are yours, and editing, marking or deleting them affects nobody else's copy.
+
+### Social sign-in
+
+The gate reads the project's own settings and shows a button for **every provider you have
+switched on** — nothing to edit in the code, and no dead buttons for providers you haven't
+set up. Dashboard → **Authentication → Providers**, turn one on, fill in its client id and
+secret, reload the page and its button is there.
+
+What each one costs you in setup:
+
+| Provider | What it needs |
+|---|---|
+| **Google** | A free Google Cloud project and an OAuth client. Half an hour, no money. Start here. |
+| **GitHub** | A free OAuth app in your GitHub settings. Easiest of the lot. |
+| **Microsoft** | An Azure app registration. Free, but Azure's console is a maze. Supabase calls this provider `azure`. |
+| **Apple** | An Apple Developer account — **$99 a year**. Only worth it if your readers are iPhone-first. |
+| **SSO / SAML** | A **paid Supabase plan**. Not available on free. |
+
+Icons are drawn in the page for Google, Apple, Microsoft and GitHub; other providers get a
+labelled button with no mark, which is fine and still works.
 
 ## Adding words — the loop
 
