@@ -619,8 +619,8 @@
 
    Leave them empty and nothing breaks: the booklet runs on this device alone, exactly as
    it did before accounts existed, with Download as the way words leave it. */
-const SUPABASE_URL      = '';
-const SUPABASE_ANON_KEY = '';
+const SUPABASE_URL      = 'https://pnsmrzlncqlbrkpamnyq.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_lH1l_wn_b45JvzFE7ZeIDg_4FQdjb-2';
 
 const ACCOUNTS = !!(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase);
 const sb = ACCOUNTS ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
