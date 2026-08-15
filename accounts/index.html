@@ -407,6 +407,54 @@
   .note.warn{color:var(--ink-1)}
   .note.bad{color:var(--ink-3)}
   .note.good{color:var(--ink-2)}
+  /* the one bulk action, kept away from the rest of the account panel by a rule */
+  .empty-all{margin-top:22px; padding-top:18px; border-top:1px solid var(--rule)}
+  .empty-all .set-t{color:var(--ink-3)}
+  .empty-all input{background:var(--night-2); border:1px solid var(--ink-3); border-radius:7px;
+    padding:8px 11px; color:var(--paper); font:15px/1.4 "Newsreader",Georgia,serif; max-width:160px}
+
+  /* ---------- the card menu ---------- */
+  .more{
+    width:24px; height:24px; flex:none; border-radius:50%; cursor:pointer; padding:0;
+    border:1.5px solid rgba(34,36,63,.22); background:transparent; color:rgba(34,36,63,.5);
+    font:600 13px/1 "Archivo",sans-serif; display:grid; place-items:center; transition:all .15s ease;
+  }
+  .more:hover,.more[aria-expanded="true"]{border-color:var(--c); color:var(--c)}
+  .more:focus-visible{outline:2px solid var(--c); outline-offset:2px}
+  .card-menu{
+    position:absolute; right:14px; top:52px; z-index:4; min-width:186px; max-width:calc(100% - 28px);
+    background:#FBFAF6; border:1px solid rgba(34,36,63,.18); border-radius:9px; padding:5px;
+    box-shadow:0 12px 30px rgba(0,0,0,.34);
+  }
+  .cm-item{
+    display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%;
+    font-family:"Archivo",sans-serif; font-size:12px; color:#22243F; text-align:left;
+    padding:8px 10px; border:0; border-radius:6px; background:transparent; cursor:pointer;
+  }
+  .cm-item:hover,.cm-item:focus-visible{background:rgba(34,36,63,.07); outline:none}
+  .cm-item.hot{color:#A8394B}
+  .cm-item.hot:hover,.cm-item.hot:focus-visible{background:rgba(196,72,92,.11)}
+  .cm-dot{width:9px; height:9px; border-radius:50%; flex:none}
+  .cm-sep{height:1px; background:rgba(34,36,63,.12); margin:4px 6px}
+  .cm-none{font-family:"Archivo",sans-serif; font-size:11.5px; color:rgba(34,36,63,.55); padding:8px 10px; line-height:1.45}
+  .cm-confirm{margin-top:14px; padding-top:14px; border-top:1px solid rgba(34,36,63,.14)}
+  .cm-ct{font-family:"Fraunces",Georgia,serif; font-size:16px; font-weight:600; margin:0}
+  .cm-confirm .cm-cd{font-size:13.5px; color:#4A4C63; margin:6px 0 0; line-height:1.5}
+  .cm-confirm .row{margin-top:12px}
+  .cm-confirm .btn{color:rgba(34,36,63,.6); border-color:rgba(34,36,63,.25)}
+  .cm-confirm .btn:hover{color:#22243F; border-color:rgba(34,36,63,.5)}
+  .cm-yes{background:var(--ink-3) !important; border-color:var(--ink-3) !important; color:var(--paper) !important}
+  /* the dashed chip is the second, more findable door into the same menu */
+  .filebtn{
+    display:inline-flex; align-items:center; gap:6px; margin-top:12px; padding:5px 10px;
+    font-family:"Archivo",sans-serif; font-size:9.5px; font-weight:700; letter-spacing:.11em;
+    text-transform:uppercase; border-radius:99px; cursor:pointer;
+    border:1px dashed rgba(34,36,63,.3); background:transparent; color:rgba(34,36,63,.62);
+  }
+  .filebtn:hover{border-color:var(--c); color:var(--c)}
+  .filebtn:focus-visible{outline:2px solid var(--c); outline-offset:2px}
+  @media print{ .more,.filebtn,.card-menu,.cm-confirm{display:none !important} }
+
   /* ---------- fields ---------- */
   .fld-row{display:flex; align-items:flex-start; gap:13px; padding:13px 0; border-bottom:1px solid var(--rule)}
   .fld-row:last-child{border-bottom:0}
@@ -653,6 +701,17 @@
             account as you add them; nothing needs downloading or committing.</p>
           <div class="row"><button class="btn" id="signout">Sign out</button></div>
           <p class="note" id="acctmsg2"></p>
+
+          <!-- The only bulk action in the app. Removing words one at a time is right for
+               a booklet you are tending; it is cruelty for someone who signed up, got a
+               hundred and fifty words about castles, and wanted none of them. -->
+          <div class="empty-all">
+            <p class="set-t">Empty this booklet</p>
+            <p class="set-d" id="emptydesc">Removes every word and leaves your fields standing.
+              There is no undo — take a copy from <b>Settings → Add words → Step 4</b> first if you want one.</p>
+            <div class="row" id="emptyrow"><button class="btn fld-del" id="emptybtn">Empty this booklet</button></div>
+            <p class="note" id="emptymsg"></p>
+          </div>
         </div>
 
         <div class="acct" id="acct-off" hidden>
@@ -877,6 +936,7 @@ shown.forEach(f=>{
           <button class="say" data-say="word" aria-label="Hear ${esc(sayWord)}">${SPK}</button>
           ${x.a?`<button class="arbtn" aria-pressed="false" lang="ar" aria-label="Show the Arabic for ${esc(x.w)}">ع</button>`:''}
           <button class="mark" aria-pressed="false" aria-label="Mark ${esc(x.w)} as learned">✓</button>
+          <button class="more" aria-haspopup="true" aria-expanded="false" aria-label="More for ${esc(x.w)}">⋯</button>
         </div>
       </div>
       <div class="hint">Tap to reveal</div>
@@ -886,6 +946,7 @@ shown.forEach(f=>{
         ${x.i?`<figure class="pic"><img src="${esc(x.i)}" alt="${esc(x.w)}" loading="lazy" decoding="async"></figure>`:''}
         ${x.e?`<p class="ex">${ex}</p><button class="say-ex" data-say="ex">${SPK}Hear the sentence</button>`:''}
         ${x.n?`<p class="flag"><b>Careful:</b> ${esc(x.n)}</p>`:''}
+        ${unfiled(x)?`<button class="filebtn">File under ▾</button>`:''}
       </div>
       <span class="no">${String(n).padStart(3,'0')}</span>`;
     grid.appendChild(el);
@@ -952,6 +1013,40 @@ book.addEventListener('click',e=>{
     if(!on) card.classList.add('open');   // .ar sits inside .body, which study mode collapses
     return;
   }
+  /* All of these stop the click travelling: in study mode a bare tap on the card toggles
+     it open, and a menu that closed the card underneath itself would be unusable. */
+  const more = e.target.closest('.more, .filebtn');
+  if(more){
+    e.stopPropagation();
+    const card=more.closest('.card');
+    if(card.querySelector('.card-menu')) closeCardMenu();
+    else openCardMenu(card, more.classList.contains('more') ? more : null);
+    return;
+  }
+  const fileTo = e.target.closest('[data-file]');
+  if(fileTo){
+    e.stopPropagation();
+    const card=fileTo.closest('.card'), v=fileTo.dataset.file;
+    closeCardMenu();
+    fileWord(card.dataset.w, v===''?null:+v);
+    return;
+  }
+  if(e.target.closest('[data-remove]')){
+    e.stopPropagation();
+    confirmRemove(e.target.closest('.card'));
+    return;
+  }
+  if(e.target.closest('[data-reallyremove]')){
+    e.stopPropagation();
+    removeWord(e.target.closest('.card').dataset.w);
+    return;
+  }
+  const cancelRm = e.target.closest('[data-cancelremove]');
+  if(cancelRm){
+    e.stopPropagation();
+    const box=cancelRm.closest('.cm-confirm'); if(box) box.remove();
+    return;
+  }
   const m = e.target.closest('.mark');
   if(m){
     const card=m.closest('.card'), id=card.dataset.w;
@@ -963,6 +1058,99 @@ book.addEventListener('click',e=>{
     const c=e.target.closest('.card'); if(c) c.classList.toggle('open');
   }
 });
+
+/* ---------- the card menu ----------
+   One overflow button carries filing and removal both, so the round buttons stay at four
+   rather than becoming six. Built on demand and thrown away on close: there is never more
+   than one of these on the page, and it never has to be kept in step with anything. */
+function closeCardMenu(){
+  document.querySelectorAll('.card-menu').forEach(m=>m.remove());
+  document.querySelectorAll('.more[aria-expanded="true"]').forEach(b=>b.setAttribute('aria-expanded','false'));
+}
+
+function openCardMenu(card, btn){
+  closeCardMenu();
+  const w = card.dataset.w;
+  const x = W.find(y=>y.w===w);
+  const menu = document.createElement('div');
+  menu.className = 'card-menu';
+  menu.setAttribute('role','menu');
+
+  const item = (label, ink) => {
+    const b=document.createElement('button');
+    b.className='cm-item'; b.setAttribute('role','menuitem');
+    b.textContent=label;
+    if(ink){ const d=document.createElement('span'); d.className='cm-dot'; d.style.background=ink; b.appendChild(d); }
+    return b;
+  };
+  const sep = () => { const s=document.createElement('div'); s.className='cm-sep'; return s; };
+
+  FIELDS.forEach(f=>{
+    if(x && x.f===f.id) return;               // already there; nothing to offer
+    const b=item(f.name, f.ink); b.dataset.file=String(f.id); menu.appendChild(b);
+  });
+  if(!FIELDS.length){
+    const none=document.createElement('div');
+    none.className='cm-none';
+    none.textContent='No fields yet — make some in Settings.';
+    menu.appendChild(none);
+  }
+  if(x && x.f!=null){
+    menu.appendChild(sep());
+    const b=item('Send back to Unfiled'); b.dataset.file=''; menu.appendChild(b);
+  }
+  menu.appendChild(sep());
+  const rm=item('Remove this word'); rm.className='cm-item hot'; rm.dataset.remove='1';
+  menu.appendChild(rm);
+
+  card.appendChild(menu);
+  if(btn) btn.setAttribute('aria-expanded','true');
+  const first=menu.querySelector('.cm-item'); if(first) first.focus();
+}
+
+/* The confirm lives in the card rather than in a dialog, the way the panels open where
+   you are standing. There is no dialog anywhere else in this booklet and this is not
+   the place to introduce one. */
+function confirmRemove(card){
+  closeCardMenu();
+  const w = card.dataset.w;
+  if(card.querySelector('.cm-confirm')) return;
+  const box=document.createElement('div');
+  box.className='cm-confirm';
+  const h=document.createElement('p'); h.className='cm-ct';
+  h.append('Remove ');
+  const em=document.createElement('i'); em.textContent=w; h.appendChild(em);
+  h.append('?');
+  const p=document.createElement('p'); p.className='cm-cd';
+  p.textContent = store.id==='cloud'
+    ? 'It goes from this booklet on every device you use, and will not come back on the next sign-in.'
+    : 'It goes from this booklet on this device. The committed file is not touched.';
+  const row=document.createElement('div'); row.className='row';
+  const yes=document.createElement('button'); yes.className='btn cm-yes'; yes.dataset.reallyremove='1'; yes.textContent='Remove';
+  const no=document.createElement('button'); no.className='btn'; no.dataset.cancelremove='1'; no.textContent='Cancel';
+  row.append(yes,no);
+  box.append(h,p,row);
+  card.querySelector('.body').appendChild(box);
+  card.classList.add('open');
+  yes.focus();
+}
+
+async function fileWord(w, f){
+  try{ await store.setField(w, f); }
+  catch(e){ syncNote('That word did not move — '+errText(e)); return; }
+  const x=W.find(y=>y.w===w); if(x) x.f=f;
+  syncNote('');
+  render(); loadProgress(); showLocal(); renderFields();
+}
+
+async function removeWord(w){
+  try{ await store.removeWord(w); }
+  catch(e){ syncNote('That word was not removed — '+errText(e)); return; }
+  W = W.filter(y=>y.w!==w);
+  done.delete(w);
+  syncNote('');
+  render(); loadProgress(); showLocal(); renderFields();
+}
 
 /* Arabic: each card carries its own toggle; this one drives them all at once */
 const arBtn = document.getElementById('arabic');
@@ -1855,6 +2043,53 @@ document.getElementById('fldlist').addEventListener('click', async e=>{
   }
 });
 
+/* ---------- emptying the booklet ----------
+   Typed rather than tapped. A two-tap confirm is right for one word; for every word at
+   once the reader should have to say what they mean. */
+function emptyIdle(){
+  const row=document.getElementById('emptyrow'), msg=document.getElementById('emptymsg');
+  row.textContent='';
+  const b=document.createElement('button');
+  b.className='btn fld-del'; b.id='emptybtn'; b.textContent='Empty this booklet';
+  row.appendChild(b);
+  msg.className='note'; msg.textContent='';
+}
+
+document.getElementById('emptyrow').addEventListener('click', async e=>{
+  const row=document.getElementById('emptyrow'), msg=document.getElementById('emptymsg');
+
+  if(e.target.closest('#emptybtn')){
+    const inp=document.createElement('input');
+    inp.type='text'; inp.id='emptytype'; inp.placeholder='empty';
+    inp.setAttribute('aria-label','Type the word empty to confirm');
+    const go=document.createElement('button');
+    go.className='btn fld-del'; go.id='emptygo'; go.textContent='Empty it'; go.disabled=true;
+    const no=document.createElement('button');
+    no.className='btn'; no.id='emptyno'; no.textContent='Cancel';
+    inp.addEventListener('input',()=>{ go.disabled = inp.value.trim().toLowerCase()!=='empty'; });
+    msg.className='note warn';
+    msg.textContent = store.id==='cloud'
+      ? 'Type the word "empty" to confirm. Every word goes, on every device.'
+      : 'Type the word "empty" to confirm. Every word goes from this browser.';
+    row.textContent=''; row.append(inp, go, no); inp.focus();
+    return;
+  }
+
+  if(e.target.closest('#emptyno')){ emptyIdle(); return; }
+
+  if(e.target.closest('#emptygo')){
+    const go=document.getElementById('emptygo');
+    go.disabled=true; msg.className='note'; msg.textContent='Emptying…';
+    try{ await store.removeAllWords(); }
+    catch(err){ msg.className='note bad'; msg.textContent='Nothing was removed — '+errText(err); go.disabled=false; return; }
+    W=[]; done.clear();
+    render(); loadProgress(); showLocal(); renderFields();
+    row.textContent='';
+    msg.className='note good';
+    msg.textContent='Emptied. Your fields are still here — add words whenever you like.';
+  }
+});
+
 document.getElementById('fldadd').addEventListener('click',()=>{
   if(FIELDS.length>=MAXFIELDS) return;
   editingField='new'; fieldMsg(''); renderFields();
@@ -1898,10 +2133,14 @@ document.getElementById('fldbtn').addEventListener('click',()=>{
    obey both too, and Escape hands focus back to the button. */
 function panelOpen(){ return PANELS.some(p=>p.classList.contains('on')); }
 document.addEventListener('keydown',e=>{
-  if(e.key!=='Escape' || !panelOpen()) return;
+  if(e.key!=='Escape') return;
+  if(document.querySelector('.card-menu')){ closeCardMenu(); return; }
+  if(!panelOpen()) return;
   openPanel(null); setBtn.focus();
 });
 document.addEventListener('pointerdown',e=>{
+  /* the card menu is a menu too, and closes on a click off it like the rest */
+  if(!e.target.closest('.card-menu, .more, .filebtn')) closeCardMenu();
   if(!panelOpen()) return;
   if(e.target.closest('#panel, #settings, #account, #fields, #setbtn')) return;
   openPanel(null);
