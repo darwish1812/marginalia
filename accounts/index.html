@@ -442,7 +442,9 @@
   .pack .badge{font-family:"Archivo",sans-serif; font-size:9px; font-weight:700; letter-spacing:.13em;
     text-transform:uppercase; color:var(--ink-1); border:1px solid rgba(201,146,47,.5);
     border-radius:99px; padding:2px 8px; margin-left:8px; vertical-align:3px}
-  #packgo{margin-top:20px; align-items:center}
+  /* .row only becomes a flex row inside a panel, and this one is not in one — so it had
+     align-items on a block, no gap, and a button sitting against its own caption. */
+  #packgo{display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-top:22px}
 
   /* the one bulk action, kept away from the rest of the account panel by a rule */
   .empty-all{margin-top:22px; padding-top:18px; border-top:1px solid var(--rule)}
