@@ -2624,7 +2624,7 @@ Rules:
 8. "n" = a short warning only where one is earned: archaic or offensive register, a stress or spelling trap, a false friend, or a near-synonym worth distinguishing. Otherwise null — most words get null.
 9. Plain text in "w", "d", "e", "a" and "n". No angle brackets, no ampersands, no HTML entities there: write "and", not "&".
 10. "s" = a drawing, and only where the word names a concrete thing you could photograph — a radish, a tankard, a loom. An abstraction gets none: there is no drawing of magnanimity or of nuance, and a vague one is worse than none. Most words here take no "s" at all, so leave the key out.
-    When you do draw: a flat SVG with viewBox="0 0 600 400", the subject filling most of the frame and touching no edge. No background rectangle — the card supplies the paper. Three colours at most, dark outlines, thick strokes, no text, no <style> blocks, presentation attributes only. Under 1800 characters.
+    When you do draw: a flat SVG with viewBox='0 0 600 400', the subject filling most of the frame and touching no edge. Write every attribute with 'single quotes' — this SVG is travelling inside a JSON string, and a double quote there closes the string early and makes the entire reply unparseable. End it with a closing </svg>. No background rectangle — the card supplies the paper. Three colours at most, dark outlines, thick strokes, no text, no <style> blocks, presentation attributes only. Under 1800 characters.
 
 Schema: {"w":…, "x":…, "f":…, "p":…, "d":…, "e":…, "a":…, "n":…, "s":…}
 Straight quotes only, valid JSON, nothing before or after the array.`;
@@ -2783,7 +2783,30 @@ document.getElementById('merge').addEventListener('click',async ()=>{
   const msg=document.getElementById('mergemsg');
   const txt=document.getElementById('incoming').value.trim().replace(/^```(json)?|```$/g,'').trim();
   let parsed;
-  try{ parsed=JSON.parse(txt); }catch(e){ msg.className='note bad'; msg.textContent='That is not valid JSON. Paste the whole reply, brackets and all.'; return; }
+  /* "Paste the whole reply, brackets and all" was the wrong advice most of the time: by far
+     the commonest failure is a drawing written with double-quoted attributes, which closes
+     the JSON string early and leaves the rest of the SVG as rubbish the parser trips over.
+     The brackets were fine. Point at where it broke, show the text around it, and name the
+     likely cause — the reply is 2,000 characters of one line and unreadable by eye.
+
+     Deliberately not repaired automatically: guessing which quotes were meant to be data
+     and which were meant to be syntax is how a mangled drawing gets saved silently. The
+     prompt now asks for single quotes, which needs no escaping and cannot go wrong. */
+  try{ parsed=JSON.parse(txt); }
+  catch(e){
+    msg.className='note bad';
+    const at = /position (\d+)/.exec((e && e.message) || '');
+    let where = '';
+    if(at){
+      const i = Math.min(+at[1], txt.length);
+      const near = txt.slice(Math.max(0, i-32), i+22).replace(/\s+/g,' ');
+      where = ` It breaks at character ${i}, around: …${near}…`;
+    }
+    msg.textContent = 'That is not valid JSON.' + where
+      + ' If the reply drew a picture, the usual cause is double quotes inside the SVG —'
+      + ' ask for it again with single quotes in the drawing, and a closing </svg>.';
+    return;
+  }
 
   /* The blank-booklet reply arrives as {fields, words} rather than as a bare array. It is
      unwrapped here and nowhere else: the fields are made first, so that by the time the
