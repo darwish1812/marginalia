@@ -2623,8 +2623,10 @@ Rules:
 7. "a" = Modern Standard Arabic for that specific sense, with diacritics on the head word. Keep it short; add " — " and a brief clarifier only where the bare gloss is ambiguous.
 8. "n" = a short warning only where one is earned: archaic or offensive register, a stress or spelling trap, a false friend, or a near-synonym worth distinguishing. Otherwise null — most words get null.
 9. Plain text in "w", "d", "e", "a" and "n". No angle brackets, no ampersands, no HTML entities there: write "and", not "&".
-10. "s" = a drawing, and only where the word names a concrete thing you could photograph — a radish, a tankard, a loom. An abstraction gets none: there is no drawing of magnanimity or of nuance, and a vague one is worse than none. Most words here take no "s" at all, so leave the key out.
-    When you do draw: a flat SVG with viewBox='0 0 600 400', the subject filling most of the frame and touching no edge. Write every attribute with 'single quotes' — this SVG is travelling inside a JSON string, and a double quote there closes the string early and makes the entire reply unparseable. End it with a closing </svg>. No background rectangle — the card supplies the paper. Three colours at most, dark outlines, thick strokes, no text, no <style> blocks, presentation attributes only. Under 1800 characters.
+10. "s" = a drawing, for any word naming something that could be photographed — a radish, a tankard, a loom, a wound, a ledger. Abstractions get none: there is no drawing of magnanimity or of nuance, and a vague shape is worse than none. Otherwise lean towards drawing. A drawing that arrives malformed is discarded on the way in and costs the word nothing, so attempting one carries no risk.
+    Write a flat SVG and put every attribute value in single quotes — viewBox='0 0 600 400', stroke='#8b0000', fill='none' — since it travels inside a JSON string, where double quotes would each need escaping. Finish with a closing </svg>. This is the shape of a valid value, not a template to copy:
+    <svg viewBox='0 0 600 400'><circle cx='300' cy='200' r='120' fill='none' stroke='#7a4b2a' stroke-width='14'/></svg>
+    The subject fills most of the frame and touches no edge. No background rectangle — the card supplies the paper. Three colours at most, dark outlines, thick strokes, no text, no <style> blocks, presentation attributes only, under 1800 characters.
 
 Schema: {"w":…, "x":…, "f":…, "p":…, "d":…, "e":…, "a":…, "n":…, "s":…}
 Straight quotes only, valid JSON, nothing before or after the array.`;
