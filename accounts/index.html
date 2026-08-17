@@ -2673,16 +2673,38 @@ document.getElementById('addnow').addEventListener('click',async ()=>{
    a second lock on top of that. Anything malformed, oversized or not an <svg> at all is
    dropped, and the word simply keeps no picture. */
 const MAXART=2600;
+
+/* Returns {src} or {why}. It used to return null for six different reasons and the panel
+   could only report a count of "discarded as unusable" — which told nobody anything, and
+   made a dropped drawing a mystery to be debugged by hand. The reason travels out now. */
 function artToSrc(src){
-  if(typeof src!=='string') return null;
-  const raw=src.trim();
-  if(!/^<svg[\s>]/i.test(raw) || raw.length>MAXART*2) return null;
+  if(typeof src!=='string') return {why:'not text'};
+  let raw = src.trim();
+
+  /* Three things worth being tolerant about, because they are how models actually write
+     SVG and none of them is a security question. A declaration and a code fence are
+     wrappers, not content; XML is case-sensitive where HTML is not, so a model that types
+     viewbox has made a typo rather than a different drawing. */
+  raw = raw.replace(/^```[a-z]*\s*/i,'').replace(/\s*```$/,'').trim();
+  raw = raw.replace(/^<\?xml[^>]*\?>\s*/i,'').replace(/^<!DOCTYPE[^>]*>\s*/i,'').trim();
+
+  if(!/^<svg[\s>]/i.test(raw)) return {why:'it did not start with an <svg> tag'};
+  if(raw.length>MAXART*2) return {why:'it was far too long ('+raw.length+' characters)'};
+
   let doc;
-  try{ doc = new DOMParser().parseFromString(raw,'image/svg+xml'); }catch(e){ return null; }
+  try{ doc = new DOMParser().parseFromString(raw,'image/svg+xml'); }catch(e){ return {why:'it would not parse as SVG'}; }
   const svg = doc.documentElement;
-  if(!svg || svg.nodeName.toLowerCase()!=='svg') return null;
-  if(doc.getElementsByTagName('parsererror').length) return null;
-  if(!svg.getAttribute('viewBox')) return null;
+  if(!svg || svg.nodeName.toLowerCase()!=='svg') return {why:'the outer element was not <svg>'};
+  if(doc.getElementsByTagName('parsererror').length)
+    return {why:'it was malformed — most often a missing closing </svg>'};
+
+  if(!svg.getAttribute('viewBox')){
+    /* case-corrected rather than refused */
+    const alt = [...svg.attributes].find(a=>a.name.toLowerCase()==='viewbox');
+    if(alt) svg.setAttribute('viewBox', alt.value);
+    else return {why:'it had no viewBox, so it has no shape to draw into'};
+  }
+
   doc.querySelectorAll('script,foreignObject,image,iframe,style,a,use,animate,set').forEach(n=>n.remove());
   doc.querySelectorAll('*').forEach(n=>{
     [...n.attributes].forEach(a=>{
@@ -2692,8 +2714,8 @@ function artToSrc(src){
   });
   svg.setAttribute('xmlns','http://www.w3.org/2000/svg');
   const out = new XMLSerializer().serializeToString(svg);
-  if(out.length>MAXART) return null;
-  return 'data:image/svg+xml,'+encodeURIComponent(out);
+  if(out.length>MAXART) return {why:'it was too detailed ('+out.length+' characters, the limit is '+MAXART+')'};
+  return {src:'data:image/svg+xml,'+encodeURIComponent(out)};
 }
 
 /* ---------- merging a reply ----------
@@ -2735,13 +2757,14 @@ async function mergeArray(arr){
     !CORRECTIONS.some(d=>norm(d.wrong)===norm(c.wrong)));
   /* A drawing in the reply becomes the picture; a bad one is discarded without
      blocking the merge, since the word is still worth having. */
-  let drawn=0, dropped=0;
+  let drawn=0, dropped=0; const dropWhy=[];
   arr.forEach(o=>{
     /* An explicit null is "this word gets no drawing", not a drawing that failed —
        counting it as discarded made the message accuse the model of nonsense. */
     if(o.s == null){ delete o.s; return; }
     const art=artToSrc(o.s); delete o.s;
-    if(art){ o.i=art; drawn++; } else dropped++;
+    if(art.src){ o.i=art.src; drawn++; }
+    else { dropped++; dropWhy.push(o.w+': '+art.why); }
   });
   /* A picture already on a word is carried across a re-enrichment — including onto a
      corrected spelling — unless this reply drew a new one. */
@@ -2766,14 +2789,17 @@ async function mergeArray(arr){
     renderFix(CORRECTIONS);
   }
   render(); loadProgress(); showLocal();
-  return {ok:true, added:add.length, fixes:fixes.length, drawn, dropped};
+  return {ok:true, added:add.length, fixes:fixes.length, drawn, dropped, dropWhy};
 }
 
 function mergeMsg(res){
   return `Merged ${res.added} word${res.added===1?'':'s'}.`
     + (res.fixes?` ${res.fixes} spelling${res.fixes===1?'':'s'} noted for the table.`:'')
     + (res.drawn?` ${res.drawn} drawing${res.drawn===1?'':'s'} kept.`:'')
-    + (res.dropped?` ${res.dropped} discarded as unusable.`:'')
+    /* the reason, not just the count: "discarded as unusable" left the reader with
+       nothing to act on, and every one of these is fixable by asking again */
+    + (res.dropped?` ${res.dropped} drawing${res.dropped===1?'':'s'} discarded — `
+        + (res.dropWhy||[]).slice(0,2).join('; ') + '.' : '')
     + store.savedNote;
 }
 
