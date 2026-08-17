@@ -465,10 +465,15 @@
   }
   .more:hover,.more[aria-expanded="true"]{border-color:var(--c); color:var(--c)}
   .more:focus-visible{outline:2px solid var(--c); outline-offset:2px}
+  /* Fixed and body-level: a card clips to its own radius and isolates its stacking, so a
+     menu inside one is cut off at the paper's edge and buried under the next card. Placed
+     against the button's rectangle by placeCardMenu(), and capped so eight fields plus the
+     removal cannot run off a short window — the overflow scrolls instead. */
   .card-menu{
-    position:absolute; right:14px; top:52px; z-index:4; min-width:186px; max-width:calc(100% - 28px);
+    position:fixed; z-index:50; min-width:196px; max-width:calc(100vw - 16px);
+    max-height:min(340px, 60vh); overflow-y:auto; overscroll-behavior:contain;
     background:#FBFAF6; border:1px solid rgba(34,36,63,.18); border-radius:9px; padding:5px;
-    box-shadow:0 12px 30px rgba(0,0,0,.34);
+    box-shadow:0 14px 34px rgba(0,0,0,.38);
   }
   .cm-item{
     display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%;
@@ -1108,19 +1113,8 @@ book.addEventListener('click',e=>{
     else openCardMenu(card, more.classList.contains('more') ? more : null);
     return;
   }
-  const fileTo = e.target.closest('[data-file]');
-  if(fileTo){
-    e.stopPropagation();
-    const card=fileTo.closest('.card'), v=fileTo.dataset.file;
-    closeCardMenu();
-    fileWord(card.dataset.w, v===''?null:+v);
-    return;
-  }
-  if(e.target.closest('[data-remove]')){
-    e.stopPropagation();
-    confirmRemove(e.target.closest('.card'));
-    return;
-  }
+  /* Filing and Remove live on the menu's own handler — the menu hangs off <body> and never
+     reaches this listener. The confirm below does sit inside the card, so it stays here. */
   if(e.target.closest('[data-reallyremove]')){
     e.stopPropagation();
     removeWord(e.target.closest('.card').dataset.w);
@@ -1147,10 +1141,46 @@ book.addEventListener('click',e=>{
 /* ---------- the card menu ----------
    One overflow button carries filing and removal both, so the round buttons stay at four
    rather than becoming six. Built on demand and thrown away on close: there is never more
-   than one of these on the page, and it never has to be kept in step with anything. */
+   than one of these on the page, and it never has to be kept in step with anything.
+
+   It hangs off <body>, not off the card, and that is not a style choice. A card sets
+   overflow:hidden to trim the corner watermark to its own radius, and isolation:isolate to
+   keep that watermark's blend and its negative z-index inside the card — both are load
+   bearing, and both would clip and bury a menu placed within. So the menu is positioned
+   against the button's rectangle instead and closes on any scroll, the way a menu does. */
+let openMenuFor = null;                       // the button the open menu belongs to
+
+/* Which node emits the viewport's scroll event depends on the rendering mode, and this page
+   has no doctype — so it is in quirks mode, where the scrolling element is <body> and the
+   event fires there without ever reaching window or document. In standards mode it is
+   window. All of them are watched rather than picking one and being wrong, because the cost
+   of guessing is a menu left hanging beside a card that has scrolled away from under it. */
+function scrollWatchers(){
+  return [window, document.scrollingElement, document.documentElement, document.body]
+    .filter((n,i,a)=>n && a.indexOf(n)===i);
+}
+
 function closeCardMenu(){
   document.querySelectorAll('.card-menu').forEach(m=>m.remove());
   document.querySelectorAll('.more[aria-expanded="true"]').forEach(b=>b.setAttribute('aria-expanded','false'));
+  scrollWatchers().forEach(n=>n.removeEventListener('scroll', closeCardMenu, true));
+  window.removeEventListener('resize', closeCardMenu);
+  openMenuFor = null;
+}
+
+/* Below the button, right edges aligned; above it when there is no room below; never off
+   any edge. The menu is measured after it is in the document, because until then it has
+   no height to place. */
+function placeCardMenu(menu, btn){
+  const r = btn.getBoundingClientRect();
+  const mh = menu.offsetHeight, mw = menu.offsetWidth, pad = 8;
+  let top = r.bottom + pad;
+  if(top + mh > innerHeight - pad) top = Math.max(pad, r.top - mh - pad);
+  let left = r.right - mw;
+  if(left + mw > innerWidth - pad) left = innerWidth - mw - pad;
+  if(left < pad) left = pad;
+  menu.style.top = top+'px';
+  menu.style.left = left+'px';
 }
 
 function openCardMenu(card, btn){
@@ -1188,8 +1218,24 @@ function openCardMenu(card, btn){
   const rm=item('Remove this word'); rm.className='cm-item hot'; rm.dataset.remove='1';
   menu.appendChild(rm);
 
-  card.appendChild(menu);
+  /* Its own handler rather than the book's: outside the card it is outside that delegation,
+     and a closure over this word is simpler than looking the card up again from a node that
+     is no longer inside it. */
+  menu.addEventListener('click', e=>{
+    e.stopPropagation();
+    const f = e.target.closest('[data-file]');
+    if(f){ const v=f.dataset.file; closeCardMenu(); fileWord(w, v===''?null:+v); return; }
+    if(e.target.closest('[data-remove]')){ confirmRemove(card); }
+  });
+
+  document.body.appendChild(menu);
+  placeCardMenu(menu, btn || card.querySelector('.more'));
   if(btn) btn.setAttribute('aria-expanded','true');
+  openMenuFor = btn || null;
+  /* A menu pinned to a rectangle cannot follow it, so it closes instead — which is what a
+     menu does anyway. Capture phase, so a scroll inside the panels counts too. */
+  scrollWatchers().forEach(n=>n.addEventListener('scroll', closeCardMenu, true));
+  window.addEventListener('resize', closeCardMenu);
   const first=menu.querySelector('.cm-item'); if(first) first.focus();
 }
 
