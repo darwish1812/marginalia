@@ -157,10 +157,36 @@ async function callModel(a: CallArgs): Promise<{ text: string; ms: number }> {
   }
 
   const j = await res.json();
-  const text =
-    a.adapter === 'anthropic'
-      ? (j?.content?.[0]?.text ?? '')
-      : (j?.choices?.[0]?.message?.content ?? '');
+
+  // Anthropic answers with an array of content blocks, not one string. Reading [0].text
+  // assumes the first block is the text — it is not, whenever the model emits anything
+  // before it, and the result is a silent empty reply. Take every text block and join them.
+  // The OpenAI shape can also hand back a null content with the words somewhere else.
+  const text = a.adapter === 'anthropic'
+    ? (Array.isArray(j?.content) ? j.content : [])
+        .filter((b: any) => b && (b.type === 'text' || typeof b.text === 'string'))
+        .map((b: any) => b.text ?? '').join('')
+    : (j?.choices?.[0]?.message?.content
+       ?? j?.choices?.[0]?.message?.reasoning_content
+       ?? j?.choices?.[0]?.text
+       ?? '');
+
+  // An empty reply is a failure, and until now it was a silent one: the function reported
+  // success with nothing in it and the console said "not valid JSON", which is true of ""
+  // and tells nobody anything. Say what actually came back instead.
+  if (!String(text).trim()) {
+    const why = j?.stop_reason ?? j?.choices?.[0]?.finish_reason ?? 'no reason given';
+    const shape = a.adapter === 'anthropic'
+      ? 'content blocks: ' + (Array.isArray(j?.content)
+          ? (j.content.map((b: any) => b?.type ?? '?').join(', ') || 'none')
+          : typeof j?.content)
+      : 'choices: ' + (Array.isArray(j?.choices) ? j.choices.length : typeof j?.choices);
+    throw Object.assign(
+      new Error('the model returned no text (' + shape + ', stop reason: ' + why + ')'),
+      { status: 502, said: 'The model answered with no text at all. Stop reason: ' + why
+        + '. If that is "max_tokens", raise the limit; if the batch was large, lower the words per request.' },
+    );
+  }
 
   return { text: String(text), ms: Date.now() - started };
 }
@@ -409,10 +435,11 @@ Deno.serve(async (req) => {
         unreachable: 'The model could not be reached.',
       }[kind];
 
-      // An administrator gets the provider's own words; a reader never does. It can carry
-      // the provider, the account, sometimes the key's own prefix — and a reader can do
-      // nothing with it anyway.
-      const forAdmin = kind === 'rejected' && said
+      // An administrator gets the provider's own words whenever there are any — including
+      // for faults we raise ourselves, like an answer with no text in it, where the
+      // explanation is the entire value. A reader never does: it can carry the provider,
+      // the account, sometimes the key's own prefix, and they can act on none of it.
+      const forAdmin = said
         ? said
         : kind === 'refused'
           ? 'The key was refused — check it is current and belongs to this provider.'
