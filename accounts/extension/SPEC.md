@@ -41,16 +41,24 @@ way to make enrichment itself more accurate.
 |---|---|---|
 | **Sighted** | nothing yet | Highlight, `Alt+M` |
 | **Captured** | `w`, `norm`, `f: null`, `d: ''`, `met_*` | In **Waiting for detail** at the top of the booklet, searchable at once, on every device |
-| **Queued** | unchanged | *Queue the N waiting* sweeps it into a prompt with the others |
+| **Queued** | unchanged | Typed back into the list and enriched with the others (see below) |
 | **Enriched** | gains `d`, `e`, `a`, `f`; keeps `met_*` | Moves to its field; the sighting stays on the card |
 | **Learned** | `done: true` | Ticked |
 
 Capturing a word already in the booklet is a separate, shorter path: nothing is inserted,
 `times_met` is bumped, and the toast reports where the word already lives.
 
-**Nothing in the booklet needs inventing for this.** A captured word is exactly the shape
-that *Add as needs-detail now* already produces — bare, unfiled, waiting — and the whole
-downstream path already exists.
+**Almost nothing in the booklet needs inventing.** A bare, unfiled, waiting row is a shape
+it already knows: the **Waiting for detail** section draws them, and the `!x.d` test that
+picks them out is untouched.
+
+**One thing does.** The two ways of reaching those rows have both been removed — *Add as
+needs-detail now*, which created them, and *Queue the N waiting*, which swept them into a
+prompt. Nothing in the booklet creates a bare row any more, and the only way back to one is
+to type the word again, which re-offers it. That is tolerable while nothing creates them.
+The extension creates them by the dozen, so it needs a way back: an **Enrich these** action
+on the Waiting for detail section, which is a button and a call to the path §3 of
+`ADDING-WORDS.md` already describes.
 
 ---
 
@@ -255,25 +263,33 @@ alter table public.words
 
 RLS already covers them; the existing `own words` policy needs no change.
 
-### 8b. The merge must stop destroying them — this is the important one
+### 8b. Extend the carry-across that now exists
 
-`mergeArray` does not update a word on enrichment. It deletes the row and inserts a new one
-built from the model's reply, and that reply contains no `met_*`. **The first enrichment
-would silently destroy the best thing the extension captured**, and you would not find out
-until you went looking for a word's source and it was gone.
+A merge replaces the row rather than updating it, so anything the reply does not carry is
+not carried either — and a model's reply contains no `met_*`. Left alone, **the first
+enrichment would silently destroy the best thing the extension captured**, and nobody would
+find out until they went looking for a word's source and it was gone.
 
-Pictures already survive this, by explicit carry-across. Rather than adding a second special
-case, generalise it — the real rule is that *some columns belong to the model and the rest
-belong to the reader*:
+**Half of this is already done.** `merge_words` was rewritten to carry `done` across a
+replace, and across a rename — it reads the ticks before the delete, in the same snapshot,
+and joins them onto the incoming rows. Its signature is now:
 
-```js
-// The model owns w, f, p, d, e, a, n, i. Everything else on the row is the reader's,
-// and a merge must carry it across rather than write over it.
-const MINE = ['done', 'met_sentence', 'met_url', 'met_title', 'met_at', 'times_met'];
+```sql
+merge_words(p_add jsonb, p_retire text[], p_rename jsonb default '[]'::jsonb)
 ```
 
-This also fixes, in the same stroke, the ✓ mark that is currently lost whenever a word is
-re-enriched or has its spelling corrected.
+`p_rename` carries `{wrong, right}` pairs, because a corrected spelling is by definition two
+different norms and nothing joins them otherwise. The client already computes them.
+
+So the work here is to widen the same `held` CTE to carry the capture columns as well —
+the rule the function embodies, stated once:
+
+```
+the model owns w, f, p, d, e, a, n, i — everything else on the row is the reader's
+```
+
+Add `met_sentence`, `met_url`, `met_title`, `met_at` and `times_met` to what `held` selects
+and what the insert and the `on conflict do update` set. Nothing else changes.
 
 ### 8c. The card shows the sighting
 

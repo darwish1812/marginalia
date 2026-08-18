@@ -13,40 +13,36 @@ the page.
    you type or paste a list
              │
              ▼
-   ┌──────────────────────┐   split, de-duplicate, sort into four buckets
-   │  check               │   norm() decides "already have it"
-   └──────────┬───────────┘   stem() only suggests a near-match
-              │
-       ┌──────┴───────┐
-       ▼              ▼
-  buildPrompt    addnow                 two ways out of stage 1
-  (or build-     "add as needs-
-   Propose-       detail now"           → bare rows, no definition,
-   Prompt)            │                    land in Waiting for detail
-       │              │
-       ▼              │
-  you carry it to     │
-  a model, bring      │
-  the reply back      │
-       │              │
-       ▼              │
-  ┌────────────────┐  │        strip fences, JSON.parse,
-  │ paste handler  │  │        unwrap {fields,words} if present
-  └───────┬────────┘  │
-          ▼           │
-  ┌────────────────┐  │        validate → corrections → drawings
-  │  mergeArray    │  │        → carry pictures → save
-  └───────┬────────┘  │
-          └─────┬─────┘
-                ▼
-        store.addWords(add, retired)
-                │
-       ┌────────┴────────┐
-       ▼                 ▼
-  localStore         cloudStore
-  localStorage       merge_words() — one transaction
-                │
-                ▼
+   ┌──────────────────────┐   split, de-duplicate on norm(), sort into
+   │  check               │   four buckets, report them in one sentence
+   └──────────┬───────────┘
+              │  fresh[]
+       ┌──────┴───────────────┐
+       ▼                      ▼
+  promptText()          POST /run            two ways to reach a reply
+  you carry it          the gateway          — manual, and one press
+  to a model            assembles the
+       │                same prompt
+       │                      │
+       ▼                      ▼
+  paste it back        preview: keep or discard
+       │                      │
+       └──────────┬───────────┘
+                  ▼
+          parseReply(text)          strip fences, JSON.parse,
+                  │                 unwrap {fields,words} if present
+                  ▼
+          mergeArray(arr)           validate → corrections → drawings
+                  │                 → carry pictures → save
+                  ▼
+   store.addWords(add, retired, renames)
+                  │
+       ┌──────────┴──────────┐
+       ▼                     ▼
+  localStore            cloudStore
+  localStorage          merge_words() — one transaction
+                  │
+                  ▼
        render() · loadProgress() · showLocal()
 ```
 
@@ -65,8 +61,10 @@ list `fresh`.
 (`/^\s*\d+[.)]\s*/`) and is trimmed. Empty items are dropped. So newlines, commas,
 semicolons, `1.` and `1)` all work; tabs and bullet characters (`-`, `•`) do **not**.
 
-**De-duplication at this stage is on the raw string**, via `new Set`. That matters: `fealty`
-and `Fealty!` are two different raw strings and both survive into the buckets. See §5.
+**De-duplication is on `norm`**, not on the raw string. `fealty` and `Fealty!` are two
+different strings and one word, and letting both through used to send both to the model,
+which sent back two objects that collide on the unique index. The first spelling typed is
+the one kept.
 
 **The two normalisers.**
 
@@ -87,16 +85,13 @@ that normalise alike are the same word as far as this app is concerned.
 | `nears` | `stem` matches an enriched word | Offered, labelled `≈ existing`. Your call. |
 | `fresh` | none of the above | Offered. |
 
-Then `again` and `nears` are appended into `fresh`, so `fresh` is the full list the prompt
-will ask about. `renderReport` draws a removable chip per item; dropping a chip splices it
-out of `fresh` and rebuilds the prompt.
+Then `again` and `nears` are appended into `fresh`, so `fresh` is the full list the reply
+will be asked for. `renderReport` writes one sentence — how many are to be enriched, and
+which words were dropped and why. It used to draw a removable chip per word; the words are
+in the box directly above with a cursor in it, which is a better place to edit a list.
 
 Note `stems` is built only from words that have definitions, so near-match detection is blind
 to pending words.
-
-**`showQueue` / the queue button** is a shortcut into the same state: it sets `fresh` to every
-word in `W` with no definition and calls `renderReport([], [], pend)`. It bypasses the
-textarea entirely.
 
 ---
 
@@ -104,7 +99,7 @@ textarea entirely.
 
 Two functions, chosen by whether the booklet has any fields.
 
-**`buildPrompt()` — the normal one.** Prints the field list as `id = name: note`, then ten
+**`DEFAULT_TEMPLATE` — the normal one.** Prints the field list as `id = name: note`, then ten
 numbered rules. The rules cover: one object per word in order; base forms and misspelling
 correction returned as `x`; the field as an integer **or `null`**; part of speech; the shape
 of `d` and `e`; the Arabic; when a caution is earned; a no-markup rule; and when a drawing
@@ -113,27 +108,48 @@ is appropriate.
 The field `note` is doing real work here — it is the only thing telling the model what
 belongs where. A field with a blank note quietly degrades every later classification.
 
-**`buildProposePrompt()` — when `FIELDS` is empty.** A blank booklet, or every field deleted.
+**`DEFAULT_PROPOSE` — used when `FIELDS` is empty.** A blank booklet, or every field deleted.
 Asks the model to propose the taxonomy from this first batch *and then* file into it,
 returning an **object** `{"fields":[…],"words":[…]}` instead of a bare array. The reasoning:
 nobody knows their eight fields before they own fifty words, and they do know them afterwards.
 
-**`setReady(on)`** is what gates steps 2 and 3 — it toggles the `waiting` class and the
-`disabled` attribute on `copyp`, `addnow`, `merge` and `incoming`.
+Both live as constants (`DEFAULT_TEMPLATE`, `DEFAULT_PROPOSE`) and are assembled by one
+function, `promptText()`, which substitutes `{{WORDS}}`, `{{FIELDS}}` and `{{COUNT}}` exactly
+as the gateway does. `TEMPLATE` and `PROPOSE` are filled from `app_config` at load and fall
+back to the constants — so a booklet with no gateway, or one whose config will not load,
+behaves as it always did.
+
+**`setReady(on)`** gates the later steps: the `waiting` class, and `disabled` on `copyp`,
+`merge`, `incoming` and `enrich`.
+
+**`setEnrichMode(mode)`** is one class on `<body>`. Automatic mode hides the prompt, Copy,
+the paste box and the download; nothing is removed from the DOM, so every failure falls back
+to the manual loop with a class flip rather than a re-render.
 
 ---
 
-## 3. The escape hatch — `addnow`
+## 3. The one press — `#enrich`
 
-"Add as needs-detail now". Skips the model entirely.
+Posts `{items: fresh, fields: FIELDS}` to the gateway. **Structured data only, never the
+assembled prompt** — a shared key that forwards whatever text a browser sends is an open
+proxy, so the function builds the prompt itself from a template it holds.
 
-Builds `{w, f: null, p:'', d:'', e:'', a:''}` for each item in `fresh`, **filtered against
-both `W` and itself** by `norm` — so a word already captured, or two typings that normalise
-alike, cannot be inserted twice. Reports how many it passed over. If nothing is new it says
-so and leaves the chips and the prompt standing, because step 2 is where those words were
-going anyway.
+What comes back goes to `parseReply` and then either straight into `mergeArray`
+(`auto_merge` on) or into a preview: the words as words, split into what is ready to keep
+and what came back wrong, with `Keep` counting only the former. A batch already answered for
+cannot be sent again until it is kept or discarded — without that guard, pressing twice
+charged the allowance twice for one list.
 
-A row with no `d` renders in the synthetic **Waiting for detail** section regardless of `f`.
+Every failure calls `setEnrichMode('manual')` and writes the reason into `#mergemsg`: the
+service unreachable, the key refused, the allowance spent, a reply that will not parse. In
+the last case the raw text is put in the paste box so it can be fixed by hand rather than
+lost.
+
+**"Add as needs-detail now" is gone.** It captured a word bare, with no definition, and
+existed because enriching was slow enough that a backlog beat losing the word. Nothing
+creates bare rows now — but they can still exist from before, and the capture extension will
+create them again, so the **Waiting for detail** section and the `!x.d` test that draws it
+both stay.
 
 ---
 
@@ -213,71 +229,64 @@ defect below.
 
 ---
 
-## 6. Known defects
+## 6. The defects that were here, and how they were closed
 
-Present in the code today. §6b and §6d were reproduced by driving the real functions; §6a was
-reproduced in part and the table below says exactly which part.
+All four are fixed. They are kept because the reasoning is the useful part — each one is a
+shape of bug this pipeline can grow again, and three of the four were invisible until
+something was driven at them deliberately.
 
-### 6a. A merge overwrites what the model does not own
+### 6a. A merge overwrote what the model does not own
 
-Because a merge replaces the row, **anything the app knows about a word that the reply does
-not carry is not carried either**. The ✓ tick is the current example, and it behaves
-differently in the two stores — which is worth stating precisely, because the obvious
-description of this bug is wrong:
+A merge replaces the row rather than updating it, so anything the app knew about a word that
+the reply did not carry was not carried either. The ✓ tick was the example, and it behaved
+differently in the two stores:
 
 | | Re-enriched, same spelling | Spelling corrected via `x` |
 |---|---|---|
-| **local** | Tick survives. `doneList()` is a list of word *strings* in `localStorage`, and the string did not change. | Tick lost. The list still holds the old spelling and no card carries it. |
-| **cloud** | **Tick lost on the next load.** The row is deleted and reinserted with `done` defaulting to `false`. It looks fine until you reload, because the in-memory `done` set is not rebuilt. | Tick lost. |
+| **local** | Tick survived — `doneList()` is a list of word *strings*, and the string had not changed. | Tick lost. |
+| **cloud** | **Tick lost on the next load**, because the row was rebuilt with `done` defaulting to false. Nothing looked wrong until a reload. | Tick lost. |
 
-So this is mainly a cloud-mode defect with a delayed symptom, which is the most awkward kind
-to notice. Verified in local mode: a same-spelling re-enrichment keeps the tick, so do not
-expect to reproduce the cloud behaviour without an account.
+**Closed in `merge_words`**, which now reads the ticks before the delete — in the same
+snapshot, so it still sees rows the delete is removing — and carries them onto the incoming
+words. A corrected spelling inherits the tick from the misspelling it supersedes, which
+needed a third argument (`p_rename`) because a rename is by definition two different norms
+and nothing joins them otherwise.
 
-Related bookkeeping drift: `loadProgress()` does not clear `done` before repopulating it, so
+**When the capture extension lands, extend the same mechanism.** `met_sentence`, `met_url`,
+`met_title`, `met_at` and `times_met` are reader-owned in exactly the same way, and that loss
+would be silent and permanent. The rule the function now embodies:
+
+```
+the model owns w, f, p, d, e, a, n, i — everything else on the row is the reader's
+```
+
+Still open, and small: `loadProgress()` does not clear `done` before repopulating it, so
 entries for words that no longer exist linger in memory and `paint()` can report a count
 higher than the number of visible ticks.
 
-This all becomes considerably worse the moment the capture extension lands, because
-`met_sentence`, `met_url` and `times_met` would be lost the same way — and *that* loss is
-silent and permanent. The fix is to generalise the picture carry-across into a rule:
+### 6b. `mergeArray` did not de-duplicate within the batch
 
-```js
-// the model owns w, f, p, d, e, a, n, i — everything else on the row is the reader's
-const MINE = ['done', 'met_sentence', 'met_url', 'met_title', 'met_at', 'times_met'];
-```
+`add` was filtered against `kept` only, never against itself, so two objects whose `w`
+normalises alike both went into the insert and violated `unique (user_id, norm)` — failing
+the whole transaction. Rule 1 of the prompt forbids it, but a prompt is not a constraint.
 
-### 6b. `mergeArray` does not de-duplicate within the batch
+**Closed at both ends.** `check` now de-duplicates on `norm` rather than on the raw string,
+so two spellings of one word cannot reach the model together; and `mergeArray` measures the
+batch against itself as well as against the book, first spelling wins. `merge_words` also
+gained `on conflict do update`, which it had never had.
 
-`add` is filtered against `kept` only — never against itself:
+### 6c. `W` was mutated before the save was known to have worked
 
-```js
-const add = arr.filter(x => !already.has(norm(x.w)));
-```
+`W = kept.concat(canon)` ran before `await store.addWords(...)`. The database half had been
+one transaction since `merge_words`, but memory was not: a throw left the panel reporting
+that nothing had merged while `W` already believed otherwise, and the two disagreed until a
+reload. **Closed** by moving the assignment after the await.
 
-So a reply containing two objects whose `w` normalises alike puts both into the insert and
-violates `unique (user_id, norm)`, failing the whole transaction. Rule 1 of the prompt forbids
-it, but a prompt is not a constraint.
+### 6d. `f` was not coerced
 
-Reproduced: merging `zizzle` and `Zizzle!` in one array passes validation and lands **both**
-in `W`. Locally that gives two cards for one word; against Postgres it fails the insert.
-
-The upstream cause is that `check` de-duplicates on the **raw** string, so both spellings can
-reach the prompt in the first place. `addnow` was fixed for exactly this; `mergeArray` was not.
-
-### 6c. `W` is mutated before the save is known to have succeeded
-
-`W = kept.concat(canon)` runs *before* `await store.addWords(...)`. If the save throws, the
-database is consistent — `merge_words` is a transaction — but **the app's memory is not**. The
-panel says nothing was merged while `W` already believes otherwise, and stays wrong until a
-reload. Moving the assignment after the await fixes it.
-
-### 6d. `f` is not coerced
-
-`ids.has(x.f)` is a strict check, so a string id fails. Reproduced: `"f": "1"` returns
-**"qqqq: field 1 does not exist"** — a message that names the field and denies it in the same
-breath, and sends the reader looking for a problem in their fields. One `Number()` would make
-it forgiving.
+`ids.has(x.f)` is strict, so `"f": "1"` returned *"field 1 does not exist"* — a message that
+names the field and denies it in the same breath. **Closed** with a `Number()` and an
+integer check, so a string id is accepted and real rubbish is still refused.
 
 ---
 
@@ -285,16 +294,19 @@ it forgiving.
 
 Ranked by how much they cost a real user, not by how hard they are to fix.
 
-1. **Four manual steps and a second tool.** Copy the prompt, switch app, paste, wait, copy
-   the reply, switch back, paste. This is the whole cost of the loop, and it is why the
-   backlog grows.
-2. **All-or-nothing validation.** One bad object in a reply of twenty rejects the batch. The
-   errors are reported, but the reader must go back to the model and re-ask for everything.
-3. **No partial retry.** There is no "merge the nineteen that were fine".
-4. **Silence between steps.** The prompt is a wall of text with no indication of how long the
-   reply should take or how big a batch is sensible.
-5. **The bare-word backlog has no pressure.** `Queue the N waiting` exists, but nothing
-   suggests doing it.
+1. ~~**Four manual steps and a second tool.**~~ **Gone in automatic mode.** Copy, switch app,
+   paste, wait, copy, switch back, paste — one press. It remains the whole cost of the loop
+   for anyone with no gateway behind them, and that fallback is permanent.
+2. **All-or-nothing validation.** One bad object in a reply of twenty still rejects the
+   batch. The preview softens this — a word that comes back wrong is separated out rather
+   than mixed in — but that only sorts a reply that parsed. A reply with one malformed
+   object still merges nothing.
+3. **No partial retry.** There is no "merge the nineteen that were fine". §8B.
+4. **No progress during a long run.** Sixty words go to the model in three sequential chunks
+   and the button says "Asking…" for all of it. At four words that is fine; at sixty it
+   reads as hung. The function already returns how many chunks it sent.
+5. **A bare-word backlog has no way back.** Nothing creates bare rows now, so this is
+   dormant — and it wakes the moment the capture extension does. See `extension/SPEC.md` §2.
 
 ---
 
@@ -302,15 +314,14 @@ Ranked by how much they cost a real user, not by how hard they are to fix.
 
 Ordered by value per unit of work, with what each one actually touches.
 
-### A. Enrich through the app — a server-side function
+### A. Enrich through the app — ~~a server-side function~~ **done**
 
-**The one that matters.** An Edge Function holding the model API key; the app posts `fresh`
-and gets back the same array a human would have pasted. Four steps become one button.
+Built. `supabase/functions/enrich` holds the key, assembles the prompt from a template in
+`app_config`, enforces two ceilings, and returns text. `admin.html` configures it. The design
+is `LLM-GATEWAY.md`; what makes it enrich vocabulary rather than anything else is
+`MARGINALIA-ENRICHMENT.md`.
 
-Touches: a new function, a new `store` method or direct `fetch`, and the paste handler's
-entry point — `mergeArray` itself does not change at all, which is what it was designed for.
-
-Do the defects in §6 first, especially 6a and 6c. Automation multiplies whatever is broken.
+`mergeArray` did not change, which is what it was designed for.
 
 ### B. Salvage a partial reply
 
