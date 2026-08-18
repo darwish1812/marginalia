@@ -524,7 +524,18 @@
   #quota:empty{display:none}
 
   /* the words that came back, as words */
-  .pv{margin-top:12px; border:1px solid var(--rule); border-radius:9px; overflow:hidden}
+  .pv-head{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-top:10px;
+    font-family:"Archivo",sans-serif; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--dim)}
+  .pv-head b{color:var(--paper); font-weight:700}
+  .pv-head .flagged{color:var(--ink-3)}
+  /* The list scrolls inside itself rather than pushing Keep and Discard off the bottom.
+     The panel already scrolls, so without this a batch of thirty put the only two buttons
+     that matter four thousand pixels below the words they act on. */
+  .pv{margin-top:9px; border:1px solid var(--rule); border-radius:9px; overflow-y:auto;
+      max-height:min(52vh, 520px); overscroll-behavior:contain}
+  /* and they stay put while the list moves behind them */
+  #s2b .row{position:sticky; bottom:0; background:var(--night-2); padding:12px 0 2px;
+            margin-top:0; border-top:1px solid var(--rule)}
   .pv-row{padding:12px 14px; border-bottom:1px solid var(--rule)}
   .pv-row:last-child{border-bottom:0}
   .pv-w{font-family:"Fraunces",Georgia,serif; font-size:19px; font-weight:600; letter-spacing:-.01em}
@@ -2842,12 +2853,40 @@ function buildPrompt(){
    reviews a wall of escaped quotes. */
 let PENDING = null;                       // the parsed array waiting to be kept or discarded
 
+/* Whether a word came back looking wrong. Kept next to the renderer because the summary
+   above the list and the note under each row have to agree about what "doubtful" means. */
+function previewProblems(x){
+  const miss = [];
+  if(!x.d || String(x.d).trim().length < 15) miss.push('no real definition');
+  if(!x.e || String(x.e).indexOf('*') === -1) miss.push('the example does not mark the word');
+  if(!x.a || /[A-Za-z]/.test(String(x.a))) miss.push('the Arabic looks wrong');
+  return miss;
+}
+
 function renderPreview(arr){
   const box = document.getElementById('preview');
   box.textContent = '';
+  const byId = new Map(FIELDS.map(f=>[f.id,f]));
+
+  /* How many, and how many are worth looking at twice — said before the list rather than
+     discovered by scrolling it. With thirty words the difference between "read all of
+     these" and "read these two" is the difference between reviewing and rubber-stamping. */
+  const flagged = arr.filter(x=>previewProblems(x).length).length;
+  const unfiled = arr.filter(x=>x.f==null).length;
+  const head = document.createElement('div');
+  head.className = 'pv-head';
+  const n = document.createElement('span');
+  n.innerHTML = '';
+  const b = document.createElement('b'); b.textContent = String(arr.length);
+  n.append(b, document.createTextNode(arr.length===1 ? ' word came back' : ' words came back'));
+  head.appendChild(n);
+  if(unfiled){ const u=document.createElement('span'); u.textContent = unfiled+' unfiled'; head.appendChild(u); }
+  if(flagged){ const f=document.createElement('span'); f.className='flagged';
+               f.textContent = flagged+(flagged===1?' looks doubtful':' look doubtful'); head.appendChild(f); }
+  box.appendChild(head);
+
   const wrap = document.createElement('div');
   wrap.className = 'pv';
-  const byId = new Map(FIELDS.map(f=>[f.id,f]));
 
   arr.forEach(x=>{
     const row = document.createElement('div');
@@ -2880,10 +2919,7 @@ function renderPreview(arr){
 
     /* Named where they can be acted on. A missing Arabic gloss is the one a reader who does
        not read Arabic would never notice, and it is the point of the booklet. */
-    const miss = [];
-    if(!x.d || String(x.d).trim().length < 15) miss.push('no real definition');
-    if(!x.e || String(x.e).indexOf('*') === -1) miss.push('the example does not mark the word');
-    if(!x.a || /[A-Za-z]/.test(String(x.a))) miss.push('the Arabic looks wrong');
+    const miss = previewProblems(x);
     if(miss.length){
       const m=document.createElement('div'); m.className='pv-miss';
       m.textContent = miss.join(' · ');
