@@ -317,9 +317,8 @@ Ordered by value per unit of work, with what each one actually touches.
 ### A. Enrich through the app — ~~a server-side function~~ **done**
 
 Built. `supabase/functions/enrich` holds the key, assembles the prompt from a template in
-`app_config`, enforces two ceilings, and returns text. `admin.html` configures it. The design
-is `LLM-GATEWAY.md`; what makes it enrich vocabulary rather than anything else is
-`MARGINALIA-ENRICHMENT.md`.
+`app_config`, enforces two ceilings, and returns text. `admin.html` configures it, and
+`supabase/functions/enrich/README.md` is how it is deployed and proved.
 
 `mergeArray` did not change, which is what it was designed for.
 

@@ -111,14 +111,21 @@ labelled button with no mark, which is fine and still works.
 4. Paste that into step 3 and tap **Validate & merge**. Bad input is rejected without changing
    anything.
 
-That is the whole loop. **There is no step 5** — the words are already saved to your account
-and already on your other devices. Step 4 of the panel now offers a download rather than
-demanding one: take a copy when you want one of your own.
+That is the whole loop. **There is nothing to save at the end** — the words are already in
+your account and already on your other devices. A download is offered rather than demanded:
+take a copy when you want one of your own.
 
-If you don't want to enrich immediately, tap **Add as needs-detail now**. The words appear as
-cards straight away in a "Waiting for detail" section at the top, searchable but bare. Enrich
-them later and they move to their proper field. To come back to them, tap
-**Queue the N waiting** — it loads every bare word into a fresh prompt.
+A word that is checked but not yet enriched waits in a **"Waiting for detail"** section at
+the top of the book — searchable and printable straight away, just bare. Enrich it later and
+it moves to its proper field.
+
+### Enriching without leaving the page
+
+Steps 2 and 3 are the loop that always works, with no account and no keys. If an
+administrator has configured the gateway, an **Enrich these** button appears instead and does
+the same thing in one press — same prompt, same reply, same review before anything is kept.
+Whenever it cannot (no key, a ceiling reached, the model unreachable) the page falls back to
+the copy-and-paste loop and says why. See `supabase/functions/enrich/README.md`.
 
 ## Filing, unfiling, removing
 

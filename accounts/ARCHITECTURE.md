@@ -361,10 +361,14 @@ matter. There is no build artefact and nothing to invalidate.
 
 | File | What it is |
 |---|---|
-| `index.html` | The entire application — markup, ~800 lines of CSS, and ~1,950 lines of JavaScript. |
+| `index.html` | The booklet — markup, CSS and JavaScript in one file. Everything a reader touches. |
+| `admin.html` | The gateway console. One administrator's page: providers, the prompt template, the ceilings, and the switch. Never served to readers, and holds no secret of its own. |
 | `words.json` | The literary starter pack — 150 words, 8 fields, 5 corrections. Kept at the root under its own name so a booklet can still trade files with the original. |
 | `packs/` | The other starter packs, same shape. A new one is a file; nothing in the app needs changing. |
 | `supabase/schema.sql` | Four tables, four RLS policies, one index, one signup trigger, and three functions for the writes that must happen all at once. Idempotent. |
+| `supabase/gateway.sql` | The gateway's own tables — providers, their secrets, and `app_config` — plus the migrations applied since. Four of them have no RLS policies at all: only the service role reads them, and it exists only inside the function. Idempotent. |
+| `supabase/functions/enrich/` | The Edge Function that holds the API key and calls the model, with the README that deploys and proves it. |
+| `extension/` | The capture extension. Its own spec, its own storage; it adds words and never enriches. |
 | `img/` | Optional drawings for a few concrete words. A missing file removes the figure rather than showing a broken icon. |
 | `manifest.json`, `icon.svg`, `icon-512.png`, `apple-touch-icon.png` | Make "Add to Home Screen" work. |
 | `README.md` | Setup and use. |
@@ -373,31 +377,36 @@ matter. There is no build artefact and nothing to invalidate.
 ### Logical modules inside `index.html`
 
 The script is one scope with no module boundaries; these are the sections it is organised
-into, in source order. **These line numbers are the only ones in this document** — prose
-elsewhere names functions instead, because a line reference is wrong the moment anything
-above it changes and a function name is not.
+into, in source order, each one carrying a banner comment of the same name.
 
-| Lines | Module | Responsibility |
-|---|---|---|
-| 828–839 | **Config & globals** | The two Supabase constants, the `ACCOUNTS` flag, the client, and the four globals `FIELDS`, `W`, `SEED`, `CORRECTIONS`. |
-| 840–925 | **Speech** | Voice discovery and filtering, the remembered choice, rate, and `speak()`. Degrades to nothing where `speechSynthesis` is absent. |
-| 926–1113 | **Render** | `esc()`, `posTags()`, `render()`, the swatch strip. Rebuilds the whole book from `W`. |
-| 1114–1206 | **Card menu** | The `⋯` overflow menu, filing and unfiling, and the in-card removal confirm. |
-| 1207–1251 | **Progress & card interaction** | The `done` set, the tally, the delegated click handler covering speak / Arabic / ✓ / menu / study-mode reveal, and reset. |
-| 1252–1304 | **Norms, inks, local keys** | `norm`, `stem`, the eight-ink palette and `inkHex()`, and every `localStorage` accessor. |
-| 1305–1380 | **`localStore`** | The device-only half of the seam, including the overrides and tombstones that let a committed file be edited around. |
-| 1381–1538 | **`cloudStore`** | `rowToWord`/`wordToRow`, the Supabase half of the seam, and the offline row mirror. |
-| 1539–1582 | **Errors & seeding** | `asError`, `errText`, and `seedAccount()`. |
-| 1583–1678 | **First run & packs** | The pack list, `loadPack()`, `showFirstRun()` and the picker. |
-| 1679–1772 | **Load & boot** | `apply()`, `renderFix()`, `failed()`, `boot()`. |
-| 1773–1848 | **Session** | `enter()`, `setAcctState()`, `syncNote()`. |
-| 1849–2061 | **Auth gate** | The three-mode form, OAuth provider discovery, sign-out, `authText()`. |
-| 2062–2237 | **Fields panel** | `renderFields()`, the inline editor, the ink palette and the eight-field cap. |
-| 2238–2289 | **Emptying** | The one bulk action, behind a typed confirmation. |
-| 2290–2353 | **Panels & preferences** | `showLocal()`, `openPanel()`, the outside-click and Escape handling, pictures toggle. |
-| 2354–2589 | **Add words** | `check`, `renderReport()`, both prompt modes, `showQueue()`, `addnow`, `artToSrc()`. |
-| 2590–2737 | **Merge** | `mergeArray()`, `mergeMsg()`, and the paste handler that unwraps and feeds it. |
-| 2738–2772 | **Export & search** | `download()`, `serialise()`, the two download buttons, the search filter. |
+This list used to carry line numbers. It stopped being true twice — once when the capture
+queue was removed and once when enrichment grew a second path — which is the argument the
+section next to it was already making: a line reference is wrong the moment anything above it
+changes, and a banner comment is not. Search for the name.
+
+| Module | Responsibility |
+|---|---|
+| **accounts** | The two Supabase constants, the `ACCOUNTS` flag, `FN_BASE`, the client, and the globals `FIELDS`, `W`, `SEED`, `CORRECTIONS`. |
+| **speech** | Voice discovery and filtering, the remembered choice, rate, and `speak()`. Degrades to nothing where `speechSynthesis` is absent. |
+| **render** | `esc()`, `posTags()`, `render()`, the swatch strip. Rebuilds the whole book from `W`. |
+| **the card menu** | The `⋯` overflow menu, filing and unfiling, the in-card removal confirm, and the delegated click handler covering speak / Arabic / ✓ / study-mode reveal. |
+| **data loading** | `norm`, `stem`, the ink palette, the `localStorage` accessors, `apply()` and `boot()`. |
+| **the storage seam** | `localStore` — the device-only half, including the overrides and tombstones that let a committed file be edited around. |
+| **the same seam, against an account** | `cloudStore` — `rowToWord`/`wordToRow`, the Supabase half, and the offline row mirror. |
+| **stocking a new account** | `asError`, `errText`, `seedAccount()`. |
+| **first run** | The pack list, `loadPack()`, `showFirstRun()` and the picker. |
+| **signed in, signed out** | `enter()`, `setAcctState()`, `syncNote()`. |
+| **the sign-in gate** | The three-mode form, OAuth provider discovery, sign-out, `authText()`. |
+| **fields** | `renderFields()`, the inline editor, the ink palette and the eight-field cap. |
+| **emptying the booklet** | The one bulk action, behind a typed confirmation. |
+| **add words** | `check`, `renderReport()`, `artToSrc()`, and the panel plumbing. |
+| **automatic or by hand** | `GATEWAY`, `setEnrichMode()`, `showQuota()`. Every failure path returns to the manual loop with the reason written where the reader is already looking. |
+| **a model on this machine** | `localTarget()` and `askLocal()`. An Edge Function cannot dial your desk, so a provider on localhost is unreachable through the gateway however it is configured; this page calls it directly instead — but only from localhost, only for an administrator, and only when the provider in use is itself local. No key is involved, because a local endpoint has nobody to present one to. |
+| **the prompt** | `promptText()` and `buildPrompt()`. The one place a prompt is assembled, so the button, the direct call and the gateway cannot disagree about what it says. |
+| **what came back** | `previewProblems()`, `previewRow()`, the preview and its keep/discard. |
+| **the one press** | The `enrich` handler: the run, the fall back to manual, the quota. |
+| **merging a reply** | `mergeArray()`, `mergeMsg()`, and the paste handler that unwraps and feeds it. |
+| **turning a reply into an array** | `parseReply()`, and `download()`/`serialise()` with the search filter. |
 
 ---
 
