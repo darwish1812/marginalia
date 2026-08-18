@@ -558,6 +558,11 @@
   .pv-e b{color:var(--paper); font-weight:600}
   .pv-n{font-size:13px; color:var(--ink-1); margin-top:6px; line-height:1.5; max-width:78ch}
   .pv-miss{font-size:12px; color:var(--ink-3); margin-top:5px}
+  /* out of the way, and visibly not part of what is about to be kept */
+  .bad-head{margin-top:16px}
+  .pv-bad{border-color:rgba(196,72,92,.4); opacity:.72}
+  .pv-bad.taking{opacity:1; border-color:var(--rule)}
+  #takebad[aria-pressed="true"]{background:var(--paper); color:var(--night); border-color:var(--paper)}
 
   /* ---------- fields ---------- */
   .fld-row{display:flex; align-items:flex-start; gap:13px; padding:13px 0; border-bottom:1px solid var(--rule)}
@@ -2873,105 +2878,163 @@ function previewProblems(x){
   return miss;
 }
 
+function previewRow(x, byId, forceOpen){
+  const row = document.createElement('div');
+  row.className = 'pv-row' + (forceOpen ? ' open' : '');
+
+  /* the word, where it went, and the gloss — on one line */
+  const head = document.createElement('div');
+  head.className = 'pv-top';
+  const w = document.createElement('span'); w.className='pv-w'; w.textContent = x.w;
+  head.appendChild(w);
+  const f = x.f==null ? null : byId.get(x.f);
+  const tag = document.createElement('span');
+  tag.className = 'pv-f';
+  tag.style.color = f ? f.ink : 'var(--ink-0)';
+  tag.textContent = f ? f.name : 'Unfiled';
+  head.appendChild(tag);
+  if(x.a){ const a=document.createElement('span'); a.className='pv-a'; a.lang='ar'; a.textContent=x.a; head.appendChild(a); }
+  row.appendChild(head);
+
+  if(x.d){ const d=document.createElement('div'); d.className='pv-d'; d.textContent=x.d; row.appendChild(d); }
+
+  /* Folded: the sentence and any caution. Present, because the example is the only way to
+     see whether it demonstrates the sense the definition claims — but not in the way of
+     thirty rows being scanned. */
+  if(x.e || x.n){
+    const more = document.createElement('div');
+    more.className = 'pv-more';
+    if(x.e){
+      const e=document.createElement('div'); e.className='pv-e';
+      /* the asterisks mark the word; the only markup allowed, and turned into nodes */
+      String(x.e).split(/(\*[^*]+\*)/).forEach(bit=>{
+        if(/^\*[^*]+\*$/.test(bit)){ const b=document.createElement('b'); b.textContent=bit.slice(1,-1); e.appendChild(b); }
+        else e.appendChild(document.createTextNode(bit));
+      });
+      more.appendChild(e);
+    }
+    if(x.n){ const n=document.createElement('div'); n.className='pv-n'; n.textContent='Careful: '+x.n; more.appendChild(n); }
+    row.appendChild(more);
+    row.title = 'Tap to see the example sentence';
+  }
+
+  const miss = previewProblems(x);
+  if(miss.length){
+    const m=document.createElement('div'); m.className='pv-miss';
+    m.textContent = miss.join(' · ');
+    row.appendChild(m);
+  }
+  return row;
+}
+
+/* ---------- what came back, sorted into what can be kept and what cannot ----------
+   A word that came back wrong does not belong in the list you are about to keep. It is not
+   thrown away either: it was asked for and paid for out of a monthly allowance, and
+   silently dropping it would leave somebody wondering where their word went. So it sits
+   below, out of the way, with what is wrong with it and a way to take it anyway. */
 function renderPreview(arr){
   const box = document.getElementById('preview');
   box.textContent = '';
   const byId = new Map(FIELDS.map(f=>[f.id,f]));
+  const good  = arr.filter(x=>!previewProblems(x).length);
+  const bad   = arr.filter(x=> previewProblems(x).length);
 
-  /* How many, and how many are worth looking at twice — said before the list rather than
-     discovered by scrolling it. With thirty words the difference between "read all of
-     these" and "read these two" is the difference between reviewing and rubber-stamping. */
-  const flagged = arr.filter(x=>previewProblems(x).length).length;
-  const unfiled = arr.filter(x=>x.f==null).length;
   const head = document.createElement('div');
   head.className = 'pv-head';
   const n = document.createElement('span');
-  n.innerHTML = '';
-  const b = document.createElement('b'); b.textContent = String(arr.length);
-  n.append(b, document.createTextNode(arr.length===1 ? ' word came back' : ' words came back'));
+  const b = document.createElement('b'); b.textContent = String(good.length);
+  n.append(b, document.createTextNode(good.length===1 ? ' word ready to keep' : ' words ready to keep'));
   head.appendChild(n);
+  const unfiled = good.filter(x=>x.f==null).length;
   if(unfiled){ const u=document.createElement('span'); u.textContent = unfiled+' unfiled'; head.appendChild(u); }
-  if(flagged){ const f=document.createElement('span'); f.className='flagged';
-               f.textContent = flagged+(flagged===1?' looks doubtful':' look doubtful'); head.appendChild(f); }
   box.appendChild(head);
 
-  const wrap = document.createElement('div');
-  wrap.className = 'pv';
+  if(good.length){
+    const wrap = document.createElement('div');
+    wrap.className = 'pv';
+    good.forEach(x=>wrap.appendChild(previewRow(x, byId, false)));
+    wrap.addEventListener('click', e=>{
+      const r = e.target.closest('.pv-row');
+      if(r && r.querySelector('.pv-more')) r.classList.toggle('open');
+    });
+    box.appendChild(wrap);
+  }
 
-  arr.forEach(x=>{
+  if(bad.length){
+    const h2 = document.createElement('div');
+    h2.className = 'pv-head bad-head';
+    const s2 = document.createElement('span');
+    s2.className = 'flagged';
+    s2.textContent = bad.length===1
+      ? '1 came back wrong and is not included'
+      : bad.length + ' came back wrong and are not included';
+    h2.appendChild(s2);
+    box.appendChild(h2);
+
+    const wrap2 = document.createElement('div');
+    wrap2.className = 'pv pv-bad';
+    /* opened on sight: the whole reason they are down here is that there is something to
+       look at, and hiding the evidence behind a tap would be perverse */
+    bad.forEach(x=>wrap2.appendChild(previewRow(x, byId, true)));
+    box.appendChild(wrap2);
+
+    const note = document.createElement('p');
+    note.className = 'note';
+    note.textContent = 'Ask for them again — put them back in the list above and press Enrich. '
+      + 'Or take them as they are and fix them on the card.';
+    box.appendChild(note);
+
     const row = document.createElement('div');
-    row.className = 'pv-row';
+    row.className = 'row';
+    const anyway = document.createElement('button');
+    anyway.className = 'btn'; anyway.id = 'takebad';
+    anyway.setAttribute('aria-pressed','false');
+    anyway.textContent = bad.length===1 ? 'Take it anyway' : 'Take them anyway';
+    row.appendChild(anyway);
+    box.appendChild(row);
+  }
+}
 
-    /* the word, where it went, and the gloss — on one line */
-    const head = document.createElement('div');
-    head.className = 'pv-top';
-    const w = document.createElement('span'); w.className='pv-w'; w.textContent = x.w;
-    head.appendChild(w);
-    const f = x.f==null ? null : byId.get(x.f);
-    const tag = document.createElement('span');
-    tag.className = 'pv-f';
-    tag.style.color = f ? f.ink : 'var(--ink-0)';
-    tag.textContent = f ? f.name : 'Unfiled';
-    head.appendChild(tag);
-    if(x.a){ const a=document.createElement('span'); a.className='pv-a'; a.lang='ar'; a.textContent=x.a; head.appendChild(a); }
-    row.appendChild(head);
+/* What Keep will actually write. The button says a number and that number has to be true,
+   so it is computed from the same partition the list is drawn from. */
+function keeping(){
+  if(!PENDING) return [];
+  return PENDING.takeBad ? PENDING.arr : PENDING.arr.filter(x=>!previewProblems(x).length);
+}
 
-    if(x.d){ const d=document.createElement('div'); d.className='pv-d'; d.textContent=x.d; row.appendChild(d); }
-
-    /* Folded: the sentence and any caution. Present, because the example is the only way to
-       see whether it demonstrates the sense the definition claims — but not in the way of
-       thirty rows being scanned. */
-    if(x.e || x.n){
-      const more = document.createElement('div');
-      more.className = 'pv-more';
-      if(x.e){
-        const e=document.createElement('div'); e.className='pv-e';
-        /* the asterisks mark the word; they are the only markup allowed and are turned into
-           nodes rather than into HTML */
-        String(x.e).split(/(\*[^*]+\*)/).forEach(bit=>{
-          if(/^\*[^*]+\*$/.test(bit)){ const b=document.createElement('b'); b.textContent=bit.slice(1,-1); e.appendChild(b); }
-          else e.appendChild(document.createTextNode(bit));
-        });
-        more.appendChild(e);
-      }
-      if(x.n){ const n=document.createElement('div'); n.className='pv-n'; n.textContent='Careful: '+x.n; more.appendChild(n); }
-      row.appendChild(more);
-      row.title = 'Tap to see the example sentence';
-    }
-
-    /* Named where they can be acted on. A missing Arabic gloss is the one a reader who does
-       not read Arabic would never notice, and it is the point of the booklet. */
-    const miss = previewProblems(x);
-    if(miss.length){
-      const m=document.createElement('div'); m.className='pv-miss';
-      m.textContent = miss.join(' · ');
-      row.appendChild(m);
-    }
-    wrap.appendChild(row);
-  });
-
-  /* A row opens where a flag says there is something to look at. Nobody should have to
-     discover that a doubtful word had an example all along. */
-  wrap.addEventListener('click', e=>{
-    const r = e.target.closest('.pv-row');
-    if(r && r.querySelector('.pv-more')) r.classList.toggle('open');
-  });
-  wrap.querySelectorAll('.pv-row').forEach(r=>{
-    if(r.querySelector('.pv-miss')) r.classList.add('open');
-  });
-
-  box.appendChild(wrap);
+function paintKeep(){
+  const n = keeping().length;
+  const btn = document.getElementById('keep');
+  btn.textContent = n === 0 ? 'Nothing to keep'
+                  : n === 1 ? 'Keep this word'
+                  : 'Keep these ' + n + ' words';
+  btn.disabled = n === 0;
+  const bad = document.getElementById('takebad');
+  if(bad){
+    bad.setAttribute('aria-pressed', String(!!PENDING.takeBad));
+    const count = PENDING.arr.length - PENDING.arr.filter(x=>!previewProblems(x).length).length;
+    bad.textContent = PENDING.takeBad
+      ? (count===1 ? 'Taking it' : 'Taking them')
+      : (count===1 ? 'Take it anyway' : 'Take them anyway');
+  }
 }
 
 function showPreview(arr, madeFields){
-  PENDING = {arr, madeFields};
+  PENDING = {arr, madeFields, takeBad:false};
   renderPreview(arr);
+  paintKeep();
   document.getElementById('s2b').hidden = false;
-  document.getElementById('keep').textContent =
-    `Keep ${arr.length===1 ? 'this word' : 'these '+arr.length+' words'}`;
   document.getElementById('previewmsg').textContent = '';
   document.getElementById('s2b').scrollIntoView({behavior:'smooth', block:'nearest'});
 }
+
+/* Delegated, because the button is rebuilt with the list each time. */
+document.getElementById('preview').addEventListener('click', e=>{
+  if(!e.target.closest('#takebad') || !PENDING) return;
+  PENDING.takeBad = !PENDING.takeBad;
+  document.querySelector('.pv-bad').classList.toggle('taking', PENDING.takeBad);
+  paintKeep();
+});
 
 function clearPreview(){
   PENDING = null;
@@ -2988,9 +3051,11 @@ document.getElementById('discard').addEventListener('click', ()=>{
 document.getElementById('keep').addEventListener('click', async ()=>{
   if(!PENDING) return;
   const btn=document.getElementById('keep'), msg=document.getElementById('previewmsg');
+  const take = keeping();
+  if(!take.length) return;
   btn.disabled=true; msg.className='note'; msg.textContent='Saving…';
   let res;
-  try{ res = await mergeArray(PENDING.arr); }
+  try{ res = await mergeArray(take); }
   catch(e){ msg.className='note bad'; msg.textContent='Nothing kept — '+errText(e); btn.disabled=false; return; }
   if(!res.ok){
     msg.className='note bad';
