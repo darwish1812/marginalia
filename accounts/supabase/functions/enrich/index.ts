@@ -142,9 +142,15 @@ async function callModel(a: CallArgs): Promise<{ text: string; ms: number }> {
 
   if (!res.ok) {
     const body = await res.text();
+    // Providers put a precise, actionable sentence in here — "your credit balance is too
+    // low", "model not found", "max_tokens too large" — and both the OpenAI and Anthropic
+    // shapes keep it in the same place. Flattening that to "could not be reached" throws
+    // away the only part of the answer worth reading.
+    let said = '';
+    try { said = JSON.parse(body)?.error?.message ?? ''; } catch (_) {}
     // The status is carried so the app can tell "the key was refused" from "slow down",
     // which are different messages to a reader and different actions to an administrator.
-    throw Object.assign(new Error(body.slice(0, 400)), { status: res.status });
+    throw Object.assign(new Error(body.slice(0, 400)), { status: res.status, said });
   }
 
   const j = await res.json();
@@ -355,19 +361,45 @@ Deno.serve(async (req) => {
       await db.from('runs').update({
         error: String(e.message ?? e).slice(0, 300), ms, requested: sent,
       }).eq('id', run.data!.id);
-      const status = e.status === 401 || e.status === 403 ? 502 : e.status === 429 ? 429 : 502;
+      const s = e.status ?? 0;
+      const admin = await isAdmin(user.id);
+      const said = String(e.said ?? '');
+
+      // Four different things, and telling them apart is the difference between an
+      // administrator fixing it in a minute and hunting through code that is working.
+      //  · refused        the key is wrong, revoked, or for another account
+      //  · rate limited   nothing is wrong; wait
+      //  · refused-the-request  reached and answered: no credit, bad model name, bad
+      //                   parameter. The provider's own sentence is the useful part and
+      //                   "could not be reached" actively misleads, because it was.
+      //  · unreachable    a network fault or the provider being down
+      const kind = s === 401 || s === 403 ? 'refused'
+                 : s === 429 ? 'limited'
+                 : s >= 400 && s < 500 ? 'rejected'
+                 : 'unreachable';
+
+      const forReader = {
+        refused:     'The key was refused. Ask your administrator.',
+        limited:     'The model is busy. Try again shortly.',
+        rejected:    'The model refused the request. Ask your administrator.',
+        unreachable: 'The model could not be reached.',
+      }[kind];
+
+      // An administrator gets the provider's own words; a reader never does. It can carry
+      // the provider, the account, sometimes the key's own prefix — and a reader can do
+      // nothing with it anyway.
+      const forAdmin = kind === 'rejected' && said
+        ? said
+        : kind === 'refused'
+          ? 'The key was refused — check it is current and belongs to this provider.'
+          : forReader;
+
       return json({
         error: 'model',
-        status: e.status ?? 0,
-        // The detail goes to an administrator, never to a reader — it can carry the key's
-        // provider, the account, sometimes the key's own prefix.
-        message: e.status === 401 || e.status === 403
-          ? 'The key was refused.'
-          : e.status === 429
-            ? 'The model is rate limiting. Try again shortly.'
-            : 'The model could not be reached.',
-        detail: (await isAdmin(user.id)) ? String(e.message ?? e).slice(0, 400) : undefined,
-      }, status);
+        status: s,
+        message: admin ? forAdmin : forReader,
+        detail: admin ? String(e.message ?? e).slice(0, 400) : undefined,
+      }, kind === 'limited' ? 429 : 502);
     }
 
     await db.from('runs').update({ returned: parts.length, ms }).eq('id', run.data!.id);
