@@ -536,18 +536,28 @@
   /* and they stay put while the list moves behind them */
   #s2b .row{position:sticky; bottom:0; background:var(--night-2); padding:12px 0 2px;
             margin-top:0; border-top:1px solid var(--rule)}
-  .pv-row{padding:12px 14px; border-bottom:1px solid var(--rule)}
+  /* One line per word, near enough. The word, where it was filed, what it means and the
+     Arabic — the four things a decision to keep is actually made on. The example and any
+     caution are a click away rather than gone: the example is the only way to see whether
+     the sentence demonstrates the sense, which is one of the three things flagged below. */
+  .pv-row{padding:11px 14px; border-bottom:1px solid var(--rule); cursor:pointer}
   .pv-row:last-child{border-bottom:0}
+  .pv-row:hover{background:rgba(241,239,233,.03)}
+  .pv-top{display:flex; align-items:baseline; gap:9px; flex-wrap:wrap}
   .pv-w{font-family:"Fraunces",Georgia,serif; font-size:19px; font-weight:600; letter-spacing:-.01em}
   .pv-f{font-family:"Archivo",sans-serif; font-size:9.5px; font-weight:700; letter-spacing:.11em;
-        text-transform:uppercase; border-radius:99px; padding:3px 9px; margin-left:9px;
+        text-transform:uppercase; border-radius:99px; padding:3px 9px;
         border:1px solid currentColor; white-space:nowrap}
-  .pv-d{font-size:14.5px; color:var(--paper); margin-top:6px; line-height:1.5}
-  .pv-e{font-size:14px; color:var(--dim); margin-top:5px; line-height:1.5; font-style:italic}
+  .pv-a{font-family:"Noto Naskh Arabic",serif; font-size:16px; color:var(--ink-2);
+        direction:rtl; margin-left:auto; padding-left:14px}
+  .pv-d{font-size:14px; color:var(--dim); margin-top:4px; line-height:1.5; max-width:78ch}
+  /* folded away until the row is opened */
+  .pv-more{display:none; margin-top:7px; padding-top:7px; border-top:1px dashed var(--rule)}
+  .pv-row.open .pv-more{display:block}
+  .pv-e{font-size:14px; color:var(--dim); line-height:1.5; font-style:italic; max-width:78ch}
   .pv-e b{color:var(--paper); font-weight:600}
-  .pv-a{font-family:"Noto Naskh Arabic",serif; font-size:17px; color:var(--ink-2); margin-top:6px; direction:rtl; text-align:right}
-  .pv-n{font-size:13px; color:var(--ink-1); margin-top:6px; line-height:1.5}
-  .pv-miss{font-size:12px; color:var(--ink-3); margin-top:6px}
+  .pv-n{font-size:13px; color:var(--ink-1); margin-top:6px; line-height:1.5; max-width:78ch}
+  .pv-miss{font-size:12px; color:var(--ink-3); margin-top:5px}
 
   /* ---------- fields ---------- */
   .fld-row{display:flex; align-items:flex-start; gap:13px; padding:13px 0; border-bottom:1px solid var(--rule)}
@@ -2892,7 +2902,9 @@ function renderPreview(arr){
     const row = document.createElement('div');
     row.className = 'pv-row';
 
+    /* the word, where it went, and the gloss — on one line */
     const head = document.createElement('div');
+    head.className = 'pv-top';
     const w = document.createElement('span'); w.className='pv-w'; w.textContent = x.w;
     head.appendChild(w);
     const f = x.f==null ? null : byId.get(x.f);
@@ -2901,21 +2913,31 @@ function renderPreview(arr){
     tag.style.color = f ? f.ink : 'var(--ink-0)';
     tag.textContent = f ? f.name : 'Unfiled';
     head.appendChild(tag);
+    if(x.a){ const a=document.createElement('span'); a.className='pv-a'; a.lang='ar'; a.textContent=x.a; head.appendChild(a); }
     row.appendChild(head);
 
     if(x.d){ const d=document.createElement('div'); d.className='pv-d'; d.textContent=x.d; row.appendChild(d); }
-    if(x.e){
-      const e=document.createElement('div'); e.className='pv-e';
-      /* the asterisks mark the word; they are the only markup allowed and are turned into
-         nodes rather than into HTML */
-      String(x.e).split(/(\*[^*]+\*)/).forEach(bit=>{
-        if(/^\*[^*]+\*$/.test(bit)){ const b=document.createElement('b'); b.textContent=bit.slice(1,-1); e.appendChild(b); }
-        else e.appendChild(document.createTextNode(bit));
-      });
-      row.appendChild(e);
+
+    /* Folded: the sentence and any caution. Present, because the example is the only way to
+       see whether it demonstrates the sense the definition claims — but not in the way of
+       thirty rows being scanned. */
+    if(x.e || x.n){
+      const more = document.createElement('div');
+      more.className = 'pv-more';
+      if(x.e){
+        const e=document.createElement('div'); e.className='pv-e';
+        /* the asterisks mark the word; they are the only markup allowed and are turned into
+           nodes rather than into HTML */
+        String(x.e).split(/(\*[^*]+\*)/).forEach(bit=>{
+          if(/^\*[^*]+\*$/.test(bit)){ const b=document.createElement('b'); b.textContent=bit.slice(1,-1); e.appendChild(b); }
+          else e.appendChild(document.createTextNode(bit));
+        });
+        more.appendChild(e);
+      }
+      if(x.n){ const n=document.createElement('div'); n.className='pv-n'; n.textContent='Careful: '+x.n; more.appendChild(n); }
+      row.appendChild(more);
+      row.title = 'Tap to see the example sentence';
     }
-    if(x.a){ const a=document.createElement('div'); a.className='pv-a'; a.lang='ar'; a.textContent=x.a; row.appendChild(a); }
-    if(x.n){ const n=document.createElement('div'); n.className='pv-n'; n.textContent='Careful: '+x.n; row.appendChild(n); }
 
     /* Named where they can be acted on. A missing Arabic gloss is the one a reader who does
        not read Arabic would never notice, and it is the point of the booklet. */
@@ -2927,6 +2949,17 @@ function renderPreview(arr){
     }
     wrap.appendChild(row);
   });
+
+  /* A row opens where a flag says there is something to look at. Nobody should have to
+     discover that a doubtful word had an example all along. */
+  wrap.addEventListener('click', e=>{
+    const r = e.target.closest('.pv-row');
+    if(r && r.querySelector('.pv-more')) r.classList.toggle('open');
+  });
+  wrap.querySelectorAll('.pv-row').forEach(r=>{
+    if(r.querySelector('.pv-miss')) r.classList.add('open');
+  });
+
   box.appendChild(wrap);
 }
 
