@@ -521,6 +521,12 @@
   body.auto-enrich #s3,
   body.auto-enrich #s4,
   body.auto-enrich #queue{display:none}
+  /* The chips were a way to drop one word before carrying a prompt somewhere. The words are
+     in the box directly above and can be edited there, and what the chips uniquely told you
+     — which ones were already in the booklet — the summary line now says in words.
+     Capturing a word bare is a manual-loop idea too: it existed because enriching was slow. */
+  body.auto-enrich #report .chips,
+  body.auto-enrich #addnow{display:none}
   #quota:empty{display:none}
 
   /* the words that came back, as words */
@@ -2665,10 +2671,18 @@ async function loadGateway(){
 /* Words already captured but not yet enriched are offered again rather than
    dropped as duplicates — otherwise nothing in the panel could ever reach them. */
 function renderReport(dups, nears, again){
+  /* The words that were dropped are named, not just counted. The chips used to be where
+     you found out which three of your ten were already in the booklet; with them gone in
+     automatic mode, a bare number would leave you to work it out yourself. Capped, because
+     a summary that runs to three lines is not one. */
+  const name = list => {
+    const shown = list.slice(0, 4).join(', ');
+    return list.length > 4 ? `${shown} and ${list.length-4} more` : shown;
+  };
   const bits=[`${fresh.length} to enrich`];
   if(again.length) bits.push(`${again.length} waiting for detail`);
-  if(dups.length) bits.push(`${dups.length} already here`);
-  if(nears.length) bits.push(`${nears.length} similar to existing`);
+  if(dups.length) bits.push(`already here: ${name(dups)}`);
+  if(nears.length) bits.push(`close to one you have: ${name(nears.map(n=>n.t))}`);
   const el = document.getElementById('report');
   el.textContent = '';
   const p = document.createElement('p');
