@@ -520,13 +520,10 @@
   body.auto-enrich #s2,
   body.auto-enrich #s3,
   body.auto-enrich #s4,
-  body.auto-enrich #queue{display:none}
   /* The chips were a way to drop one word before carrying a prompt somewhere. The words are
      in the box directly above and can be edited there, and what the chips uniquely told you
-     — which ones were already in the booklet — the summary line now says in words.
-     Capturing a word bare is a manual-loop idea too: it existed because enriching was slow. */
-  body.auto-enrich #report .chips,
-  body.auto-enrich #addnow{display:none}
+     — which ones were already in the booklet — the summary line now says in words. */
+  body.auto-enrich #report .chips{display:none}
   #quota:empty{display:none}
 
   /* the words that came back, as words */
@@ -697,17 +694,15 @@
         <div class="step">
           <span class="stepno">Step 1 — paste your English words</span>
           <p>Any format: commas, new lines, numbered. Duplicates are removed automatically.</p>
-          <textarea id="raw" placeholder="obstinate, wary&#10;3. gaunt&#10;forlorn"></textarea>
+          <textarea id="raw"></textarea>
           <div class="row">
             <button class="btn" id="check">Check list</button>
-            <button class="btn" id="queue" style="display:none"></button>
           </div>
           <div id="report"></div>
           <!-- Both act on the list just checked, so they belong beside it rather than under
                a heading about carrying a prompt somewhere. -->
           <div class="row">
             <button class="btn" id="enrich" disabled hidden>Enrich these</button>
-            <button class="btn" id="addnow" disabled>Add as needs-detail now</button>
           </div>
           <p class="note" id="quota"></p>
         </div>
@@ -736,24 +731,18 @@
 
         <div class="step waiting" id="s3">
           <span class="stepno">Step 3 — paste the reply</span>
-          <textarea id="incoming" placeholder="Paste the JSON array Claude gives you" disabled></textarea>
+          <textarea id="incoming" disabled></textarea>
           <div class="row"><button class="btn" id="merge" disabled>Validate &amp; merge</button></div>
           <div id="mergemsg"></div>
         </div>
 
-        <div class="step" id="s4">
-          <span class="stepno">Step 4 — keep a copy</span>
-          <p id="step4">Your words save themselves. Download a copy whenever you want one of your own.</p>
-          <div class="row">
-            <button class="btn" id="dl">Download words.json</button>
-            <button class="btn" id="dlprog">Export progress</button>
-          </div>
-          <p class="note" id="local"></p>
-          <p class="note" id="sync"></p>
-        </div>
       </section>
 
       <section class="panel" id="settings">
+        <!-- Where a save that did not land says so: a tick that never reached the account,
+             a word that would not move, a booklet being read from the offline copy. It sat
+             inside the add-words panel before, which was a stranger place for it than this. -->
+        <p class="note" id="sync"></p>
         <div class="set">
           <div>
             <p class="set-t">Add words</p>
@@ -788,6 +777,20 @@
               box so you can read them first. There is no undo, so waiting is the default.</p>
           </div>
           <button class="btn" id="automerge" aria-pressed="false">Merge automatically</button>
+        </div>
+
+        <!-- Not a step in adding words — it never was, really. Keeping a copy is something
+             you do to the booklet, so it lives with the other things you do to the booklet. -->
+        <div class="set">
+          <div>
+            <p class="set-t">Keep a copy</p>
+            <p class="set-d" id="copyhint">Your words save themselves as you add them. Take a
+              copy whenever you want one of your own.</p>
+          </div>
+          <div class="row" style="margin:0">
+            <button class="btn" id="dl">Download words.json</button>
+            <button class="btn" id="dlprog">Export progress</button>
+          </div>
         </div>
 
         <div class="set">
@@ -2246,45 +2249,42 @@ document.getElementById('acctbtn').addEventListener('click',()=>{
 /* On an account there is nothing to nag about — a word is saved the moment it is merged,
    which was the entire point. What is left is a bare count of words still waiting for
    detail, and step 4 becomes an offer of a copy rather than an instruction. */
+/* What is worth saying about the state of the booklet, and where it is now said. The two
+   elements this used to write into lived inside a step that no longer exists — the count of
+   words waiting for detail belongs on the way in to the panel, and the note about keeping a
+   copy belongs beside the button that keeps one. */
 function showLocal(){
-  const el = document.getElementById('local');
   const bare = W.filter(x=>!x.d || !x.d.trim()).length;
   const hint = document.getElementById('addhint');
-  const step4 = document.getElementById('step4');
+  const copy = document.getElementById('copyhint');
 
   if(store.id === 'cloud'){
-    el.textContent = bare
-      ? `${bare} word${bare>1?'s are':' is'} still waiting for detail — saved, but left out of a downloaded copy until enriched.`
-      : '';
-    el.className = 'note';
-    step4.textContent = 'Your words save themselves as you add them. Download a copy whenever you want one of your own.';
     if(hint){
       hint.textContent = bare
         ? `${bare} word${bare===1?'':'s'} waiting for detail.`
-        : 'Paste a list, take the prompt to Claude, bring the reply back.';
+        : 'Paste a list and the booklet does the rest.';
       hint.style.color = '';
     }
-    showQueue();
+    if(copy) copy.textContent = bare
+      ? `Your words save themselves. A downloaded copy leaves out the ${bare} still waiting for detail.`
+      : 'Your words save themselves as you add them. Take a copy whenever you want one of your own.';
     return;
   }
 
   const adds = localAdds();
   const ready = adds.filter(x=>x.d && x.d.trim()).length, stillBare = adds.length - ready;
-  const lines = [];
-  if(ready) lines.push(`${ready} word${ready>1?'s':''} added on this device only — download and commit to keep ${ready>1?'them':'it'}.`);
-  if(stillBare) lines.push(`${stillBare} more ${stillBare>1?'are':'is'} still waiting for detail: the download leaves ${stillBare>1?'them':'it'} out, so ${stillBare>1?'they stay':'it stays'} in this browser until you enrich ${stillBare>1?'them':'it'}.`);
-  el.textContent = lines.join(' ');
-  el.className = adds.length ? 'note warn' : 'note';
-  step4.textContent = 'Download the updated file and paste it into words.json on GitHub.';
-  /* The add panel now sits behind Settings, so the count of uncommitted words has to
-     show on the way in — otherwise it is two clicks from anywhere you would notice it. */
   if(hint){
     hint.textContent = adds.length
       ? `${adds.length} word${adds.length===1?'':'s'} added on this device, not yet committed.`
-      : 'Paste a list, take the prompt to Claude, bring the reply back.';
+      : 'Paste a list and the booklet does the rest.';
     hint.style.color = adds.length ? 'var(--ink-1)' : '';
   }
-  showQueue();
+  if(copy){
+    const lines = ['Download the updated file and paste it into words.json on GitHub.'];
+    if(ready) lines.push(`${ready} word${ready>1?'s are':' is'} on this device only until you do.`);
+    if(stillBare) lines.push(`${stillBare} still waiting for detail ${stillBare>1?'are':'is'} left out of it.`);
+    copy.textContent = lines.join(' ');
+  }
 }
 
 /* ---------- fields ----------
@@ -2608,7 +2608,7 @@ let fresh=[];
 const IDLEPROMPT='The prompt is written here once you check a list above.';
 function setReady(on){
   ['s2','s3'].forEach(id=>document.getElementById(id).classList.toggle('waiting', !on));
-  ['copyp','addnow','merge','incoming','enrich'].forEach(id=>document.getElementById(id).disabled = !on);
+  ['copyp','merge','incoming','enrich'].forEach(id=>document.getElementById(id).disabled = !on);
   if(!on) document.getElementById('prompt').textContent=IDLEPROMPT;
 }
 
@@ -2772,16 +2772,6 @@ document.getElementById('check').addEventListener('click',()=>{
   renderReport(dups, nears, again);
 });
 
-function showQueue(){
-  const btn=document.getElementById('queue'), pend=W.filter(x=>!x.d);
-  btn.style.display = pend.length ? '' : 'none';
-  btn.textContent = `Queue the ${pend.length} waiting`;
-}
-document.getElementById('queue').addEventListener('click',()=>{
-  const pend=W.filter(x=>!x.d).map(x=>x.w);
-  fresh=pend.slice();
-  renderReport([], [], pend);
-});
 
 document.getElementById('report').addEventListener('click',e=>{
   const b=e.target.closest('[data-drop]'); if(!b) return;
@@ -3184,38 +3174,6 @@ document.getElementById('enrich').addEventListener('click', async ()=>{
 document.getElementById('copyp').addEventListener('click',async e=>{
   try{ await navigator.clipboard.writeText(document.getElementById('prompt').textContent);
        e.target.textContent='Copied'; setTimeout(()=>e.target.textContent='Copy prompt',1500); }catch(err){}
-});
-
-/* The check step offers words that are already here but still bare, so they can be sent
-   back through step 2 — not so they can be captured a second time. Inserting one twice
-   collides with the unique index on an account, which lost the whole batch, and doubled
-   the card on a device. Two words that normalise alike do the same, so the batch is
-   measured against itself as well as against the book. */
-document.getElementById('addnow').addEventListener('click',async ()=>{
-  const report=document.getElementById('report');
-  const seen=new Set(W.map(x=>norm(x.w)));
-  const add=[];
-  fresh.forEach(t=>{
-    const k=norm(t);
-    if(seen.has(k)) return;
-    seen.add(k);
-    add.push({w:t,f:null,p:'',d:'',e:'',a:''});
-  });
-  /* Nothing new in the batch: say so and leave the chips and the prompt standing, since
-     step 2 is exactly where these words still want to go. */
-  if(!add.length){
-    const note=report.querySelector('.note');
-    if(note){ note.className='note'; note.textContent='All of those are here already, waiting for detail — step 2 still has them.'; }
-    return;
-  }
-  const skipped=fresh.length-add.length;
-  try{ await store.addWords(add, new Set()); }
-  catch(e){ report.innerHTML='<p class="note bad">Could not save them — '+esc(errText(e))+'</p>'; return; }
-  W=W.concat(add);
-  render(); loadProgress(); showLocal();
-  report.innerHTML='<p class="note good">Added — enrich them whenever you like.'
-    +(skipped?` ${skipped} ${skipped===1?'was':'were'} already waiting.`:'')+'</p>';
-  fresh=[]; setReady(false);
 });
 
 /* A drawing arrives as "s": raw SVG typed by a model and pasted through a chat window.
