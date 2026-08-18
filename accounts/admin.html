@@ -99,13 +99,24 @@
 <div class="wrap">
 
   <!-- signed out ------------------------------------------------------->
+  <!-- There is no separate administrator password. This signs in with the same Marginalia
+       account as the booklet, and on the same origin it shares the same stored session —
+       so if you are signed in over there, this page never asks at all.
+
+       Whatever the booklet offers, this offers, discovered the same way: an account created
+       through Google has no password to type, and a gate that only knew about passwords
+       would lock its own administrator out. -->
   <section class="gate" id="gate" hidden style="border:0">
     <h1>Margin<em>alia</em> · gateway</h1>
-    <p class="sub">Administrators only. Sign in with the account that was granted access.</p>
+    <p class="sub">The same account you use for the booklet. There is no separate password.</p>
+    <div id="oauth" style="margin-top:14px"></div>
+    <div id="or" hidden style="color:var(--dimmer); font-size:11px; text-align:center; margin:14px 0 0">or</div>
     <div class="fld"><label for="email">Email</label><input id="email" type="email" autocomplete="email"></div>
     <div class="fld"><label for="pw">Password</label><input id="pw" type="password" autocomplete="current-password"></div>
     <div class="row" style="margin-top:14px"><button class="go" id="signin">Sign in</button></div>
     <p class="msg" id="gatemsg"></p>
+    <p class="note" id="nopw" hidden>If you created your account with Google or another
+      provider, you have no password — use the button above.</p>
   </section>
 
   <!-- not an admin ------------------------------------------------------>
@@ -278,13 +289,53 @@ async function api(path, opts){
   return body;
 }
 
-/* ---------- sign in ---------- */
+/* ---------- sign in ----------
+   A button for every provider the project actually has switched on, read from the project's
+   own settings exactly as the booklet reads them — so there are never dead buttons, and
+   never a missing one. An account made through Google has no password at all, and a gate
+   that only offered a password field would shut its own administrator out. */
+const PROVIDER_NAMES = {google:'Google', apple:'Apple', azure:'Microsoft', github:'GitHub',
+  facebook:'Facebook', twitter:'X', discord:'Discord', gitlab:'GitLab', notion:'Notion',
+  slack_oidc:'Slack', linkedin_oidc:'LinkedIn'};
+
+(async ()=>{
+  let on = [];
+  try{
+    const r = await fetch(SUPABASE_URL+'/auth/v1/settings', {headers:{apikey:SUPABASE_ANON_KEY}});
+    const j = await r.json();
+    on = Object.keys(PROVIDER_NAMES).filter(k => j.external && j.external[k]);
+  }catch(e){}
+  if(!on.length) return;
+  const box = $('oauth');
+  box.textContent = '';
+  on.forEach(k=>{
+    const b = document.createElement('button');
+    b.style.cssText = 'width:100%;margin-bottom:8px;padding:11px';
+    b.textContent = 'Continue with ' + PROVIDER_NAMES[k];
+    b.addEventListener('click', async ()=>{
+      b.disabled = true;
+      /* back to this page, not to the booklet */
+      const back = location.origin + location.pathname;
+      const {error} = await sb.auth.signInWithOAuth({provider:k, options:{redirectTo:back}});
+      if(error){ b.disabled=false; say('gatemsg', error.message, 'bad'); }
+    });
+    box.appendChild(b);
+  });
+  $('or').hidden = false;
+  $('nopw').hidden = false;
+})();
+
 $('signin').addEventListener('click', async ()=>{
   const email=$('email').value.trim(), password=$('pw').value;
   if(!email || !password) return say('gatemsg','Both fields, please.','bad');
   say('gatemsg','One moment…');
   const {error} = await sb.auth.signInWithPassword({email, password});
-  if(error) return say('gatemsg', error.message, 'bad');
+  if(error){
+    /* the likeliest cause here is an account that has no password to be wrong about */
+    return say('gatemsg', /Invalid login credentials/i.test(error.message)
+      ? 'That did not match. If you created the account with Google, you have no password — use the button above.'
+      : error.message, 'bad');
+  }
   boot();
 });
 $('pw').addEventListener('keydown', e=>{ if(e.key==='Enter') $('signin').click(); });
