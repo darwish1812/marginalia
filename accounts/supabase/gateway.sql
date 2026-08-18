@@ -185,3 +185,14 @@ alter table public.profiles
   add column if not exists auto_merge boolean not null default false;
 
 notify pgrst, 'reload schema';
+
+-- ---------------------------------------------------------------- temperature
+-- Sent only when somebody deliberately chooses one. It defaulted to 0.3, which meant every
+-- request carried it — and newer models refuse the request outright rather than ignoring
+-- it: "`temperature` is deprecated for this model". An unset temperature now means "do not
+-- mention temperature", which is the right default for a task that wants consistent output.
+alter table public.providers alter column temperature drop default;
+update public.providers set temperature = null where temperature = 0.3;
+update public.app_config set temperature = null where temperature = 0.3;
+
+notify pgrst, 'reload schema';

@@ -101,44 +101,47 @@ type CallArgs = {
   apiKey: string;
   model: string;
   prompt: string;
-  temperature: number;
+  temperature: number | null;
   maxTokens: number;
+  drop?: string[];        // parameters a previous attempt was told this model will not take
 };
 
 async function callModel(a: CallArgs): Promise<{ text: string; ms: number }> {
   const started = Date.now();
-  let res: Response;
+  const drop = a.drop ?? [];
 
-  if (a.adapter === 'anthropic') {
-    res = await fetch(a.endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': a.apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: a.model,
-        max_tokens: a.maxTokens,
-        temperature: a.temperature,
-        messages: [{ role: 'user', content: a.prompt }],
-      }),
-    });
-  } else {
-    // Everything else speaks the OpenAI body. Asking for JSON where the endpoint supports
-    // it is the single largest quality gain available for small local models, and is
-    // ignored harmlessly by endpoints that do not.
-    res = await fetch(a.endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${a.apiKey}` },
-      body: JSON.stringify({
-        model: a.model,
-        temperature: a.temperature,
-        max_tokens: a.maxTokens,
-        messages: [{ role: 'user', content: a.prompt }],
-      }),
-    });
+  // Sent only when somebody has deliberately chosen one. It is a tuning knob most readers
+  // never touch, enrichment wants consistent output rather than varied, and newer models
+  // reject it outright — so an unset temperature means "do not mention temperature",
+  // not "send the default".
+  const body: Record<string, unknown> = {
+    model: a.model,
+    messages: [{ role: 'user', content: a.prompt }],
+  };
+  if (a.temperature != null && Number.isFinite(a.temperature) && !drop.includes('temperature')) {
+    body.temperature = a.temperature;
   }
+  if (!drop.includes('max_tokens')) {
+    // Anthropic requires it; the OpenAI shape treats it as optional.
+    body[a.adapter === 'anthropic' ? 'max_tokens' : 'max_tokens'] = a.maxTokens;
+  }
+
+  const res = a.adapter === 'anthropic'
+    ? await fetch(a.endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': a.apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify(body),
+      })
+    // Everything else speaks the OpenAI body.
+    : await fetch(a.endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${a.apiKey}` },
+        body: JSON.stringify(body),
+      });
 
   if (!res.ok) {
     const body = await res.text();
@@ -329,8 +332,33 @@ Deno.serve(async (req) => {
     }).select('id').single();
 
     const batch = cfg.batch_size ?? prov.data.batch_size ?? 20;
-    const temperature = cfg.temperature ?? prov.data.temperature ?? 0.3;
+    // null all the way down means "do not send it" — see callModel.
+    const temperature = cfg.temperature ?? prov.data.temperature ?? null;
     const maxTokens = cfg.max_tokens ?? prov.data.max_tokens ?? 4000;
+
+    // When a provider refuses a request because of one named parameter — "`temperature` is
+    // deprecated for this model" — it has told us precisely how to succeed. Dropping that
+    // parameter and asking once more is unambiguous, because the request is otherwise
+    // identical. Only ever tried once, and only for a parameter we actually sent.
+    const dropped: string[] = [];
+    const callOnce = async (prompt: string) => {
+      try {
+        return await callModel({
+          adapter: prov.data.adapter, endpoint: prov.data.endpoint, apiKey,
+          model: cfg.model, prompt, temperature, maxTokens, drop: dropped,
+        });
+      } catch (e: any) {
+        const said = String(e.said ?? '');
+        const blamed = ['temperature', 'max_tokens', 'top_p'].find(
+          p => said.includes(p) && !dropped.includes(p));
+        if (!blamed || !(e.status >= 400 && e.status < 500)) throw e;
+        dropped.push(blamed);
+        return await callModel({
+          adapter: prov.data.adapter, endpoint: prov.data.endpoint, apiKey,
+          model: cfg.model, prompt, temperature, maxTokens, drop: dropped,
+        });
+      }
+    };
 
     const chunks: string[][] = [];
     for (let i = 0; i < items.items.length; i += batch) chunks.push(items.items.slice(i, i + batch));
@@ -348,11 +376,7 @@ Deno.serve(async (req) => {
       // SEQUENTIAL, never Promise.all. Ten parallel requests hit a free-tier rate limit
       // immediately, and the failure looks like a broken key rather than what it is.
       for (const chunk of chunks) {
-        const r = await callModel({
-          adapter: prov.data.adapter, endpoint: prov.data.endpoint, apiKey,
-          model: cfg.model, prompt: assemble(template, chunk, fields.fields),
-          temperature, maxTokens,
-        });
+        const r = await callOnce(assemble(template, chunk, fields.fields));
         parts.push(r.text);
         ms += r.ms;
         sent += chunk.length;
@@ -404,7 +428,12 @@ Deno.serve(async (req) => {
 
     await db.from('runs').update({ returned: parts.length, ms }).eq('id', run.data!.id);
 
-    return json({ run_id: run.data!.id, chunks: parts.length, text: parts.join('\n'), parts });
+    return json({
+      run_id: run.data!.id, chunks: parts.length, text: parts.join('\n'), parts,
+      // so the console can say the model would not take something, rather than the reader
+      // discovering later that a setting they typed is being quietly ignored
+      dropped: dropped.length ? dropped : undefined,
+    });
   }
 
   // ---- admin ------------------------------------------------------------
