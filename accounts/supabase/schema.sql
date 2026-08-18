@@ -218,7 +218,24 @@ $$;
 -- from the browser as two requests, a connection dropped between them destroyed the
 -- retired words and never delivered their replacements, while the panel reported that
 -- nothing had been merged. Here they are one statement or none.
-create or replace function public.merge_words(p_add jsonb, p_retire text[])
+-- A merge is a replace, not an update: the old row goes and a new one is built from the
+-- reply. So anything the reply does not carry is not carried either, and `done` is the
+-- reader's own — the model has no opinion about whether they have learned the word. It was
+-- dropped on every re-enrichment, and only visibly so after the next load.
+--
+-- p_rename maps a misspelling to the word that supersedes it. Without it the tick is still
+-- lost whenever a spelling is corrected, because the incoming norm and the retired norm are
+-- by definition different and nothing joins them.
+--
+-- When the capture extension lands, met_sentence, met_url, met_title, met_at and times_met
+-- are reader-owned in exactly the same way and must be carried here too. That loss would be
+-- silent and permanent.
+-- `create or replace` cannot change a signature — it would leave the old two-argument
+-- version standing beside the new one, and because p_rename has a default, a two-argument
+-- call would then match both and fail as ambiguous. Drop the old signature by name first.
+drop function if exists public.merge_words(jsonb, text[]);
+
+create or replace function public.merge_words(p_add jsonb, p_retire text[], p_rename jsonb default '[]'::jsonb)
 returns void
 language plpgsql
 security invoker
@@ -228,14 +245,47 @@ declare uid uuid := auth.uid();
 begin
   if uid is null then raise exception 'merge_words: nobody is signed in'; end if;
 
-  if p_retire is not null and array_length(p_retire, 1) > 0 then
-    delete from public.words where user_id = uid and norm = any(p_retire);
-  end if;
-
-  insert into public.words (user_id, w, norm, f, p, d, e, a, n, i)
-  select uid, x.w, x.norm, x.f, x.p, x.d, x.e, x.a, x.n, x.i
-    from jsonb_to_recordset(coalesce(p_add, '[]'::jsonb))
-      as x(w text, norm text, f integer, p text, d text, e text, a text, n text, i text);
+  with incoming as (
+    select x.w, x.norm, x.f, x.p, x.d, x.e, x.a, x.n, x.i
+      from jsonb_to_recordset(coalesce(p_add, '[]'::jsonb))
+        as x(w text, norm text, f integer, p text, d text, e text, a text, n text, i text)
+  ),
+  renames as (
+    select r.wrong, r."right"
+      from jsonb_to_recordset(coalesce(p_rename, '[]'::jsonb))
+        as r(wrong text, "right" text)
+  ),
+  /* Read before the delete. Every CTE in one statement sees the same snapshot, so this
+     still finds rows the delete below is removing — which is the point. */
+  held as (
+    select w.norm, w.done
+      from public.words w
+     where w.user_id = uid
+       and w.done
+  ),
+  gone as (
+    delete from public.words
+     where user_id = uid
+       and p_retire is not null
+       and norm = any(p_retire)
+    returning 1
+  )
+  insert into public.words (user_id, w, norm, f, p, d, e, a, n, i, done)
+  select uid, i.w, i.norm, i.f, i.p, i.d, i.e, i.a, i.n, i.i,
+         coalesce(mine.done, was.done, false)
+    from incoming i
+    /* the word kept its spelling */
+    left join held mine on mine.norm = i.norm
+    /* or it is the corrected spelling of something that was ticked */
+    left join renames rn on rn."right" = i.norm
+    left join held was on was.norm = rn.wrong
+  /* The delete above is invisible to this insert — same snapshot — so a retired norm that
+     is also incoming still collides. Updating on conflict is what makes that harmless, and
+     it makes the whole function idempotent besides. */
+  on conflict (user_id, norm) do update set
+    w = excluded.w, f = excluded.f, p = excluded.p, d = excluded.d,
+    e = excluded.e, a = excluded.a, n = excluded.n, i = excluded.i,
+    done = excluded.done;
 end;
 $$;
 

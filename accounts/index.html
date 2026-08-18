@@ -1414,10 +1414,25 @@ const localStore = {
       .map(f=>Object.assign({}, f, {ink:inkHex(f.ink), note:f.note||''}));
     return {words, corrections, fields};
   },
-  async addWords(add, retired){
+  async addWords(add, retired, renames){
     /* a word coming back is no longer removed */
     if(retired.size) setLocalGone(localGone().filter(k=>!retired.has(k)));
     setLocal(localAdds().filter(x=>!retired.has(norm(x.w))).concat(add));
+    /* On this device the tick is a list of word strings, so a corrected spelling orphans
+       its own entry — the old string is no longer on any card. Rewrite it in place, which
+       is what the cloud store gets from merge_words carrying `done` across a rename. */
+    if(renames && renames.length){
+      let list; try{ list = JSON.parse(localStorage.getItem(KEY)||'[]'); }catch(e){ list = []; }
+      let touched = false;
+      renames.forEach(({wrong, right})=>{
+        const i = list.indexOf(wrong);
+        if(i > -1){ list[i] = right; touched = true; }
+      });
+      if(touched){
+        try{ localStorage.setItem(KEY, JSON.stringify([...new Set(list)])); }catch(e){}
+        renames.forEach(({wrong, right})=>{ if(done.delete(wrong)) done.add(right); });
+      }
+    }
   },
   async addFixes(fixes){ setLocalFix(localFix().concat(fixes)); },
   async saveField(f){
@@ -1538,10 +1553,13 @@ const cloudStore = {
      Both halves go down as one call: as two requests, a connection lost in between took
      the retired words away for good and never delivered what was meant to replace them,
      while the panel said nothing had been merged. merge_words() is one transaction. */
-  async addWords(add, retired){
+  async addWords(add, retired, renames){
     const {error} = await sb.rpc('merge_words', {
       p_add: add.map(o=>wordToRow(o, this.uid)),
-      p_retire: [...retired]
+      p_retire: [...retired],
+      /* the misspelling a word supersedes, so the tick follows the correction: the reader
+         said they knew this word, and only their typing of it was wrong */
+      p_rename: (renames||[]).map(r=>({wrong:norm(r.wrong), right:norm(r.right)}))
     });
     if(error) throw asError(error);
     await this.refreshCache();
@@ -2531,7 +2549,16 @@ function renderReport(dups, nears, again){
 
 document.getElementById('check').addEventListener('click',()=>{
   const raw=document.getElementById('raw').value;
-  const items=[...new Set(raw.split(/[\n,;]+/).map(s=>s.replace(/^\s*\d+[.)]\s*/,'').trim()).filter(Boolean))];
+  /* De-duplicated on norm, not on the raw string. "fealty" and "Fealty!" are two different
+     strings and one word, and letting both through sent both to the model, which sent two
+     objects back that collide on the unique index. The first spelling typed is the one
+     kept, since that is the one the reader looked at. */
+  const items=[]; const seenItem=new Set();
+  raw.split(/[\n,;]+/).map(s=>s.replace(/^\s*\d+[.)]\s*/,'').trim()).filter(Boolean).forEach(t=>{
+    const k=norm(t);
+    if(!k || seenItem.has(k)) return;
+    seenItem.add(k); items.push(t);
+  });
   const have=new Map(W.filter(x=>x.d).map(x=>[norm(x.w),x.w]));
   const pend=new Map(W.filter(x=>!x.d).map(x=>[norm(x.w),x.w]));
   const stems=new Map(W.filter(x=>x.d).map(x=>[stem(x.w),x.w]));
@@ -2736,8 +2763,11 @@ async function mergeArray(arr){
     if(!x || typeof x.w!=='string' || !x.w.trim()) bad.push(`#${i+1} has no word`);
     /* No field is a legitimate answer now, and the prompt asks for it rather than
        letting a word be pushed into the nearest field that half fits. A field that
-       does not exist is still an error — that is a mistake, not a decision. */
-    else if(x.f!=null && !ids.has(x.f)) bad.push(`${x.w}: field ${x.f} does not exist`);
+       does not exist is still an error — that is a mistake, not a decision.
+       Coerced first: "3" and 3 mean the same thing, and refusing the string produced
+       "field 3 does not exist", which names the field and denies it in one breath. */
+    else if(x.f!=null && (x.f=Number(x.f), !Number.isInteger(x.f) || !ids.has(x.f)))
+      bad.push(`${x.w}: field ${x.f} does not exist`);
     else if(typeof x.d!=='string' || !x.d.trim()) bad.push(`${x.w}: no definition`);
     else {
       const h = PLAIN.find(k=>typeof x[k]==='string' && /[<&]/.test(x[k]));
@@ -2776,15 +2806,27 @@ async function mergeArray(arr){
   typed.forEach(c=>enriched.add(norm(c.wrong)));
   const kept=W.filter(x=>!enriched.has(norm(x.w)));
   const already=new Set(kept.map(x=>norm(x.w)));
-  const add=arr.filter(x=>!already.has(norm(x.w)));
+  /* Measured against itself as well as against the book. Two objects whose words normalise
+     alike — "fealty" and "Fealty!" — both used to pass, which doubles the card on a device
+     and fails the whole transaction against the unique index on an account. Rule 1 of the
+     prompt forbids it, but a prompt is not a constraint. First one wins. */
+  const seen=new Set(already);
+  const add=[];
+  arr.forEach(x=>{
+    const k=norm(x.w);
+    if(seen.has(k)) return;
+    seen.add(k); add.push(x);
+  });
   add.forEach(o=>{ if(!o.i && pics.has(norm(o.w))) o.i = pics.get(norm(o.w)); });
   /* Put them through the same normaliser a row gets on the way back, so a word looks the
      same in an export whether it was merged a second ago or reloaded from storage —
      canonical key order, and no "n": null on a word that simply has no caution. */
   const canon = add.map(rowToWord);
+  /* Saved before W is touched. The database half has been one transaction since
+     merge_words, but memory was not: a throw here left W already rewritten while the panel
+     reported that nothing had merged, and the two disagreed until a reload. */
+  await store.addWords(canon, enriched, typed);
   W = kept.concat(canon);
-  add.length = 0; add.push(...canon);
-  await store.addWords(add, enriched);
   if(fixes.length){
     CORRECTIONS = CORRECTIONS.concat(fixes);
     await store.addFixes(fixes);
