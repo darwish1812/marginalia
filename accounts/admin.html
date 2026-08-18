@@ -388,9 +388,20 @@ function paint(d){
   $('tplnote').textContent = c.template_prev ? 'a previous version is kept' : 'no previous version yet';
   $('reverttpl').disabled = !c.template_prev;
 
-  $('testnote').textContent = c.tested_at
-    ? 'Last successful test ' + new Date(c.tested_at).toLocaleString() + '.'
-    : 'No test has passed yet. Readers are not offered automatic merging until one does.';
+  /* What is missing, named before anything is pressed. A button that can only fail should
+     say so on its face rather than waiting to be clicked and answering with a status code. */
+  const missing = [];
+  if(!c.provider_id) missing.push('a provider');
+  if(!hasKey) missing.push('an API key');
+  if(!c.model) missing.push('a model name');
+  if(!c.template || !c.template.trim()) missing.push('a template — run supabase/load-templates.sql');
+  $('test').disabled = missing.length > 0;
+
+  $('testnote').textContent = missing.length
+    ? 'Still needed before a test can run: ' + missing.join(', ') + '.'
+    : c.tested_at
+      ? 'Last successful test ' + new Date(c.tested_at).toLocaleString() + '.'
+      : 'Nothing has been sent through yet. Press "Send one word" and read the Arabic before enabling anything.';
 
   $('dev').hidden = !DEV_DIRECT;
 }

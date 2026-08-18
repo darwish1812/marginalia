@@ -263,7 +263,22 @@ Deno.serve(async (req) => {
 
   // ---- POST /run --------------------------------------------------------
   if (route === '/run' && req.method === 'POST') {
-    if (!cfg.enabled || !cfg.provider_id || !cfg.model) {
+    // `enabled` is a switch about readers. An administrator sending one word through to see
+    // whether the Arabic comes back is not a reader enriching, and gating the test on it
+    // deadlocks: the console will not let anyone enable a gateway that has never answered
+    // correctly, and nothing can answer while it is disabled. So an admin runs regardless.
+    const runAdmin = await isAdmin(user.id);
+
+    // These two are not a switch — without them there is nothing to call.
+    if (!cfg.provider_id || !cfg.model) {
+      return json({
+        error: 'unconfigured',
+        message: !cfg.provider_id
+          ? 'No provider is set. Choose one, paste a key, and save.'
+          : 'No model is set. Type a model name and save.',
+      }, 503);
+    }
+    if (!cfg.enabled && !runAdmin) {
       return json({ error: 'disabled', message: 'Your administrator has not finished setting this up.' }, 503);
     }
 
