@@ -2867,9 +2867,18 @@ function mergeMsg(res){
 
 /* The paste path: strip fences, parse, hand the array over. Everything specific to
    pasting — the textareas, the chips, the fence tolerance — stops here. */
-document.getElementById('merge').addEventListener('click',async ()=>{
-  const msg=document.getElementById('mergemsg');
-  const txt=document.getElementById('incoming').value.trim().replace(/^```(json)?|```$/g,'').trim();
+/* ---------- turning a reply into an array ----------
+   Lifted out of the paste handler so the button that fetches a reply and the box you paste
+   one into arrive at the same place by the same road. Everything specific to a textarea
+   stays with the textarea; everything about what a reply *is* lives here.
+
+   Returns {ok:true, arr, madeFields} or {ok:false, why}. It has one side effect, and it is
+   deliberate: a blank-booklet reply carries the fields it invented, and those are written
+   before the array is handed on — otherwise mergeArray would validate every "f" against
+   fields that do not exist yet. Nothing is written unless the whole reply hangs together,
+   which is what the orphan check below is for. */
+async function parseReply(text){
+  const txt = String(text||'').trim().replace(/^```(json)?|```$/g,'').trim();
   let parsed;
   /* "Paste the whole reply, brackets and all" was the wrong advice most of the time: by far
      the commonest failure is a drawing written with double-quoted attributes, which closes
@@ -2882,7 +2891,6 @@ document.getElementById('merge').addEventListener('click',async ()=>{
      prompt now asks for single quotes, which needs no escaping and cannot go wrong. */
   try{ parsed=JSON.parse(txt); }
   catch(e){
-    msg.className='note bad';
     const at = /position (\d+)/.exec((e && e.message) || '');
     let where = '';
     if(at){
@@ -2890,10 +2898,9 @@ document.getElementById('merge').addEventListener('click',async ()=>{
       const near = txt.slice(Math.max(0, i-32), i+22).replace(/\s+/g,' ');
       where = ` It breaks at character ${i}, around: …${near}…`;
     }
-    msg.textContent = 'That is not valid JSON.' + where
+    return {ok:false, why:'That is not valid JSON.' + where
       + ' If the reply drew a picture, the usual cause is double quotes inside the SVG —'
-      + ' ask for it again with single quotes in the drawing, and a closing </svg>.';
-    return;
+      + ' ask for it again with single quotes in the drawing, and a closing </svg>.'};
   }
 
   /* The blank-booklet reply arrives as {fields, words} rather than as a bare array. It is
@@ -2909,7 +2916,7 @@ document.getElementById('merge').addEventListener('click',async ()=>{
        textContent and escaped in the book, so only an angle bracket is worth refusing,
        and only because it means the model has misunderstood the question. */
     const bad = proposed.find(f=>typeof f.name!=='string' || !f.name.trim() || /</.test(f.name+(f.note||'')));
-    if(bad){ msg.className='note bad'; msg.textContent='Nothing merged — a proposed field has no name, or contains markup.'; return; }
+    if(bad) return {ok:false, why:'Nothing merged — a proposed field has no name, or contains markup.'};
     /* Every "f" is checked against the fields that are about to exist, before any of them
        do. mergeArray cannot do this check for us — it validates against FIELDS, which is
        exactly what has not been written yet — and without it a reply naming a field it
@@ -2918,11 +2925,8 @@ document.getElementById('merge').addEventListener('click',async ()=>{
     const willExist = new Set(FIELDS.map(f=>f.id)
       .concat(proposed.map((f,i)=>f.id!=null?+f.id:i+1)));
     const orphan = parsed.words.find(x=>x && x.f!=null && !willExist.has(+x.f));
-    if(orphan){
-      msg.className='note bad';
-      msg.textContent='Nothing merged — '+String(orphan.w||'a word')+' is filed under field '+orphan.f+', which the reply never proposed.';
-      return;
-    }
+    if(orphan) return {ok:false, why:'Nothing merged — '+String(orphan.w||'a word')
+      +' is filed under field '+orphan.f+', which the reply never proposed.'};
     try{
       for(let i=0;i<proposed.length;i++){
         const f={id:proposed[i].id!=null?+proposed[i].id:i+1, name:String(proposed[i].name).trim(),
@@ -2931,13 +2935,24 @@ document.getElementById('merge').addEventListener('click',async ()=>{
         await store.saveField(f);
         FIELDS.push(f); madeFields++;
       }
-    }catch(e){ msg.className='note bad'; msg.textContent='Nothing merged — the fields could not be saved: '+errText(e); return; }
+    }catch(e){ return {ok:false, why:'Nothing merged — the fields could not be saved: '+errText(e)}; }
     FIELDS.sort((a,b)=>(a.sort==null?a.id:a.sort)-(b.sort==null?b.id:b.sort));
     renderFields();
     arr = parsed.words;
   }
 
-  if(!Array.isArray(arr)){ msg.className='note bad'; msg.textContent='Expected an array of objects, or an object with a "words" array.'; return; }
+  if(!Array.isArray(arr))
+    return {ok:false, why:'Expected an array of objects, or an object with a "words" array.'};
+  return {ok:true, arr, madeFields};
+}
+
+/* The paste path. Everything specific to a textarea — reading it, clearing it, the chips
+   below it — stops here; the reply itself is somebody else's problem now. */
+document.getElementById('merge').addEventListener('click',async ()=>{
+  const msg=document.getElementById('mergemsg');
+  const p = await parseReply(document.getElementById('incoming').value);
+  if(!p.ok){ msg.className='note bad'; msg.textContent=p.why; return; }
+  const arr = p.arr, madeFields = p.madeFields;
   let res;
   try{ res = await mergeArray(arr); }
   catch(e){ msg.className='note bad'; msg.textContent='Nothing merged — '+errText(e)+' Your reply is still in the box.'; return; }
