@@ -2,3 +2,8 @@
 index.test.html
 index.auto.test.html
 supabase/.temp/
+
+# secrets for a locally served function — never committed
+.env
+.env.*
+supabase/functions/.env*

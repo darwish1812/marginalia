@@ -2554,8 +2554,91 @@ function setReady(on){
    One class, and nothing else changes. GATEWAY holds what the last /me said; every failure
    path calls setEnrichMode('manual') and writes the reason where the reader is already looking,
    so nobody has to visit settings to recover from anything. */
-const FN = ACCOUNTS ? SUPABASE_URL + '/functions/v1/enrich' : null;
+/* The gateway normally lives at the project URL. Served locally — `supabase functions
+   serve`, the one arrangement in which the function can reach a model on this machine — it
+   lives on this machine instead, so the base is overridable:
+
+     localStorage.fn = 'http://localhost:54321'     // and reload; delete it to go back
+
+   Only ever honoured when this page is itself on localhost. Requests to the gateway carry
+   the reader's access token, so a stored value that could redirect them on a deployed page
+   would be a way to hand that token to somebody else. */
+const FN_BASE = (['localhost','127.0.0.1'].includes(location.hostname) &&
+                 localStorage.getItem('fn')) || SUPABASE_URL;
+const FN = ACCOUNTS ? FN_BASE + '/functions/v1/enrich' : null;
 let GATEWAY = {enabled:false, auto_merge:false, quota_used:0, quota_limit:0, resets:''};
+
+/* ---------- a model on this machine ----------
+   An Edge Function runs in the cloud and cannot dial your desk, so a local provider is
+   unreachable through the gateway however it is configured. This page can reach it, and
+   does — but only when all three of these hold:
+
+     · this page is itself on localhost, never the published booklet;
+     · the person signed in is an administrator, which the gateway checks server-side
+       when /admin/config is asked for the provider at all;
+     · the provider actually in use has a local endpoint.
+
+   No key is involved: a local endpoint has nobody to present one to. The prompt is the one
+   promptText() builds, which is the same string the gateway assembles and the same string
+   the Copy prompt button produces — a test that sent something else would prove nothing. */
+const ON_LOCALHOST = ['localhost','127.0.0.1'].includes(location.hostname);
+const isLocalEndpoint = u =>
+  /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|\/|$)/i.test(String(u||'').trim());
+
+async function localTarget(){
+  if(!ON_LOCALHOST || !GATEWAY.admin || !FN) return null;
+  try{
+    const {data:{session}} = await sb.auth.getSession();
+    if(!session) return null;
+    const r = await fetch(FN + '/admin/config', {headers:{Authorization:'Bearer '+session.access_token}});
+    if(!r.ok) return null;
+    const d = await r.json();
+    const prov = (d.providers||[]).find(x => x.id === d.config.provider_id);
+    if(!prov || !isLocalEndpoint(prov.endpoint)) return null;
+    return {endpoint:prov.endpoint, adapter:prov.adapter||'openai', model:prov.model,
+            temperature:d.config.temperature, maxTokens:d.config.max_tokens ?? 4000};
+  }catch(_){ return null; }
+}
+
+/* Whatever the model answers, handed back in the shape /run would have used, so nothing
+   downstream needs to know which way the words went. */
+async function askLocal(t, prompt){
+  const body = {model:t.model, messages:[{role:'user', content:prompt}], max_tokens:t.maxTokens};
+  if(t.temperature !== null && t.temperature !== undefined) body.temperature = Number(t.temperature);
+  const headers = t.adapter === 'anthropic'
+    ? {'Content-Type':'application/json', 'anthropic-version':'2023-06-01'}
+    : {'Content-Type':'application/json'};
+
+  let res;
+  try{ res = await fetch(t.endpoint, {method:'POST', headers, body: JSON.stringify(body)}); }
+  catch(e){ throw Object.assign(new Error('local endpoint unreachable'),
+              {soft:'The model on this machine could not be reached. Is it still running?'}); }
+
+  const raw = await res.text();
+  if(!res.ok){
+    let said=''; try{ said = JSON.parse(raw)?.error?.message || ''; }catch(_){}
+    throw Object.assign(new Error('local '+res.status),
+      {soft:'The model answered '+res.status+(said?' — '+said:'')+'.'});
+  }
+  let j; try{ j = JSON.parse(raw); }
+  catch(e){ throw Object.assign(new Error('local not json'), {soft:'The model did not answer with JSON.'}); }
+
+  const text = t.adapter === 'anthropic'
+    ? (Array.isArray(j?.content) ? j.content : [])
+        .filter(b => b && (b.type === 'text' || typeof b.text === 'string'))
+        .map(b => b.text ?? '').join('')
+    : (j?.choices?.[0]?.message?.content
+       ?? j?.choices?.[0]?.message?.reasoning_content
+       ?? j?.choices?.[0]?.text ?? '');
+
+  const why = j?.stop_reason ?? j?.choices?.[0]?.finish_reason;
+  if(why === 'length' || why === 'max_tokens')
+    throw Object.assign(new Error('local truncated'),
+      {soft:'The model ran out of room before finishing. Lower the words per request, or '
+          + 'raise Max tokens in the gateway console.'});
+  if(!text) throw Object.assign(new Error('local empty'), {soft:'The model answered with nothing in it.'});
+  return {text};
+}
 
 function setEnrichMode(mode){
   document.body.classList.toggle('auto-enrich', mode === 'auto');
@@ -2771,7 +2854,13 @@ function previewProblems(x){
   const miss = [];
   if(!x.d || String(x.d).trim().length < 15) miss.push('no real definition');
   if(!x.e || String(x.e).indexOf('*') === -1) miss.push('the example does not mark the word');
-  if(!x.a || /[A-Za-z]/.test(String(x.a))) miss.push('the Arabic looks wrong');
+  /* Only the gloss in front of the em dash has to be Arabic: rule 7 of the template asks
+     for an English clarifier after it, so testing the whole string condemns every reply that
+     did as it was told. The gateway console applies the identical rule — these two judging
+     the same reply differently is the confusion this booklet is careful to avoid. */
+  const gloss = String(x.a||'').split('\u2014')[0];
+  if(!x.a || !/[\u0600-\u06FF]/.test(gloss) || /[A-Za-z]/.test(gloss))
+    miss.push('the Arabic looks wrong');
   return miss;
 }
 
@@ -3001,20 +3090,27 @@ document.getElementById('enrich').addEventListener('click', async ()=>{
   try{
     const {data:{session}} = await sb.auth.getSession();
     if(!session) throw Object.assign(new Error('signed out'), {soft:'You are signed out.'});
-    const r = await fetch(FN + '/run', {
-      method:'POST',
-      headers:{Authorization:'Bearer '+session.access_token, 'Content-Type':'application/json'},
-      body: JSON.stringify({
-        items: fresh,
-        fields: FIELDS.map(({id,name,note})=>({id,name,note}))
-      })
-    });
-    const body = await r.json().catch(()=>null);
-    if(!r.ok){
-      /* Every one of these is a fall back to the manual loop with the reason said in
-         place. None of them requires visiting settings to recover from. */
-      throw Object.assign(new Error((body && (body.message||body.error)) || ('HTTP '+r.status)),
-                          {soft:(body && body.message) || 'That did not go through.'});
+
+    const direct = await localTarget();
+    let body;
+    if(direct){
+      body = await askLocal(direct, promptText());
+    } else {
+      const r = await fetch(FN + '/run', {
+        method:'POST',
+        headers:{Authorization:'Bearer '+session.access_token, 'Content-Type':'application/json'},
+        body: JSON.stringify({
+          items: fresh,
+          fields: FIELDS.map(({id,name,note})=>({id,name,note}))
+        })
+      });
+      body = await r.json().catch(()=>null);
+      if(!r.ok){
+        /* Every one of these is a fall back to the manual loop with the reason said in
+           place. None of them requires visiting settings to recover from. */
+        throw Object.assign(new Error((body && (body.message||body.error)) || ('HTTP '+r.status)),
+                            {soft:(body && body.message) || 'That did not go through.'});
+      }
     }
     if(!body || typeof body.text !== 'string')
       throw Object.assign(new Error('no text'), {soft:'The reply came back empty.'});
@@ -3030,8 +3126,9 @@ document.getElementById('enrich').addEventListener('click', async ()=>{
       return;
     }
     /* Counted before either branch, and before fresh is emptied: what was spent was spent
-       whether or not the words are kept. */
-    GATEWAY.quota_used += fresh.length; showQuota();
+       whether or not the words are kept. A direct call spent nothing — it never reached the
+       gateway, so there is no run to bill and nothing to count. */
+    if(!direct){ GATEWAY.quota_used += fresh.length; showQuota(); }
 
     if(GATEWAY.auto_merge){
       let res;
@@ -3049,7 +3146,8 @@ document.getElementById('enrich').addEventListener('click', async ()=>{
     }else{
       /* The default, and the reason the preview exists: it is your booklet and these are
          your words, so look at them as words before they go in. */
-      msg.className='note'; msg.textContent='';
+      msg.className='note';
+      msg.textContent = direct ? 'Answered by the model on this machine — no quota used.' : '';
       showPreview(p.arr, p.madeFields);
     }
   }catch(e){
