@@ -1,0 +1,531 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Marginalia — gateway</title>
+<meta name="robots" content="noindex">
+
+<!-- A console, not a reading surface. It shares the booklet's palette so it is recognisably
+     the same product, and none of its stylesheet: no serif, no cards, no reveal. Dense rows
+     and plain controls, because everything here is read once and acted on.
+
+     Readers never download this file. It is not linked from the booklet and nothing in
+     index.html references it. Hiding it is cosmetic, though — every admin route re-checks
+     the caller server-side, so a forged answer here earns a visible panel and 403 on every
+     button in it. -->
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+  :root{
+    --night:#141634; --night-2:#1C1F45; --night-3:#242850;
+    --paper:#F1EFE9; --dim:rgba(241,239,233,.55); --dimmer:rgba(241,239,233,.34);
+    --rule:rgba(241,239,233,.14);
+    --ochre:#C9922F; --verd:#3F9A85; --ox:#C4485C; --steel:#4E8AD6;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--night); color:var(--paper);
+    font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:900px; margin:0 auto; padding:28px 22px 80px}
+  h1{font-size:19px; font-weight:600; letter-spacing:-.01em; margin:0}
+  h1 em{font-style:normal; color:var(--ochre)}
+  .sub{color:var(--dim); font-size:12.5px; margin-top:3px}
+  header{display:flex; align-items:flex-start; gap:16px; padding-bottom:18px; border-bottom:1px solid var(--rule)}
+  header .right{margin-left:auto; text-align:right; font-size:12px; color:var(--dim)}
+
+  section{border-bottom:1px solid var(--rule); padding:20px 0}
+  section:last-of-type{border-bottom:0}
+  h2{font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase;
+     color:var(--dim); margin:0 0 14px}
+
+  .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px}
+  label{display:block; font-size:11.5px; color:var(--dim); margin-bottom:5px}
+  input,select,textarea{
+    width:100%; background:var(--night-2); border:1px solid var(--rule); border-radius:6px;
+    color:var(--paper); padding:8px 10px; font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  input:focus,select:focus,textarea:focus{outline:none; border-color:var(--ochre)}
+  textarea{font-size:12.5px; min-height:280px; resize:vertical; white-space:pre; overflow-wrap:normal; overflow-x:auto}
+  select{font-family:system-ui,sans-serif}
+  button{
+    font:600 11.5px/1 system-ui,sans-serif; letter-spacing:.08em; text-transform:uppercase;
+    background:transparent; color:var(--dim); border:1px solid var(--rule);
+    border-radius:6px; padding:9px 14px; cursor:pointer; white-space:nowrap;
+  }
+  button:hover:not(:disabled){color:var(--paper); border-color:rgba(241,239,233,.42)}
+  button:disabled{opacity:.4; cursor:default}
+  button.go{background:var(--paper); color:var(--night); border-color:var(--paper)}
+  button.go:hover:not(:disabled){background:#fff}
+  button.danger{color:var(--ox); border-color:rgba(196,72,92,.45)}
+
+  .stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:1px;
+         background:var(--rule); border:1px solid var(--rule); border-radius:8px; overflow:hidden}
+  .stat{background:var(--night-2); padding:12px 14px}
+  .stat .n{font-size:21px; font-weight:600; letter-spacing:-.01em}
+  .stat .l{font-size:11px; color:var(--dim); margin-top:2px}
+  .stat.warn .n{color:var(--ochre)}
+  .stat.bad .n{color:var(--ox)}
+  .stat.good .n{color:var(--verd)}
+
+  .bar{height:6px; border-radius:99px; background:var(--night-3); overflow:hidden; margin-top:10px}
+  .bar span{display:block; height:100%; background:var(--verd)}
+  .bar.warn span{background:var(--ochre)}
+  .bar.bad span{background:var(--ox)}
+
+  .pill{display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:600;
+        letter-spacing:.06em; text-transform:uppercase; border-radius:99px; padding:4px 10px;
+        border:1px solid currentColor}
+  .pill.on{color:var(--verd)} .pill.off{color:var(--dim)}
+
+  .msg{font-size:12.5px; margin-top:12px; line-height:1.55; white-space:pre-wrap}
+  .msg.ok{color:var(--verd)} .msg.bad{color:var(--ox)} .msg.warn{color:var(--ochre)}
+  .note{font-size:12px; color:var(--dim); line-height:1.55; margin:10px 0 0; max-width:70ch}
+  code{font-family:ui-monospace,Menlo,monospace; font-size:12px; color:var(--ochre)}
+
+  .out{background:var(--night-2); border:1px solid var(--rule); border-radius:8px;
+       padding:12px 14px; margin-top:12px; font:12px/1.6 ui-monospace,Menlo,monospace;
+       white-space:pre-wrap; word-break:break-word; max-height:340px; overflow:auto}
+  .out .ar{font-family:"Noto Naskh Arabic",system-ui,serif; font-size:16px; color:var(--verd)}
+
+  .gate{max-width:340px; margin:14vh auto; }
+  .gate h1{margin-bottom:6px}
+  .gate .fld{margin-top:12px}
+  [hidden]{display:none !important}
+  .dev{border:1px dashed var(--ochre); border-radius:8px; padding:14px; margin-top:14px}
+</style>
+
+<div class="wrap">
+
+  <!-- signed out ------------------------------------------------------->
+  <section class="gate" id="gate" hidden style="border:0">
+    <h1>Margin<em>alia</em> · gateway</h1>
+    <p class="sub">Administrators only. Sign in with the account that was granted access.</p>
+    <div class="fld"><label for="email">Email</label><input id="email" type="email" autocomplete="email"></div>
+    <div class="fld"><label for="pw">Password</label><input id="pw" type="password" autocomplete="current-password"></div>
+    <div class="row" style="margin-top:14px"><button class="go" id="signin">Sign in</button></div>
+    <p class="msg" id="gatemsg"></p>
+  </section>
+
+  <!-- not an admin ------------------------------------------------------>
+  <section class="gate" id="denied" hidden style="border:0">
+    <h1>Not an administrator</h1>
+    <p class="note">This account is signed in but has not been granted access to the gateway.
+      Access is granted by hand, in the SQL editor — there is no button for it:</p>
+    <div class="out">insert into public.admins (user_id)
+select id from auth.users where email = 'you@example.com'
+on conflict do nothing;</div>
+    <div class="row" style="margin-top:14px"><button id="signout2">Sign out</button></div>
+  </section>
+
+  <!-- the console -------------------------------------------------------->
+  <div id="console" hidden>
+    <header>
+      <div>
+        <h1>Margin<em>alia</em> · gateway</h1>
+        <div class="sub" id="who"></div>
+      </div>
+      <div class="right">
+        <span class="pill off" id="state">checking</span><br>
+        <span id="modelnow" style="font-size:11px"></span>
+      </div>
+    </header>
+
+    <!-- 1. status -->
+    <section>
+      <h2>This month</h2>
+      <div class="stats" id="stats"></div>
+      <div class="bar" id="budgetbar"><span style="width:0%"></span></div>
+      <p class="note" id="budgetnote"></p>
+    </section>
+
+    <!-- 2. provider -->
+    <section>
+      <h2>Provider</h2>
+      <div class="grid">
+        <div>
+          <label for="preset">Preset</label>
+          <select id="preset">
+            <option value="">Choose…</option>
+            <option value="anthropic">Anthropic</option>
+            <option value="openai">OpenAI</option>
+            <option value="groq">Groq</option>
+            <option value="deepseek">DeepSeek</option>
+            <option value="openrouter">OpenRouter</option>
+            <option value="lmstudio">LM Studio (local)</option>
+            <option value="ollama">Ollama (local)</option>
+          </select>
+        </div>
+        <div><label for="adapter">Body shape</label>
+          <select id="adapter"><option value="openai">openai</option><option value="anthropic">anthropic</option></select></div>
+        <div><label for="model">Model</label><input id="model" placeholder="claude-sonnet-5"></div>
+      </div>
+      <div style="margin-top:12px"><label for="endpoint">Endpoint</label><input id="endpoint" placeholder="https://…"></div>
+      <div style="margin-top:12px"><label for="apikey">API key <span id="keyhas"></span></label>
+        <input id="apikey" type="password" placeholder="leave blank to keep the current key"></div>
+      <div class="grid" style="margin-top:12px">
+        <div><label for="temp">Temperature</label><input id="temp" type="number" step="0.1" min="0" max="2"></div>
+        <div><label for="tokens">Max tokens</label><input id="tokens" type="number" min="256" step="256"></div>
+        <div><label for="batch">Words per request</label><input id="batch" type="number" min="1" max="100"></div>
+      </div>
+      <p class="note">The key is written once and never read back. This page can only ever
+        show that one is present and its last four characters — the function will not send
+        more, so a stolen session cannot lift it.</p>
+    </section>
+
+    <!-- 3. template -->
+    <section>
+      <h2>Template</h2>
+      <p class="note" style="margin-top:0">Assembled server-side. <code>{{WORDS}}</code> and
+        <code>{{FIELDS}}</code> are substituted; the reader's booklet builds the identical
+        string for its <b>Copy prompt</b> button, so the manual fallback stays a true
+        diagnostic. Do not let the two diverge.</p>
+      <textarea id="template" spellcheck="false"></textarea>
+      <div class="row" style="margin-top:10px">
+        <button class="go" id="savetpl">Test &amp; save</button>
+        <button id="reverttpl">Revert to previous</button>
+        <span class="note" style="margin:0" id="tplnote"></span>
+      </div>
+      <p class="note">Saving runs one real word through the whole path first and shows what
+        came back. A template that stops asking for a field does not fail — it quietly
+        produces plausible output without it, and nothing downstream notices.</p>
+    </section>
+
+    <!-- 4. limits -->
+    <section>
+      <h2>Limits</h2>
+      <div class="grid">
+        <div><label for="peruser">Per reader, per month</label><input id="peruser" type="number" min="0"></div>
+        <div><label for="perrun">Per run</label><input id="perrun" type="number" min="1"></div>
+        <div><label for="budget">Whole booklet, per month</label><input id="budget" type="number" min="0"></div>
+      </div>
+      <p class="note">Both ceilings are checked in the same request. A per-reader limit
+        multiplied by an unbounded number of readers is not a budget.</p>
+    </section>
+
+    <!-- actions -->
+    <section>
+      <h2>Enrichment</h2>
+      <div class="row">
+        <button class="go" id="save">Save settings</button>
+        <button id="test">Send one word</button>
+        <button id="toggle">Enable</button>
+        <button id="signout" style="margin-left:auto">Sign out</button>
+      </div>
+      <p class="msg" id="msg"></p>
+      <div class="out" id="out" hidden></div>
+      <p class="note" id="testnote">Readers are not offered automatic merging until a test
+        has passed. Send one word and read the Arabic before enabling anything.</p>
+
+      <div class="dev" id="dev" hidden>
+        <b style="color:var(--ochre); font-size:12px">Local model, this machine only</b>
+        <p class="note" style="margin-top:6px">An Edge Function cannot reach a model on your
+          desk, so this page can call it directly — but only from localhost, and only for
+          trying templates. It is not a path any reader can use.</p>
+        <div class="row" style="margin-top:10px"><button id="devtest">Test against local endpoint</button></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+/* Same project, same anon key as the booklet. This page holds no secret of its own: it can
+   see nothing a reader could not, except by asking the function, which checks. */
+const SUPABASE_URL      = 'https://pnsmrzlncqlbrkpamnyq.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_lH1l_wn_b45JvzFE7ZeIDg_4FQdjb-2';
+const FN = SUPABASE_URL + '/functions/v1/enrich';
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* Only ever true when this page is served from a machine you are sitting at. A local model
+   is a build-time convenience, never a production path. */
+const DEV_DIRECT = ['localhost','127.0.0.1'].includes(location.hostname);
+
+const PRESETS = {
+  anthropic:  {adapter:'anthropic', endpoint:'https://api.anthropic.com/v1/messages',        model:'claude-sonnet-5'},
+  openai:     {adapter:'openai',    endpoint:'https://api.openai.com/v1/chat/completions',   model:'gpt-4o-mini'},
+  groq:       {adapter:'openai',    endpoint:'https://api.groq.com/openai/v1/chat/completions', model:'llama-3.3-70b-versatile'},
+  deepseek:   {adapter:'openai',    endpoint:'https://api.deepseek.com/chat/completions',    model:'deepseek-chat'},
+  openrouter: {adapter:'openai',    endpoint:'https://openrouter.ai/api/v1/chat/completions', model:''},
+  lmstudio:   {adapter:'openai',    endpoint:'http://localhost:1234/v1/chat/completions',    model:'local-model'},
+  ollama:     {adapter:'openai',    endpoint:'http://localhost:11434/v1/chat/completions',   model:'llama3.1'}
+};
+
+const $ = id => document.getElementById(id);
+let STATE = null;
+
+function say(el, text, kind){ const e=$(el); e.className='msg'+(kind?' '+kind:''); e.textContent=text||''; }
+
+async function token(){
+  const {data:{session}} = await sb.auth.getSession();
+  return session ? session.access_token : null;
+}
+
+async function api(path, opts){
+  const t = await token();
+  if(!t) throw new Error('not signed in');
+  const r = await fetch(FN + path, Object.assign({}, opts, {
+    headers: Object.assign({'Authorization':'Bearer '+t, 'Content-Type':'application/json'}, (opts||{}).headers)
+  }));
+  let body = null;
+  try{ body = await r.json(); }catch(e){}
+  if(!r.ok){
+    const err = new Error((body && (body.message || body.error)) || ('HTTP '+r.status));
+    err.status = r.status; err.body = body;
+    throw err;
+  }
+  return body;
+}
+
+/* ---------- sign in ---------- */
+$('signin').addEventListener('click', async ()=>{
+  const email=$('email').value.trim(), password=$('pw').value;
+  if(!email || !password) return say('gatemsg','Both fields, please.','bad');
+  say('gatemsg','One moment…');
+  const {error} = await sb.auth.signInWithPassword({email, password});
+  if(error) return say('gatemsg', error.message, 'bad');
+  boot();
+});
+$('pw').addEventListener('keydown', e=>{ if(e.key==='Enter') $('signin').click(); });
+$('signout').addEventListener('click', async ()=>{ await sb.auth.signOut(); location.reload(); });
+$('signout2').addEventListener('click', async ()=>{ await sb.auth.signOut(); location.reload(); });
+
+/* ---------- painting ---------- */
+function stat(n, l, cls){
+  return `<div class="stat ${cls||''}"><div class="n">${n}</div><div class="l">${l}</div></div>`;
+}
+
+function paint(d){
+  STATE = d;
+  const c = d.config, u = d.usage;
+  const live = !!(c.enabled && c.model && c.provider_id);
+
+  $('state').className = 'pill '+(live?'on':'off');
+  $('state').textContent = live ? 'enabled' : 'disabled';
+  $('modelnow').textContent = c.model || 'no model set';
+  $('toggle').textContent = c.enabled ? 'Disable' : 'Enable';
+
+  const pct = u.budget ? Math.min(100, Math.round(u.words / u.budget * 100)) : 0;
+  $('stats').innerHTML =
+      stat(u.words, 'words enriched')
+    + stat(u.runs, 'runs')
+    + stat(u.failed, 'failed', u.failed ? 'bad' : '')
+    + stat(u.readers, 'readers')
+    + stat(pct+'%', 'of ceiling', pct>90?'bad':pct>70?'warn':'good');
+  const bar = $('budgetbar');
+  bar.className = 'bar'+(pct>90?' bad':pct>70?' warn':'');
+  bar.firstElementChild.style.width = pct+'%';
+  $('budgetnote').textContent = `${u.words} of ${u.budget} this month. Resets ${u.resets}.`;
+
+  const prov = (d.providers||[]).find(p=>p.id===c.provider_id) || {};
+  $('adapter').value  = prov.adapter || 'openai';
+  $('endpoint').value = prov.endpoint || '';
+  $('model').value    = c.model || '';
+  $('temp').value     = c.temperature ?? prov.temperature ?? 0.3;
+  $('tokens').value   = c.max_tokens ?? prov.max_tokens ?? 4000;
+  $('batch').value    = c.batch_size ?? prov.batch_size ?? 20;
+  $('peruser').value  = c.monthly_per_user;
+  $('perrun').value   = c.max_per_run;
+  $('budget').value   = c.app_budget;
+  $('template').value = c.template || '';
+
+  const hasKey = (d.keys||[]).some(k=>k.provider_id===c.provider_id);
+  $('keyhas').textContent = hasKey ? '— set, ending ' + (prov.key_last4 || '????') : '— none set';
+  $('keyhas').style.color = hasKey ? 'var(--verd)' : 'var(--ox)';
+
+  $('tplnote').textContent = c.template_prev ? 'a previous version is kept' : 'no previous version yet';
+  $('reverttpl').disabled = !c.template_prev;
+
+  $('testnote').textContent = c.tested_at
+    ? 'Last successful test ' + new Date(c.tested_at).toLocaleString() + '.'
+    : 'No test has passed yet. Readers are not offered automatic merging until one does.';
+
+  $('dev').hidden = !DEV_DIRECT;
+}
+
+$('preset').addEventListener('change', ()=>{
+  const p = PRESETS[$('preset').value]; if(!p) return;
+  $('adapter').value = p.adapter;
+  $('endpoint').value = p.endpoint;
+  if(p.model && !$('model').value) $('model').value = p.model;
+});
+
+function configFromForm(){
+  return {
+    model: $('model').value.trim(),
+    temperature: Number($('temp').value),
+    max_tokens: Number($('tokens').value),
+    batch_size: Number($('batch').value),
+    monthly_per_user: Number($('peruser').value),
+    max_per_run: Number($('perrun').value),
+    app_budget: Number($('budget').value)
+  };
+}
+function providerFromForm(){
+  const p = {
+    id: STATE && STATE.config.provider_id || undefined,
+    name: $('preset').value || 'provider',
+    adapter: $('adapter').value,
+    endpoint: $('endpoint').value.trim()
+  };
+  const k = $('apikey').value.trim();
+  if(k) p.api_key = k;
+  return p;
+}
+
+async function save(extra){
+  const body = Object.assign({provider: providerFromForm(), config: configFromForm()}, extra||{});
+  const r = await api('/admin/config', {method:'POST', body: JSON.stringify(body)});
+  $('apikey').value = '';
+  await refresh();
+  return r;
+}
+
+$('save').addEventListener('click', async ()=>{
+  say('msg','Saving…');
+  try{ await save(); say('msg','Saved.','ok'); }
+  catch(e){ say('msg','Could not save — '+e.message,'bad'); }
+});
+
+$('toggle').addEventListener('click', async ()=>{
+  const want = !(STATE && STATE.config.enabled);
+  if(want && !(STATE && STATE.config.tested_at)){
+    return say('msg','Send one word through first. Enabling something that has never answered correctly is how every reader finds the fault for you.','warn');
+  }
+  say('msg', want ? 'Enabling…' : 'Disabling…');
+  try{
+    await api('/admin/config', {method:'POST', body: JSON.stringify({config:{enabled:want}})});
+    await refresh();
+    say('msg', want ? 'Enrichment is on.' : 'Enrichment is off. Readers fall back to the manual loop and are told why.', 'ok');
+  }catch(e){ say('msg','Could not change that — '+e.message,'bad'); }
+});
+
+/* ---------- the test ----------
+   One real word, the whole path: adapter, model, parse. What comes back is shown rather
+   than summarised, because the failure that matters is not an error — it is a plausible
+   answer with the Arabic quietly missing. */
+async function runTest(word){
+  const out = $('out');
+  out.hidden = false; out.textContent = 'Asking the model…';
+  const body = {
+    items: [word || 'fealty'],
+    fields: [{id:1, name:'The Feudal World', note:'Castles, guilds, gutters and archaic speech.'}]
+  };
+  const r = await api('/run', {method:'POST', body: JSON.stringify(body)});
+  let arr = null, why = '';
+  try{
+    const txt = String(r.text||'').trim().replace(/^```(json)?|```$/g,'').trim();
+    const p = JSON.parse(txt);
+    arr = Array.isArray(p) ? p : (Array.isArray(p.words) ? p.words : null);
+    if(!arr) why = 'the reply parsed but was not an array of words';
+  }catch(e){ why = 'the reply was not valid JSON'; }
+
+  if(!arr){
+    out.textContent = why + '\n\n' + String(r.text||'').slice(0,1200);
+    throw new Error(why);
+  }
+
+  const w = arr[0] || {};
+  const miss = [];
+  if(!w.d || String(w.d).length < 15) miss.push('definition');
+  if(!w.e || String(w.e).indexOf('*') === -1) miss.push('example with the word marked');
+  if(!w.a || /[A-Za-z]/.test(String(w.a))) miss.push('Arabic gloss');
+  out.innerHTML =
+      'word        ' + esc(w.w) + '\n'
+    + 'field       ' + (w.f == null ? '(unfiled)' : esc(String(w.f))) + '\n'
+    + 'part        ' + esc(w.p||'') + '\n'
+    + 'definition  ' + esc(w.d||'') + '\n'
+    + 'example     ' + esc(w.e||'') + '\n'
+    + 'arabic      <span class="ar">' + esc(w.a||'') + '</span>\n'
+    + 'caution     ' + esc(w.n==null?'(none)':String(w.n)) + '\n'
+    + 'drawing     ' + (w.s ? String(w.s).length + ' characters' : '(none)');
+  return {ok: miss.length===0, miss};
+}
+const esc = s => String(s).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+
+$('test').addEventListener('click', async ()=>{
+  say('msg','Sending one word…');
+  try{
+    const r = await runTest();
+    if(r.ok){
+      await api('/admin/config', {method:'POST', body: JSON.stringify({tested:true})});
+      await refresh();
+      say('msg','That came back complete. Readers can be offered automatic merging now.','ok');
+    }else{
+      say('msg','It answered, but without: '+r.miss.join(', ')+'. Read the reply below before enabling.','warn');
+    }
+  }catch(e){
+    say('msg', e.status===502 ? 'The model refused or could not be reached — '+e.message
+             : 'Test failed — '+e.message, 'bad');
+    if(e.body && e.body.detail){ $('out').hidden=false; $('out').textContent = e.body.detail; }
+  }
+});
+
+/* ---------- template ---------- */
+$('savetpl').addEventListener('click', async ()=>{
+  const tpl = $('template').value;
+  if(tpl.indexOf('{{WORDS}}') === -1)
+    return say('msg','That template never asks for the words — {{WORDS}} is missing.','bad');
+  say('msg','Saving the template, then testing it…');
+  try{
+    await api('/admin/config', {method:'POST', body: JSON.stringify({config:{template: tpl}})});
+    const r = await runTest();
+    await refresh();
+    if(r.ok) say('msg','Saved, and it answers completely.','ok');
+    else say('msg','Saved — but the reply came back without: '+r.miss.join(', ')
+                 +'. Revert is one click if that was not intended.','warn');
+  }catch(e){ say('msg','Saved, but the test failed — '+e.message+'. Revert is one click.','bad'); }
+});
+
+$('reverttpl').addEventListener('click', async ()=>{
+  if(!STATE || !STATE.config.template_prev) return;
+  try{
+    await api('/admin/config', {method:'POST', body: JSON.stringify({config:{template: STATE.config.template_prev}})});
+    await refresh();
+    say('msg','Reverted to the previous template.','ok');
+  }catch(e){ say('msg','Could not revert — '+e.message,'bad'); }
+});
+
+/* ---------- dev direct ---------- */
+$('devtest').addEventListener('click', async ()=>{
+  const endpoint = $('endpoint').value.trim();
+  if(!/^https?:\/\/(localhost|127\.0\.0\.1)/.test(endpoint))
+    return say('msg','That endpoint is not local. Direct calls are only for a model on this machine.','bad');
+  say('msg','Calling the local endpoint directly…');
+  const out = $('out'); out.hidden=false; out.textContent='…';
+  try{
+    const res = await fetch(endpoint, {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({model: $('model').value, temperature: Number($('temp').value),
+        max_tokens: Number($('tokens').value),
+        messages:[{role:'user', content: $('template').value
+          .replaceAll('{{WORDS}}','- fealty').replaceAll('{{FIELDS}}','1 = The Feudal World: Castles and archaic speech.')}]})});
+    const j = await res.json();
+    out.textContent = (j?.choices?.[0]?.message?.content ?? JSON.stringify(j)).slice(0,2000);
+    say('msg','That is the raw reply. Nothing was saved and no quota was used.','ok');
+  }catch(e){
+    say('msg','Could not reach it. Is the server running, and does it allow this origin? '
+            + 'For Ollama: OLLAMA_ORIGINS='+location.origin+' ollama serve','bad');
+  }
+});
+
+/* ---------- boot ---------- */
+async function refresh(){ paint(await api('/admin/config')); }
+
+async function boot(){
+  const {data:{session}} = await sb.auth.getSession();
+  if(!session){ $('gate').hidden=false; $('console').hidden=true; $('denied').hidden=true; return; }
+  $('who').textContent = session.user.email;
+  try{
+    const d = await api('/admin/config');
+    $('gate').hidden=true; $('denied').hidden=true; $('console').hidden=false;
+    paint(d);
+  }catch(e){
+    if(e.status===403){ $('gate').hidden=true; $('console').hidden=true; $('denied').hidden=false; return; }
+    $('gate').hidden=true; $('denied').hidden=true; $('console').hidden=false;
+    say('msg','Could not read the configuration — '+e.message
+             +(e.status===404?'  Is the function deployed?':''),'bad');
+  }
+}
+boot();
+</script>
