@@ -511,11 +511,31 @@
      prompt already built and the Copy button already live, not a page rebuilding itself
      around them. This is the single most important constraint in the patch. */
   body.auto-enrich #enrich{display:inline-block}
+  /* The manual apparatus goes: the prompt to carry somewhere, the button to copy it, the
+     box to paste a reply into, and the download that only ever mattered because words used
+     to live in a file. Four steps become two. */
   body.auto-enrich #prompt,
   body.auto-enrich #copyp,
-  body.auto-enrich #s3{display:none}
-  body.auto-enrich #s2 .stepno::after{content:" — one press"}
+  body.auto-enrich #s3,
+  body.auto-enrich #s4,
+  body.auto-enrich #s2 > p,
+  body.auto-enrich #queue{display:none}
   #quota:empty{display:none}
+
+  /* the words that came back, as words */
+  .pv{margin-top:12px; border:1px solid var(--rule); border-radius:9px; overflow:hidden}
+  .pv-row{padding:12px 14px; border-bottom:1px solid var(--rule)}
+  .pv-row:last-child{border-bottom:0}
+  .pv-w{font-family:"Fraunces",Georgia,serif; font-size:19px; font-weight:600; letter-spacing:-.01em}
+  .pv-f{font-family:"Archivo",sans-serif; font-size:9.5px; font-weight:700; letter-spacing:.11em;
+        text-transform:uppercase; border-radius:99px; padding:3px 9px; margin-left:9px;
+        border:1px solid currentColor; white-space:nowrap}
+  .pv-d{font-size:14.5px; color:var(--paper); margin-top:6px; line-height:1.5}
+  .pv-e{font-size:14px; color:var(--dim); margin-top:5px; line-height:1.5; font-style:italic}
+  .pv-e b{color:var(--paper); font-weight:600}
+  .pv-a{font-family:"Noto Naskh Arabic",serif; font-size:17px; color:var(--ink-2); margin-top:6px; direction:rtl; text-align:right}
+  .pv-n{font-size:13px; color:var(--ink-1); margin-top:6px; line-height:1.5}
+  .pv-miss{font-size:12px; color:var(--ink-3); margin-top:6px}
 
   /* ---------- fields ---------- */
   .fld-row{display:flex; align-items:flex-start; gap:13px; padding:13px 0; border-bottom:1px solid var(--rule)}
@@ -664,6 +684,19 @@
           <p class="note" id="quota"></p>
         </div>
 
+        <!-- What came back, in auto mode: the words themselves rather than the JSON they
+             arrived in. Reviewing before merging is the default and the only guard against
+             a bad batch, and nobody reviews a wall of escaped quotes. -->
+        <section class="step" id="s2b" hidden>
+          <span class="stepno">Step 2 — read them, then keep them</span>
+          <div id="preview"></div>
+          <div class="row">
+            <button class="btn" id="keep">Keep these</button>
+            <button class="btn" id="discard">Discard</button>
+          </div>
+          <div id="previewmsg"></div>
+        </section>
+
         <div class="step waiting" id="s3">
           <span class="stepno">Step 3 — paste the reply</span>
           <textarea id="incoming" placeholder="Paste the JSON array Claude gives you" disabled></textarea>
@@ -671,7 +704,7 @@
           <div id="mergemsg"></div>
         </div>
 
-        <div class="step">
+        <div class="step" id="s4">
           <span class="stepno">Step 4 — keep a copy</span>
           <p id="step4">Your words save themselves. Download a copy whenever you want one of your own.</p>
           <div class="row">
@@ -2786,6 +2819,108 @@ function buildPrompt(){
   document.getElementById('prompt').textContent = promptText();
 }
 
+/* ---------- what came back ----------
+   Built as nodes, because every string here was written by a model and arrived through a
+   chat window — the same reason the cards are. Shown as words rather than as the JSON they
+   travelled in: reviewing before merging is the only guard against a bad batch, and nobody
+   reviews a wall of escaped quotes. */
+let PENDING = null;                       // the parsed array waiting to be kept or discarded
+
+function renderPreview(arr){
+  const box = document.getElementById('preview');
+  box.textContent = '';
+  const wrap = document.createElement('div');
+  wrap.className = 'pv';
+  const byId = new Map(FIELDS.map(f=>[f.id,f]));
+
+  arr.forEach(x=>{
+    const row = document.createElement('div');
+    row.className = 'pv-row';
+
+    const head = document.createElement('div');
+    const w = document.createElement('span'); w.className='pv-w'; w.textContent = x.w;
+    head.appendChild(w);
+    const f = x.f==null ? null : byId.get(x.f);
+    const tag = document.createElement('span');
+    tag.className = 'pv-f';
+    tag.style.color = f ? f.ink : 'var(--ink-0)';
+    tag.textContent = f ? f.name : 'Unfiled';
+    head.appendChild(tag);
+    row.appendChild(head);
+
+    if(x.d){ const d=document.createElement('div'); d.className='pv-d'; d.textContent=x.d; row.appendChild(d); }
+    if(x.e){
+      const e=document.createElement('div'); e.className='pv-e';
+      /* the asterisks mark the word; they are the only markup allowed and are turned into
+         nodes rather than into HTML */
+      String(x.e).split(/(\*[^*]+\*)/).forEach(bit=>{
+        if(/^\*[^*]+\*$/.test(bit)){ const b=document.createElement('b'); b.textContent=bit.slice(1,-1); e.appendChild(b); }
+        else e.appendChild(document.createTextNode(bit));
+      });
+      row.appendChild(e);
+    }
+    if(x.a){ const a=document.createElement('div'); a.className='pv-a'; a.lang='ar'; a.textContent=x.a; row.appendChild(a); }
+    if(x.n){ const n=document.createElement('div'); n.className='pv-n'; n.textContent='Careful: '+x.n; row.appendChild(n); }
+
+    /* Named where they can be acted on. A missing Arabic gloss is the one a reader who does
+       not read Arabic would never notice, and it is the point of the booklet. */
+    const miss = [];
+    if(!x.d || String(x.d).trim().length < 15) miss.push('no real definition');
+    if(!x.e || String(x.e).indexOf('*') === -1) miss.push('the example does not mark the word');
+    if(!x.a || /[A-Za-z]/.test(String(x.a))) miss.push('the Arabic looks wrong');
+    if(miss.length){
+      const m=document.createElement('div'); m.className='pv-miss';
+      m.textContent = miss.join(' · ');
+      row.appendChild(m);
+    }
+    wrap.appendChild(row);
+  });
+  box.appendChild(wrap);
+}
+
+function showPreview(arr, madeFields){
+  PENDING = {arr, madeFields};
+  renderPreview(arr);
+  document.getElementById('s2b').hidden = false;
+  document.getElementById('keep').textContent =
+    `Keep ${arr.length===1 ? 'this word' : 'these '+arr.length+' words'}`;
+  document.getElementById('previewmsg').textContent = '';
+  document.getElementById('s2b').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function clearPreview(){
+  PENDING = null;
+  document.getElementById('s2b').hidden = true;
+  document.getElementById('preview').textContent = '';
+}
+
+document.getElementById('discard').addEventListener('click', ()=>{
+  clearPreview();
+  const msg=document.getElementById('mergemsg');
+  msg.className='note'; msg.textContent='Thrown away. The list above is still there if you want to ask again.';
+});
+
+document.getElementById('keep').addEventListener('click', async ()=>{
+  if(!PENDING) return;
+  const btn=document.getElementById('keep'), msg=document.getElementById('previewmsg');
+  btn.disabled=true; msg.className='note'; msg.textContent='Saving…';
+  let res;
+  try{ res = await mergeArray(PENDING.arr); }
+  catch(e){ msg.className='note bad'; msg.textContent='Nothing kept — '+errText(e); btn.disabled=false; return; }
+  if(!res.ok){
+    msg.className='note bad';
+    msg.textContent='Nothing kept — '+res.errors.slice(0,3).join('; ');
+    btn.disabled=false; return;
+  }
+  const made = PENDING.madeFields;
+  clearPreview(); btn.disabled=false;
+  const m=document.getElementById('mergemsg');
+  m.className='note good';
+  m.textContent = (made?`${made} field${made===1?'':'s'} made. `:'') + mergeMsg(res);
+  document.getElementById('report').innerHTML=''; fresh=[]; setReady(false);
+  document.getElementById('raw').value='';
+});
+
 /* ---------- the one press ----------
    Sends the word list and the field list as data. Never the assembled prompt: the function
    builds that from a template it holds itself, because a shared key that forwards whatever
@@ -2796,10 +2931,21 @@ document.getElementById('enrich').addEventListener('click', async ()=>{
   const label = btn.textContent;
   const fall = (why)=>{
     setEnrichMode('manual');
+    clearPreview();
     buildPrompt();
     msg.className='note warn';
     msg.textContent = why + ' The prompt above still works — copy it, and paste the reply below.';
   };
+
+  /* A batch already answered for is not asked for again. Without this, pressing the button
+     a second time while the first reply sat waiting sent the same words back and charged
+     the allowance twice for one list. */
+  if(PENDING){
+    msg.className='note warn';
+    msg.textContent='Those words have already come back — keep them or throw them away first.';
+    document.getElementById('s2b').scrollIntoView({behavior:'smooth', block:'nearest'});
+    return;
+  }
 
   btn.disabled = true; btn.textContent = 'Asking…';
   msg.className='note'; msg.textContent = `Enriching ${fresh.length} word${fresh.length===1?'':'s'}…`;
@@ -2821,6 +2967,8 @@ document.getElementById('enrich').addEventListener('click', async ()=>{
       throw Object.assign(new Error((body && (body.message||body.error)) || ('HTTP '+r.status)),
                           {soft:(body && body.message) || 'That did not go through.'});
     }
+    if(!body || typeof body.text !== 'string')
+      throw Object.assign(new Error('no text'), {soft:'The reply came back empty.'});
     const p = await parseReply(body.text);
     if(!p.ok){
       /* It answered, but not with something mergeable. Put the raw reply where a reply
@@ -2832,6 +2980,10 @@ document.getElementById('enrich').addEventListener('click', async ()=>{
       msg.textContent = p.why + ' The reply is in the box below.';
       return;
     }
+    /* Counted before either branch, and before fresh is emptied: what was spent was spent
+       whether or not the words are kept. */
+    GATEWAY.quota_used += fresh.length; showQuota();
+
     if(GATEWAY.auto_merge){
       let res;
       try{ res = await mergeArray(p.arr); }
@@ -2846,16 +2998,18 @@ document.getElementById('enrich').addEventListener('click', async ()=>{
       document.getElementById('report').innerHTML=''; fresh=[]; setReady(false);
       document.getElementById('raw').value='';
     }else{
-      /* The default. It is your booklet and these are your words — look at them first. */
-      document.getElementById('incoming').value = body.text;
-      setReady(true);
-      msg.className='note good';
-      msg.textContent = 'It answered. Read it below, then Validate & merge.';
-      document.getElementById('s3').scrollIntoView({behavior:'smooth', block:'nearest'});
+      /* The default, and the reason the preview exists: it is your booklet and these are
+         your words, so look at them as words before they go in. */
+      msg.className='note'; msg.textContent='';
+      showPreview(p.arr, p.madeFields);
     }
-    GATEWAY.quota_used += fresh.length; showQuota();
   }catch(e){
-    fall(e.soft || errText(e));
+    /* errText() speaks about the database, because everything that used to fail was the
+       database. What failed here is the enrichment service, and telling somebody their
+       project is paused when it is not sends them to the wrong dashboard. */
+    fall(e.soft || (!navigator.onLine
+      ? 'You appear to be offline.'
+      : 'The enrichment service could not be reached.'));
   }finally{
     btn.disabled = false; btn.textContent = label;
   }
