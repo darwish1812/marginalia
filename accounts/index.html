@@ -279,19 +279,6 @@
   body.study .card:not(.open) .hint{display:block}
 
   /* ---------- confusables ---------- */
-  .fix{margin:64px 0 0; padding:30px; border:1px solid var(--rule); border-radius:6px; background:var(--night-2)}
-  .fix h3{font-family:"Fraunces",serif; font-size:26px; font-weight:500; margin:0 0 6px}
-  .fix p{color:var(--dim); margin:0 0 20px; font-size:16px}
-  .fix table{width:100%; border-collapse:collapse; font-size:16px}
-  .fix th{
-    font-family:"Archivo",sans-serif; font-size:10px; letter-spacing:.15em; text-transform:uppercase;
-    color:var(--dim); text-align:left; padding:0 0 9px; border-bottom:1px solid var(--rule); font-weight:600;
-  }
-  .fix td{padding:11px 0; border-bottom:1px solid var(--rule); vertical-align:top}
-  .fix td:first-child{color:var(--ink-3); text-decoration:line-through; text-decoration-thickness:1px; width:42%; padding-right:14px}
-  .fix td:last-child b{color:var(--ink-2); font-weight:600}
-  .fix.dismissed{display:none}          /* screen only — see the print block */
-  #fixok{margin-top:22px}
   .fresh{
     font-family:"Archivo",sans-serif; font-size:9px; font-weight:700; letter-spacing:.14em;
     text-transform:uppercase; color:var(--ink-1); border:1px solid var(--ink-1); border-radius:99px;
@@ -616,7 +603,7 @@
     @page{margin:14mm}
     body{background:#fff; color:#000; font-size:10.5pt}
     /* pictures are screen-only: they break the two-column pagination and drink ink */
-    .bar-wrap,.panel,.gate,.mark,.say,.arbtn,.say-ex,.hint,.pic,.swatch .num,#fixok,footer{display:none!important}
+    .bar-wrap,.panel,.gate,.mark,.say,.arbtn,.say-ex,.hint,.pic,.swatch .num,footer{display:none!important}
     body.study .body{display:block!important}
     .cover{padding:0 0 18pt; border-color:#999}
     .cover h1{font-size:40pt; color:#000}
@@ -635,9 +622,6 @@
     .ex{color:#333}
     /* browsers drop background tints when printing, so lean on the outline */
     .tag{background:none!important; color:#333!important; border-color:#bbb!important; font-size:7pt; letter-spacing:.1em}
-    /* the paper booklet keeps the table whether or not it is dismissed on screen */
-    .fix{background:#fff; border-color:#ccc; break-before:page}
-    .fix.dismissed{display:block}
     .ar{background:#fff; border-right-color:#999; padding:4pt 8pt 4pt 0; font-size:10pt}
     .card.ar-on .ar{display:block}
   }
@@ -913,8 +897,6 @@
 
   <main id="book"></main>
   <p class="empty" id="empty">No entry matches that. Try a shorter word.</p>
-
-  <section class="fix" id="fix" hidden></section>
 
   </div>
   <p class="empty" id="loaderr"></p>
@@ -1824,7 +1806,6 @@ async function showFirstRun(){
   document.body.classList.add('first-run');
   document.getElementById('firstrun').hidden=false;
   document.getElementById('book').innerHTML='';
-  document.getElementById('fix').hidden=true;
   document.getElementById('foot').hidden=true;
   chosenPack=null;
   renderPacks();
@@ -1869,7 +1850,7 @@ async function apply(data){
   FIELDS = loaded.fields || [];
   W = loaded.words;
   CORRECTIONS = loaded.corrections;
-  render(); loadProgress(); showLocal(); renderFix(CORRECTIONS); renderFields();
+  render(); loadProgress(); showLocal(); renderFields();
   /* Deliberately not awaited: the booklet is already readable, and whether there is a
      gateway behind it changes one button. A slow or dead function must not hold up the
      words. It resolves into manual mode if anything at all goes wrong. */
@@ -1880,33 +1861,6 @@ async function apply(data){
   document.getElementById('foot').hidden=false;
 }
 
-/* The table is a reference, not a standing scold: once dismissed it stays
-   hidden until words.json brings a misspelling you have not seen before. */
-const FIXKEY='vocab-fix-seen';
-function fixSeen(){ try{ return JSON.parse(localStorage.getItem(FIXKEY)||'[]'); }catch(e){ return []; } }
-
-function renderFix(list){
-  const el=document.getElementById('fix');
-  if(!list || !list.length){ el.hidden=true; return; }
-  const seen=fixSeen(), unseen=list.filter(c=>!seen.includes(c.wrong));
-  const n=list.length, word=['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten'][n]||n;
-  el.hidden=false;
-  el.classList.toggle('dismissed', unseen.length===0);
-  el.innerHTML=`<h3>${word} you spelled slightly wrong</h3>
-    <p>These are easy to mishear, so they're worth fixing early — a misspelled word looks like a guess even when the meaning is right.</p>
-    <table><tr><th>You wrote</th><th>Correct</th></tr>${
-      /* wrong/right are model-authored and get escaped; hint is hand-written in words.json
-         and is allowed its <i> tags, which is why it alone goes in raw. */
-      list.map(c=>`<tr><td>${esc(c.wrong)}${seen.includes(c.wrong)?'':'<span class="fresh">new</span>'}</td><td><b>${esc(c.right)}</b>${c.hint?' — '+c.hint:''}</td></tr>`).join('')
-    }</table>
-    <button class="btn" id="fixok">Got it — hide this</button>`;
-}
-
-document.getElementById('fix').addEventListener('click',e=>{
-  if(!e.target.closest('#fixok')) return;
-  try{ localStorage.setItem(FIXKEY, JSON.stringify(CORRECTIONS.map(c=>c.wrong))); }catch(err){}
-  document.getElementById('fix').classList.add('dismissed');
-});
 
 function failed(msg){
   const el=document.getElementById('loaderr');
@@ -1999,7 +1953,6 @@ async function enter(session){
     document.getElementById('gate').hidden = false;
     document.getElementById('firstrun').hidden = true;
     document.getElementById('book').innerHTML = '';
-    document.getElementById('fix').hidden = true;
     /* render() writes the real counts; signed out it never runs, and the placeholder in
        the markup would sit there claiming seven fields for a booklet that has eight. */
     document.getElementById('eyebrow').textContent = SEED
@@ -3250,7 +3203,6 @@ async function mergeArray(arr){
   if(fixes.length){
     CORRECTIONS = CORRECTIONS.concat(fixes);
     await store.addFixes(fixes);
-    renderFix(CORRECTIONS);
   }
   render(); loadProgress(); showLocal();
   return {ok:true, added:add.length, fixes:fixes.length, drawn, dropped, dropWhy};
