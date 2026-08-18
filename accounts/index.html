@@ -2592,51 +2592,24 @@ document.getElementById('report').addEventListener('click',e=>{
   if(fresh.length) buildPrompt(); else setReady(false);
 });
 
-/* A booklet with no fields is a real state — a blank start, or every field deleted — and
-   it is the one moment where asking the model to propose the taxonomy is better than
-   asking the reader to invent one. Nobody knows their eight fields before they have fifty
-   words; they know them afterwards. So there are two prompts, and this is the other one. */
-function buildProposePrompt(){
-  document.getElementById('prompt').textContent =
-`These are the first words in a new vocabulary booklet, which has no fields yet. Return ONLY a raw JSON object — no prose, no markdown fences.
+/* ---------- the prompt ----------
+   Both templates live here as constants, and the gateway keeps its own copies in the
+   database. They are meant to be identical: what a reader copies with "Copy prompt" has to
+   be the string the function actually sends, because pasting that prompt into a chat with a
+   larger model is how you find out whether a bad reply is the template's fault or the
+   model's. The moment the automated path grows an instruction the manual copy lacks, that
+   stops being a diagnostic.
+
+   TEMPLATE and PROPOSE are filled from config at load. Until they are — and whenever a
+   config load fails, and forever in a booklet with no gateway behind it — the constants
+   below are what runs, so the fallback is today's behaviour rather than a broken prompt. */
+const DEFAULT_TEMPLATE = `Add these to my vocabulary booklet. Return ONLY a raw JSON array — no prose, no markdown fences.
 
 Words:
-${fresh.map(t=>'- '+t).join('\n')}
-
-First propose the fields. At most ${MAXFIELDS}, and fewer is better than padding to the limit. Judge them by the register and sense these words carry, not by their topic — a field should be somewhere a reader would recognise meeting a word, not a subject heading. Each needs:
-  "id"   = a small integer, 1 upwards
-  "name" = two or three words, the way a chapter is named
-  "note" = one sentence saying what belongs there. Write it carefully: it is the only thing that tells anyone, later, where a new word should go.
-
-Then file every word above into one of them, or into null where none genuinely fits.
-
-Return: {"fields":[{"id":…,"name":…,"note":…}], "words":[ … ]}
-
-Each object in "words" follows these rules:
-1. One object per word above, in the same order. Never two objects with the same "w". If a word has two strong senses, take the one likelier in serious reading and mention the other in "n".
-2. "w" = base form (infinitive verb, singular noun), lowercase unless strictly a proper noun. Correct obvious misspellings. If your "w" differs from what I typed, add "x" holding the exact string I typed; otherwise leave "x" out.
-3. "f" = unquoted integer, one of the ids you just proposed — or null if none of them genuinely fits.
-4. "p" = one of: noun, verb, adjective, adverb, phrase — or a slashed pair like "noun / verb" when both are common.
-5. "d" = exactly one plain-English sentence that does not restate the word inside itself.
-6. "e" = one natural, concrete sentence of 10-20 words in the register of the chosen field, wrapping the inflected target word in a single pair of *asterisks*. It has to demonstrate the sense given in "d".
-7. "a" = Modern Standard Arabic for that specific sense, with diacritics on the head word. Keep it short; add " — " and a brief clarifier only where the bare gloss is ambiguous.
-8. "n" = a short warning only where one is earned: archaic or offensive register, a stress or spelling trap, a false friend, or a near-synonym worth distinguishing. Otherwise null — most words get null.
-9. Plain text in "w", "d", "e", "a" and "n". No angle brackets, no ampersands, no HTML entities there: write "and", not "&". Field names and notes are ordinary prose and may use "&" freely.
-
-Straight quotes only, valid JSON, nothing before or after the object.`;
-}
-
-function buildPrompt(){
-  if(!FIELDS.length) return buildProposePrompt();
-  const fl = FIELDS.map(f=>`${f.id} = ${f.name}: ${f.note}`).join('\n');
-  document.getElementById('prompt').textContent =
-`Add these to my vocabulary booklet. Return ONLY a raw JSON array — no prose, no markdown fences.
-
-Words:
-${fresh.map(t=>'- '+t).join('\n')}
+{{WORDS}}
 
 Fields — choose by the sense the word carries, not its topic:
-${fl}
+{{FIELDS}}
 
 Where two fields fit, prefer the one matching the register a reader would meet the word in over the one matching its subject.
 
@@ -2657,6 +2630,51 @@ Rules:
 
 Schema: {"w":…, "x":…, "f":…, "p":…, "d":…, "e":…, "a":…, "n":…, "s":…}
 Straight quotes only, valid JSON, nothing before or after the array.`;
+
+/* A booklet with no fields is a real state — a blank start, or every field deleted — and it
+   is the one moment where asking the model to propose the taxonomy beats asking the reader
+   to invent one. Nobody knows their eight fields before they own fifty words. */
+const DEFAULT_PROPOSE = `These are the first words in a new vocabulary booklet, which has no fields yet. Return ONLY a raw JSON object — no prose, no markdown fences.
+
+Words:
+{{WORDS}}
+
+First propose the fields. At most 8, and fewer is better than padding to the limit. Judge them by the register and sense these words carry, not by their topic — a field should be somewhere a reader would recognise meeting a word, not a subject heading. Each needs:
+  "id"   = a small integer, 1 upwards
+  "name" = two or three words, the way a chapter is named
+  "note" = one sentence saying what belongs there. Write it carefully: it is the only thing that tells anyone, later, where a new word should go.
+
+Then file every word above into one of them, or into null where none genuinely fits.
+
+Return: {"fields":[{"id":…,"name":…,"note":…}], "words":[ … ]}
+
+Each object in "words" follows these rules:
+1. One object per word above, in the same order. Never two objects with the same "w". If a word has two strong senses, take the one likelier in serious reading and mention the other in "n".
+2. "w" = base form (infinitive verb, singular noun), lowercase unless strictly a proper noun. Correct obvious misspellings. If your "w" differs from what I typed, add "x" holding the exact string I typed; otherwise leave "x" out.
+3. "f" = unquoted integer, one of the ids you just proposed — or null if none of them genuinely fits.
+4. "p" = one of: noun, verb, adjective, adverb, phrase — or a slashed pair like "noun / verb" when both are common.
+5. "d" = exactly one plain-English sentence that does not restate the word inside itself.
+6. "e" = one natural, concrete sentence of 10-20 words in the register of the chosen field, wrapping the inflected target word in a single pair of *asterisks*. It has to demonstrate the sense given in "d".
+7. "a" = Modern Standard Arabic for that specific sense, with diacritics on the head word. Keep it short; add " — " and a brief clarifier only where the bare gloss is ambiguous.
+8. "n" = a short warning only where one is earned: archaic or offensive register, a stress or spelling trap, a false friend, or a near-synonym worth distinguishing. Otherwise null — most words get null.
+9. Plain text in "w", "d", "e", "a" and "n". No angle brackets, no ampersands, no HTML entities there: write "and", not "&". Field names and notes are ordinary prose and may use "&" freely.
+
+Straight quotes only, valid JSON, nothing before or after the object.`;
+
+let TEMPLATE = '', PROPOSE = '';
+
+/* The one place a prompt is assembled, so the button and the gateway cannot disagree about
+   what it says. The gateway substitutes the same three tokens the same way. */
+function promptText(){
+  const t = FIELDS.length ? (TEMPLATE || DEFAULT_TEMPLATE) : (PROPOSE || DEFAULT_PROPOSE);
+  return t
+    .replaceAll('{{WORDS}}',  fresh.map(x=>'- '+x).join('\n'))
+    .replaceAll('{{FIELDS}}', FIELDS.map(f=>`${f.id} = ${f.name}: ${f.note}`).join('\n'))
+    .replaceAll('{{COUNT}}',  String(fresh.length));
+}
+
+function buildPrompt(){
+  document.getElementById('prompt').textContent = promptText();
 }
 
 document.getElementById('copyp').addEventListener('click',async e=>{
