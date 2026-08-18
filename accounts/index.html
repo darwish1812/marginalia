@@ -520,10 +520,6 @@
   body.auto-enrich #s2,
   body.auto-enrich #s3,
   body.auto-enrich #s4,
-  /* The chips were a way to drop one word before carrying a prompt somewhere. The words are
-     in the box directly above and can be edited there, and what the chips uniquely told you
-     — which ones were already in the booklet — the summary line now says in words. */
-  body.auto-enrich #report .chips{display:none}
   #quota:empty{display:none}
 
   /* the words that came back, as words */
@@ -589,17 +585,6 @@
   .fld-acts{display:flex; gap:8px; margin-top:13px; flex-wrap:wrap}
   .fld-del{color:var(--ink-3); border-color:rgba(196,72,92,.4)}
   .fld-del:hover{color:var(--paper); background:var(--ink-3); border-color:var(--ink-3)}
-  .chips{display:flex; flex-wrap:wrap; gap:7px; margin-top:12px}
-  .chip{
-    font-family:"Archivo",sans-serif; font-size:12px; padding:5px 10px; border-radius:99px;
-    border:1px solid var(--rule); color:var(--paper); display:flex; align-items:center; gap:7px;
-  }
-  .chip.dup{color:rgba(241,239,233,.35); text-decoration:line-through}
-  .chip.near{border-color:var(--ink-1); color:var(--ink-1)}
-  .chip.again{border-color:var(--ink-6); color:var(--ink-6)}
-  .chip b{font-weight:600}
-  .chip button{background:none; border:0; color:inherit; cursor:pointer; font-size:14px; line-height:1; padding:0; opacity:.6}
-  .chip button:hover{opacity:1}
   .pre{
     background:var(--night); border:1px solid var(--rule); border-radius:6px; padding:13px;
     font:12.5px/1.6 ui-monospace,Menlo,monospace; color:var(--dim);
@@ -2671,64 +2656,27 @@ async function loadGateway(){
 /* Words already captured but not yet enriched are offered again rather than
    dropped as duplicates — otherwise nothing in the panel could ever reach them. */
 function renderReport(dups, nears, again){
-  /* The words that were dropped are named, not just counted. The chips used to be where
-     you found out which three of your ten were already in the booklet; with them gone in
-     automatic mode, a bare number would leave you to work it out yourself. Capped, because
-     a summary that runs to three lines is not one. */
+  /* A sentence, not a row of chips. The chips carried two things: which words were dropped
+     and why, and a cross to remove one before going further. The first is said here in
+     words; the second was only ever a way to edit a list, and the list is in the box
+     directly above with a cursor already in it. Capped at four, because a summary that runs
+     to three lines is not one. */
   const name = list => {
     const shown = list.slice(0, 4).join(', ');
     return list.length > 4 ? `${shown} and ${list.length-4} more` : shown;
   };
   const bits=[`${fresh.length} to enrich`];
-  if(again.length) bits.push(`${again.length} waiting for detail`);
-  if(dups.length) bits.push(`already here: ${name(dups)}`);
+  if(again.length) bits.push(`already waiting for detail: ${name(again)}`);
+  if(dups.length)  bits.push(`already here: ${name(dups)}`);
   if(nears.length) bits.push(`close to one you have: ${name(nears.map(n=>n.t))}`);
+
   const el = document.getElementById('report');
   el.textContent = '';
   const p = document.createElement('p');
   p.className = 'note'+(fresh.length?' good':'');
+  /* textContent, because every one of these words is whatever was typed into the box */
   p.textContent = bits.join(' · ');
   el.appendChild(p);
-
-  /* Assembled as nodes rather than as a string, and this is the one place in the panel
-     where that matters: a chip is whatever was typed into step 1, so a "word" carrying
-     markup would be read as markup — with a session token sitting in this browser for it
-     to leave with. textContent and dataset carry any characters and mean none of them,
-     which also spares the round trip a word containing a quote used to break. */
-  const box = document.createElement('div');
-  box.className = 'chips';
-  fresh.forEach(t=>{
-    const nx = nears.find(n=>n.t===t), ag = again.includes(t);
-    const chip = document.createElement('span');
-    chip.className = 'chip'+(nx?' near':ag?' again':'');
-    chip.dataset.t = t;
-
-    const b = document.createElement('b');
-    b.textContent = t;
-    chip.appendChild(b);
-
-    if(nx || ag){
-      const tail = document.createElement('span');
-      tail.style.opacity = '.7';
-      tail.textContent = nx ? '≈ '+nx.like : 'waiting';
-      chip.append(' ', tail);
-    }
-
-    const drop = document.createElement('button');
-    drop.dataset.drop = t;
-    drop.setAttribute('aria-label','Remove '+t);
-    drop.textContent = '×';
-    chip.appendChild(drop);
-
-    box.appendChild(chip);
-  });
-  dups.forEach(t=>{
-    const chip = document.createElement('span');
-    chip.className = 'chip dup';
-    chip.textContent = t;
-    box.appendChild(chip);
-  });
-  el.appendChild(box);
 
   setReady(!!fresh.length);
   if(fresh.length) buildPrompt();
@@ -2770,14 +2718,6 @@ document.getElementById('check').addEventListener('click',()=>{
   again.forEach(t=>fresh.push(t));
   nears.forEach(nx=>fresh.push(nx.t));
   renderReport(dups, nears, again);
-});
-
-
-document.getElementById('report').addEventListener('click',e=>{
-  const b=e.target.closest('[data-drop]'); if(!b) return;
-  fresh = fresh.filter(t=>t!==b.dataset.drop);
-  b.closest('.chip').remove();
-  if(fresh.length) buildPrompt(); else setReady(false);
 });
 
 /* ---------- the prompt ----------
@@ -3071,8 +3011,8 @@ document.getElementById('keep').addEventListener('click', async ()=>{
   const m=document.getElementById('mergemsg');
   m.className='note good';
   m.textContent = (made?`${made} field${made===1?'':'s'} made. `:'') + mergeMsg(res);
-  /* The chips go, because that batch is spent. The box does not: a reader waiting for a
-     preview very often types the next list while they wait, and emptying it would throw
+  /* The summary goes, because that batch is spent. The box does not: a reader waiting for
+     a preview very often types the next list while they wait, and emptying it would throw
      away work they did with their own hands to tidy up after work they did not. */
   document.getElementById('report').innerHTML=''; fresh=[]; setReady(false);
 });
@@ -3328,7 +3268,7 @@ function mergeMsg(res){
 }
 
 /* The paste path: strip fences, parse, hand the array over. Everything specific to
-   pasting — the textareas, the chips, the fence tolerance — stops here. */
+   pasting — the textareas, the fence tolerance — stops here. */
 /* ---------- turning a reply into an array ----------
    Lifted out of the paste handler so the button that fetches a reply and the box you paste
    one into arrive at the same place by the same road. Everything specific to a textarea
@@ -3408,7 +3348,7 @@ async function parseReply(text){
   return {ok:true, arr, madeFields};
 }
 
-/* The paste path. Everything specific to a textarea — reading it, clearing it, the chips
+/* The paste path. Everything specific to a textarea — reading it, clearing it, the summary
    below it — stops here; the reply itself is somebody else's problem now. */
 document.getElementById('merge').addEventListener('click',async ()=>{
   const msg=document.getElementById('mergemsg');
@@ -3428,7 +3368,7 @@ document.getElementById('merge').addEventListener('click',async ()=>{
   msg.className='note good';
   msg.textContent = (madeFields ? `${madeFields} field${madeFields===1?'':'s'} made. ` : '') + mergeMsg(res);
   document.getElementById('incoming').value=''; document.getElementById('raw').value='';
-  /* the batch is spent: the chips and the prompt describe words that are now in the book */
+  /* the batch is spent: the summary and the prompt describe words now in the book */
   document.getElementById('report').innerHTML=''; fresh=[]; setReady(false);
 });
 
