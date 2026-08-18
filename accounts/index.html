@@ -514,11 +514,12 @@
   /* The manual apparatus goes: the prompt to carry somewhere, the button to copy it, the
      box to paste a reply into, and the download that only ever mattered because words used
      to live in a file. Four steps become two. */
-  body.auto-enrich #prompt,
-  body.auto-enrich #copyp,
+  /* The whole section, heading and all. Leaving the heading behind put two things called
+     "Step 2" on the screen at once, one of them telling the reader to copy something to a
+     chat window when nothing was being copied anywhere. */
+  body.auto-enrich #s2,
   body.auto-enrich #s3,
   body.auto-enrich #s4,
-  body.auto-enrich #s2 > p,
   body.auto-enrich #queue{display:none}
   #quota:empty{display:none}
 
@@ -670,6 +671,13 @@
             <button class="btn" id="queue" style="display:none"></button>
           </div>
           <div id="report"></div>
+          <!-- Both act on the list just checked, so they belong beside it rather than under
+               a heading about carrying a prompt somewhere. -->
+          <div class="row">
+            <button class="btn" id="enrich" disabled hidden>Enrich these</button>
+            <button class="btn" id="addnow" disabled>Add as needs-detail now</button>
+          </div>
+          <p class="note" id="quota"></p>
         </div>
 
         <div class="step waiting" id="s2">
@@ -677,11 +685,8 @@
           <p>Paste it into a chat, then bring the reply back here.</p>
           <div class="pre" id="prompt">The prompt is written here once you check a list above.</div>
           <div class="row">
-            <button class="btn" id="enrich" disabled hidden>Enrich these</button>
             <button class="btn" id="copyp" disabled>Copy prompt</button>
-            <button class="btn" id="addnow" disabled>Add as needs-detail now</button>
           </div>
-          <p class="note" id="quota"></p>
         </div>
 
         <!-- What came back, in auto mode: the words themselves rather than the JSON they
@@ -2690,6 +2695,17 @@ function renderReport(dups, nears, again){
 }
 
 document.getElementById('check').addEventListener('click',()=>{
+  /* Words already fetched and waiting to be looked at are not swept aside by a new list.
+     They were paid for out of a monthly allowance, and stacking a fresh list above a stale
+     preview is how the panel stopped making sense — two unrelated things on screen with no
+     stated relationship between them. */
+  if(PENDING){
+    const msg=document.getElementById('mergemsg');
+    msg.className='note warn';
+    msg.textContent = `${PENDING.arr.length} word${PENDING.arr.length===1?' is':'s are'} already waiting below — keep ${PENDING.arr.length===1?'it':'them'} or throw ${PENDING.arr.length===1?'it':'them'} away first.`;
+    document.getElementById('s2b').scrollIntoView({behavior:'smooth', block:'nearest'});
+    return;
+  }
   const raw=document.getElementById('raw').value;
   /* De-duplicated on norm, not on the raw string. "fealty" and "Fealty!" are two different
      strings and one word, and letting both through sent both to the model, which sent two
@@ -2917,8 +2933,10 @@ document.getElementById('keep').addEventListener('click', async ()=>{
   const m=document.getElementById('mergemsg');
   m.className='note good';
   m.textContent = (made?`${made} field${made===1?'':'s'} made. `:'') + mergeMsg(res);
+  /* The chips go, because that batch is spent. The box does not: a reader waiting for a
+     preview very often types the next list while they wait, and emptying it would throw
+     away work they did with their own hands to tidy up after work they did not. */
   document.getElementById('report').innerHTML=''; fresh=[]; setReady(false);
-  document.getElementById('raw').value='';
 });
 
 /* ---------- the one press ----------
