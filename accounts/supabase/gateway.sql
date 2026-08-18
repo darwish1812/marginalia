@@ -196,3 +196,28 @@ update public.providers set temperature = null where temperature = 0.3;
 update public.app_config set temperature = null where temperature = 0.3;
 
 notify pgrst, 'reload schema';
+
+-- ---------------------------------------------------------------- model per provider
+-- The model name lived on app_config, so it survived a change of provider: choosing a local
+-- model left `claude-sonnet-5` sitting on an endpoint that had never heard of it. A model
+-- name only means anything to the provider serving it, so it belongs on the provider —
+-- which also lets an administrator keep several ready and switch between them in one click.
+--
+-- app_config.model is left in place and is read as a fallback, so a gateway that has not
+-- run this migration keeps working.
+alter table public.providers add column if not exists model text not null default '';
+
+update public.providers p set model = c.model
+  from public.app_config c
+ where c.provider_id = p.id and p.model = '' and c.model <> '';
+
+notify pgrst, 'reload schema';
+
+-- ---------------------------------------------------------------- template_prev
+-- One slot, filled on every template change, and a button to swap into it. It was never an
+-- undo: reverting was itself a change, so it pushed the abandoned version straight back into
+-- the slot and the pair simply alternated — the version before last was already unreachable.
+-- One editable field does not need a history mechanism of its own.
+alter table public.app_config drop column if exists template_prev;
+
+notify pgrst, 'reload schema';

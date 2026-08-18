@@ -1,9 +1,9 @@
 // Marginalia — the enrichment gateway.
 //
-// One function, four routes. The design and the findings it obeys are in `LLM-GATEWAY.md`;
-// what it asks the model for is in `MARGINALIA-ENRICHMENT.md`. Read F1–F6 before changing
-// anything here — several of these decisions look like over-caution until you know what
-// they prevent.
+// One function, six routes. `README.md` beside this file is how it is deployed and proved,
+// and carries the refusals worth checking. The F-numbers cited throughout are the findings
+// the design turns on; each is explained where it is obeyed, because several look like
+// over-caution until you know what they prevent.
 //
 // Two properties matter more than the rest:
 //
@@ -131,7 +131,9 @@ async function callModel(a: CallArgs): Promise<{ text: string; ms: number }> {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': a.apiKey,
+          // A local model has no key and no use for the header; sending an empty one makes
+          // some servers answer 401 about a credential nobody asked for.
+          ...(a.apiKey ? { 'x-api-key': a.apiKey } : {}),
           'anthropic-version': '2023-06-01',
         },
         body: JSON.stringify(body),
@@ -139,7 +141,10 @@ async function callModel(a: CallArgs): Promise<{ text: string; ms: number }> {
     // Everything else speaks the OpenAI body.
     : await fetch(a.endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${a.apiKey}` },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(a.apiKey ? { Authorization: `Bearer ${a.apiKey}` } : {}),
+        },
         body: JSON.stringify(body),
       });
 
@@ -207,9 +212,28 @@ async function isAdmin(userId: string) {
   return !!data;
 }
 
+// An endpoint on the administrator's own desk. It is the one case where no credential is
+// expected, because there is nobody to present one to.
+function isLocalEndpoint(endpoint: string) {
+  try {
+    const h = new URL(endpoint).hostname;
+    return h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '[::1]';
+  } catch (_) { return false; }
+}
+
 async function config() {
   const { data } = await db.from('app_config').select('*').eq('app_id', APP_ID).maybeSingle();
   return data;
+}
+
+// The model belongs to the provider now. app_config.model is the pre-migration fallback and
+// is read only when the provider carries none, so a gateway that has not run the migration
+// keeps working. Everything that asks "is there a model" asks here, because two gates that
+// answer differently is how a reader gets offered a button that cannot work.
+async function modelFor(cfg: any): Promise<string> {
+  if (!cfg?.provider_id) return '';
+  const { data } = await db.from('providers').select('model').eq('id', cfg.provider_id).maybeSingle();
+  return (data?.model || cfg.model || '');
 }
 
 function monthStart() {
@@ -287,11 +311,12 @@ Deno.serve(async (req) => {
     const admin = await isAdmin(user.id);
     const u = await usage(user.id, cfg);
     const prof = await db.from('profiles').select('auto_merge').eq('id', user.id).maybeSingle();
+    const meModel = await modelFor(cfg);
     return json({
       admin,
       // A reader is offered the button only when there is something behind it AND it has
       // answered correctly once. Enabling an untested gateway makes every reader the test.
-      enabled: cfg.enabled && !!cfg.model && !!cfg.provider_id && !!cfg.tested_at,
+      enabled: cfg.enabled && !!meModel && !!cfg.provider_id && !!cfg.tested_at,
       tested: !!cfg.tested_at,
       auto_merge: !!prof.data?.auto_merge,
       quota_used: u.used,
@@ -317,12 +342,13 @@ Deno.serve(async (req) => {
     const runAdmin = await isAdmin(user.id);
 
     // These two are not a switch — without them there is nothing to call.
-    if (!cfg.provider_id || !cfg.model) {
+    const runModel = await modelFor(cfg);
+    if (!cfg.provider_id || !runModel) {
       return json({
         error: 'unconfigured',
         message: !cfg.provider_id
           ? 'No provider is set. Choose one, paste a key, and save.'
-          : 'No model is set. Type a model name and save.',
+          : 'No model is set on that provider. Edit it, type a model name and save.',
       }, 503);
     }
     if (!cfg.enabled && !runAdmin) {
@@ -359,14 +385,23 @@ Deno.serve(async (req) => {
       .eq('provider_id', cfg.provider_id).eq('user_id', user.id).maybeSingle();
     const shared = own.data ? null : await db.from('provider_secrets').select('api_key')
       .eq('provider_id', cfg.provider_id).is('user_id', null).maybeSingle();
-    const apiKey = own.data?.api_key ?? shared?.data?.api_key;
-    if (!apiKey) return json({ error: 'no key', message: 'No API key is set for this provider.' }, 503);
+    // A model on the administrator's own machine has no credential to present, and demanding
+    // one made a local provider impossible to use at all. Everything reachable over the
+    // network still needs one: a missing key there is a misconfiguration, and letting it
+    // through only trades a clear sentence for somebody else's 401.
+    const local = isLocalEndpoint(prov.data.endpoint);
+    const apiKey = own.data?.api_key ?? shared?.data?.api_key ?? '';
+    if (!apiKey && !local) {
+      return json({ error: 'no key', message: 'No API key is set for this provider.' }, 503);
+    }
 
     const template = fields.fields.length ? cfg.template : (cfg.propose_template || cfg.template);
     if (!template.trim()) return json({ error: 'no template', message: 'No template is set.' }, 503);
 
+    const model = runModel;
+
     const run = await db.from('runs').insert({
-      app_id: APP_ID, subject: user.id, model: cfg.model, requested: items.items.length,
+      app_id: APP_ID, subject: user.id, model, requested: items.items.length,
     }).select('id').single();
 
     const batch = cfg.batch_size ?? prov.data.batch_size ?? 20;
@@ -383,7 +418,7 @@ Deno.serve(async (req) => {
       try {
         return await callModel({
           adapter: prov.data.adapter, endpoint: prov.data.endpoint, apiKey,
-          model: cfg.model, prompt, temperature, maxTokens, drop: dropped,
+          model, prompt, temperature, maxTokens, drop: dropped,
         });
       } catch (e: any) {
         const said = String(e.said ?? '');
@@ -393,7 +428,7 @@ Deno.serve(async (req) => {
         dropped.push(blamed);
         return await callModel({
           adapter: prov.data.adapter, endpoint: prov.data.endpoint, apiKey,
-          model: cfg.model, prompt, temperature, maxTokens, drop: dropped,
+          model, prompt, temperature, maxTokens, drop: dropped,
         });
       }
     };
@@ -509,12 +544,17 @@ Deno.serve(async (req) => {
       const body = await req.json().catch(() => null);
       if (!body) return json({ error: 'bad request' }, 400);
 
+      // One row per provider, and saving one is no longer the same act as choosing it.
+      // Both used to happen together, which is how a key issued for one endpoint ended up
+      // being sent to another: the row was edited in place and the secret, keyed by a row id
+      // that never changed, simply stayed. Which provider is in use is now its own field.
       if (body.provider) {
         const p = body.provider;
         const row = {
           name: String(p.name ?? 'provider'),
           adapter: p.adapter === 'anthropic' ? 'anthropic' : 'openai',
           endpoint: String(p.endpoint ?? ''),
+          model: String(p.model ?? ''),
         };
         if (p.id) await db.from('providers').update(row).eq('id', p.id);
         else {
@@ -527,7 +567,9 @@ Deno.serve(async (req) => {
           await db.from('provider_secrets').insert({ provider_id: p.id, user_id: null, api_key: key });
           await db.from('providers').update({ key_last4: key.slice(-4) }).eq('id', p.id);
         }
-        body.config = { ...(body.config ?? {}), provider_id: p.id };
+        // The first provider to exist is adopted, because a gateway with exactly one and
+        // none selected is a puzzle rather than a choice. After that, selection is explicit.
+        if (!cfg.provider_id) body.config = { ...(body.config ?? {}), provider_id: p.id };
       }
 
       if (body.config) {
@@ -538,13 +580,42 @@ Deno.serve(async (req) => {
                          'app_budget', 'enabled']) {
           if (k in c) patch[k] = c[k];
         }
-        // Keep one version back so Revert is one click (LLM-GATEWAY §6.2).
-        if ('template' in c && c.template !== cfg.template) patch.template_prev = cfg.template;
         await db.from('app_config').update(patch).eq('app_id', APP_ID);
       }
 
       if (body.tested) await db.from('app_config').update({ tested_at: new Date().toISOString() }).eq('app_id', APP_ID);
 
+      return json({ ok: true, config: await config() });
+    }
+
+    // Deleting a provider deletes its key with it — provider_secrets cascades — which is the
+    // point: a credential should not outlive the only thing that knew where to send it.
+    if (route === '/admin/provider/delete' && req.method === 'POST') {
+      const body = await req.json().catch(() => null);
+      const id = Number(body?.id);
+      if (!id) return json({ error: 'bad request' }, 400);
+      // app_config.provider_id references this row and the reference is not ON DELETE, so
+      // the delete would be refused by the database rather than by us. Clearing the choice
+      // first is what makes deleting the provider in use possible at all — and enrichment
+      // goes off with it, because a gateway that is enabled and pointed at nothing answers
+      // every reader with a 500 instead of the manual fallback it is supposed to offer.
+      if (cfg.provider_id === id) {
+        await db.from('app_config')
+          .update({ provider_id: null, enabled: false })
+          .eq('app_id', APP_ID);
+      }
+      await db.from('providers').delete().eq('id', id);
+      return json({ ok: true, config: await config() });
+    }
+
+    // Removing a key without removing the provider. There was no way to do this at all: the
+    // only operation on a secret was to overwrite it with a different one.
+    if (route === '/admin/provider/forget-key' && req.method === 'POST') {
+      const body = await req.json().catch(() => null);
+      const id = Number(body?.id);
+      if (!id) return json({ error: 'bad request' }, 400);
+      await db.from('provider_secrets').delete().eq('provider_id', id).is('user_id', null);
+      await db.from('providers').update({ key_last4: '' }).eq('id', id);
       return json({ ok: true, config: await config() });
     }
   }
