@@ -504,6 +504,19 @@
   .filebtn:focus-visible{outline:2px solid var(--c); outline-offset:2px}
   @media print{ .more,.filebtn,.card-menu,.cm-confirm{display:none !important} }
 
+  /* ---------- enrichment ----------
+     Nothing is ever removed from the DOM. Falling back to the manual loop has to be a class
+     flip rather than a re-render, because every failure below drops to it — an unreachable
+     function, a refused key, a used-up allowance — and a reader in that position needs the
+     prompt already built and the Copy button already live, not a page rebuilding itself
+     around them. This is the single most important constraint in the patch. */
+  body.auto-enrich #enrich{display:inline-block}
+  body.auto-enrich #prompt,
+  body.auto-enrich #copyp,
+  body.auto-enrich #s3{display:none}
+  body.auto-enrich #s2 .stepno::after{content:" — one press"}
+  #quota:empty{display:none}
+
   /* ---------- fields ---------- */
   .fld-row{display:flex; align-items:flex-start; gap:13px; padding:13px 0; border-bottom:1px solid var(--rule)}
   .fld-row:last-child{border-bottom:0}
@@ -644,9 +657,11 @@
           <p>Paste it into a chat, then bring the reply back here.</p>
           <div class="pre" id="prompt">The prompt is written here once you check a list above.</div>
           <div class="row">
+            <button class="btn" id="enrich" disabled hidden>Enrich these</button>
             <button class="btn" id="copyp" disabled>Copy prompt</button>
             <button class="btn" id="addnow" disabled>Add as needs-detail now</button>
           </div>
+          <p class="note" id="quota"></p>
         </div>
 
         <div class="step waiting" id="s3">
@@ -691,6 +706,18 @@
             <p class="set-d" id="fldhint">The inks down the side of the page. Rename them, recolour them, or make your own.</p>
           </div>
           <button class="btn" id="fldbtn" aria-pressed="false">Edit fields</button>
+        </div>
+
+        <!-- Hidden entirely unless enrichment is on. Whether a fetched reply lands in your
+             booklet or waits to be read first is a question about your own words, so it is
+             yours and not the administrator's. -->
+        <div class="set" id="automerge-row" hidden>
+          <div>
+            <p class="set-t">Merging</p>
+            <p class="set-d">Enriched words can go straight into your booklet, or wait in the
+              box so you can read them first. There is no undo, so waiting is the default.</p>
+          </div>
+          <button class="btn" id="automerge" aria-pressed="false">Merge automatically</button>
         </div>
 
         <div class="set">
@@ -1785,6 +1812,10 @@ async function apply(data){
   W = loaded.words;
   CORRECTIONS = loaded.corrections;
   render(); loadProgress(); showLocal(); renderFix(CORRECTIONS); renderFields();
+  /* Deliberately not awaited: the booklet is already readable, and whether there is a
+     gateway behind it changes one button. A slow or dead function must not hold up the
+     words. It resolves into manual mode if anything at all goes wrong. */
+  loadGateway();
   document.body.classList.remove('first-run');
   document.getElementById('firstrun').hidden=true;
   document.getElementById('app').hidden=false;
@@ -2478,6 +2509,28 @@ let picsOn=true; try{ picsOn = localStorage.getItem(PKEY)!=='0'; }catch(e){}
 setPics(picsOn);
 picBtn.addEventListener('click',()=>setPics(document.body.classList.contains('nopics')));
 
+/* Written through the function, not straight to the row, so there is one place that knows
+   what a reader may change about themselves. */
+document.getElementById('automerge').addEventListener('click', async ()=>{
+  const btn = document.getElementById('automerge');
+  const want = btn.getAttribute('aria-pressed') !== 'true';
+  btn.disabled = true;
+  try{
+    const {data:{session}} = await sb.auth.getSession();
+    const r = await fetch(FN + '/me', {
+      method:'POST',
+      headers:{Authorization:'Bearer '+session.access_token, 'Content-Type':'application/json'},
+      body: JSON.stringify({auto_merge: want})
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    GATEWAY.auto_merge = want;
+    btn.setAttribute('aria-pressed', String(want));
+    btn.textContent = want ? 'Merging automatically' : 'Merge automatically';
+    syncNote('');
+  }catch(e){ syncNote('That setting did not save — '+errText(e)); }
+  btn.disabled = false;
+});
+
 let fresh=[];
 
 /* Steps 2 and 3 are always on screen; this is what turns them from a preview of what is
@@ -2485,8 +2538,64 @@ let fresh=[];
 const IDLEPROMPT='The prompt is written here once you check a list above.';
 function setReady(on){
   ['s2','s3'].forEach(id=>document.getElementById(id).classList.toggle('waiting', !on));
-  ['copyp','addnow','merge','incoming'].forEach(id=>document.getElementById(id).disabled = !on);
+  ['copyp','addnow','merge','incoming','enrich'].forEach(id=>document.getElementById(id).disabled = !on);
   if(!on) document.getElementById('prompt').textContent=IDLEPROMPT;
+}
+
+/* ---------- automatic or by hand ----------
+   One class, and nothing else changes. GATEWAY holds what the last /me said; every failure
+   path calls setEnrichMode('manual') and writes the reason where the reader is already looking,
+   so nobody has to visit settings to recover from anything. */
+const FN = ACCOUNTS ? SUPABASE_URL + '/functions/v1/enrich' : null;
+let GATEWAY = {enabled:false, auto_merge:false, quota_used:0, quota_limit:0, resets:''};
+
+function setEnrichMode(mode){
+  document.body.classList.toggle('auto-enrich', mode === 'auto');
+  const btn = document.getElementById('enrich');
+  if(btn) btn.hidden = mode !== 'auto';
+}
+
+function showQuota(){
+  const el = document.getElementById('quota');
+  if(!el) return;
+  if(!GATEWAY.enabled || !GATEWAY.quota_limit){ el.textContent=''; el.className='note'; return; }
+  const left = Math.max(0, GATEWAY.quota_limit - GATEWAY.quota_used);
+  el.textContent = left
+    ? `${left} of your ${GATEWAY.quota_limit} words left this month. Resets ${GATEWAY.resets}.`
+    : `You have used this month's ${GATEWAY.quota_limit} words. It resets ${GATEWAY.resets} — until then the prompt above still works.`;
+  el.className = left > GATEWAY.quota_limit*0.15 ? 'note' : 'note warn';
+}
+
+/* Never fatal. A gateway that cannot be reached, or was never configured, leaves the
+   booklet exactly as it has always been: the prompt is built from the constants, the manual
+   loop is the loop, and nothing on screen mentions a feature that is not there. */
+async function loadGateway(){
+  if(!ACCOUNTS){ setEnrichMode('manual'); return; }
+  try{
+    const cfg = await sb.from('app_config').select('template,propose_template')
+                        .eq('app_id','marginalia').maybeSingle();
+    if(cfg.data){
+      TEMPLATE = cfg.data.template || '';
+      PROPOSE  = cfg.data.propose_template || '';
+    }
+    const {data:{session}} = await sb.auth.getSession();
+    if(!session) throw new Error('signed out');
+    const r = await fetch(FN + '/me', {headers:{Authorization:'Bearer '+session.access_token}});
+    if(!r.ok) throw new Error('me ' + r.status);
+    GATEWAY = await r.json();
+  }catch(e){
+    GATEWAY = {enabled:false, auto_merge:false, quota_used:0, quota_limit:0, resets:''};
+  }
+  setEnrichMode(GATEWAY.enabled ? 'auto' : 'manual');
+  showQuota();
+  const row = document.getElementById('automerge-row');
+  /* a toggle for something that cannot happen is worse than no toggle */
+  if(row) row.hidden = !GATEWAY.enabled;
+  const am = document.getElementById('automerge');
+  if(am){
+    am.setAttribute('aria-pressed', String(!!GATEWAY.auto_merge));
+    am.textContent = GATEWAY.auto_merge ? 'Merging automatically' : 'Merge automatically';
+  }
 }
 
 /* Words already captured but not yet enriched are offered again rather than
@@ -2676,6 +2785,81 @@ function promptText(){
 function buildPrompt(){
   document.getElementById('prompt').textContent = promptText();
 }
+
+/* ---------- the one press ----------
+   Sends the word list and the field list as data. Never the assembled prompt: the function
+   builds that from a template it holds itself, because a shared key that forwards whatever
+   text a browser sends is an open proxy. */
+document.getElementById('enrich').addEventListener('click', async ()=>{
+  const btn = document.getElementById('enrich');
+  const msg = document.getElementById('mergemsg');
+  const label = btn.textContent;
+  const fall = (why)=>{
+    setEnrichMode('manual');
+    buildPrompt();
+    msg.className='note warn';
+    msg.textContent = why + ' The prompt above still works — copy it, and paste the reply below.';
+  };
+
+  btn.disabled = true; btn.textContent = 'Asking…';
+  msg.className='note'; msg.textContent = `Enriching ${fresh.length} word${fresh.length===1?'':'s'}…`;
+  try{
+    const {data:{session}} = await sb.auth.getSession();
+    if(!session) throw Object.assign(new Error('signed out'), {soft:'You are signed out.'});
+    const r = await fetch(FN + '/run', {
+      method:'POST',
+      headers:{Authorization:'Bearer '+session.access_token, 'Content-Type':'application/json'},
+      body: JSON.stringify({
+        items: fresh,
+        fields: FIELDS.map(({id,name,note})=>({id,name,note}))
+      })
+    });
+    const body = await r.json().catch(()=>null);
+    if(!r.ok){
+      /* Every one of these is a fall back to the manual loop with the reason said in
+         place. None of them requires visiting settings to recover from. */
+      throw Object.assign(new Error((body && (body.message||body.error)) || ('HTTP '+r.status)),
+                          {soft:(body && body.message) || 'That did not go through.'});
+    }
+    const p = await parseReply(body.text);
+    if(!p.ok){
+      /* It answered, but not with something mergeable. Put the raw reply where a reply
+         goes, so it can be read, corrected and merged by hand rather than lost. */
+      setEnrichMode('manual');
+      document.getElementById('incoming').value = body.text || '';
+      setReady(true);
+      msg.className='note bad';
+      msg.textContent = p.why + ' The reply is in the box below.';
+      return;
+    }
+    if(GATEWAY.auto_merge){
+      let res;
+      try{ res = await mergeArray(p.arr); }
+      catch(e){ msg.className='note bad'; msg.textContent='Nothing merged — '+errText(e); return; }
+      if(!res.ok){
+        msg.className='note bad';
+        msg.textContent='No words merged — '+res.errors.slice(0,3).join('; ');
+        return;
+      }
+      msg.className='note good';
+      msg.textContent = (p.madeFields?`${p.madeFields} field${p.madeFields===1?'':'s'} made. `:'') + mergeMsg(res);
+      document.getElementById('report').innerHTML=''; fresh=[]; setReady(false);
+      document.getElementById('raw').value='';
+    }else{
+      /* The default. It is your booklet and these are your words — look at them first. */
+      document.getElementById('incoming').value = body.text;
+      setReady(true);
+      msg.className='note good';
+      msg.textContent = 'It answered. Read it below, then Validate & merge.';
+      document.getElementById('s3').scrollIntoView({behavior:'smooth', block:'nearest'});
+    }
+    GATEWAY.quota_used += fresh.length; showQuota();
+  }catch(e){
+    fall(e.soft || errText(e));
+  }finally{
+    btn.disabled = false; btn.textContent = label;
+  }
+});
 
 document.getElementById('copyp').addEventListener('click',async e=>{
   try{ await navigator.clipboard.writeText(document.getElementById('prompt').textContent);

@@ -286,14 +286,26 @@ Deno.serve(async (req) => {
   if (route === '/me' && req.method === 'GET') {
     const admin = await isAdmin(user.id);
     const u = await usage(user.id, cfg);
+    const prof = await db.from('profiles').select('auto_merge').eq('id', user.id).maybeSingle();
     return json({
       admin,
-      enabled: cfg.enabled && !!cfg.model && !!cfg.provider_id,
+      // A reader is offered the button only when there is something behind it AND it has
+      // answered correctly once. Enabling an untested gateway makes every reader the test.
+      enabled: cfg.enabled && !!cfg.model && !!cfg.provider_id && !!cfg.tested_at,
       tested: !!cfg.tested_at,
+      auto_merge: !!prof.data?.auto_merge,
       quota_used: u.used,
       quota_limit: u.limit,
       resets: u.resets,
     });
+  }
+
+  // The reader's own choice about their own booklet, so they write it themselves.
+  if (route === '/me' && req.method === 'POST') {
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body.auto_merge !== 'boolean') return json({ error: 'bad request' }, 400);
+    await db.from('profiles').update({ auto_merge: body.auto_merge }).eq('id', user.id);
+    return json({ ok: true, auto_merge: body.auto_merge });
   }
 
   // ---- POST /run --------------------------------------------------------
