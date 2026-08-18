@@ -1,57 +1,104 @@
 {
  "schema": 1,
- "updated": "2026-08-13",
+ "updated": "2026-08-17",
  "fields": [
   {
    "id": 1,
    "name": "The Feudal World",
-   "ink": "var(--ink-1)",
-   "note": "Castles, guilds, gutters and archaic speech — the register of historical fiction and fantasy."
+   "ink": "#C9922F",
+   "note": "Castles, guilds, gutters and archaic speech — the register of historical fiction and fantasy.",
+   "sort": 1
   },
   {
    "id": 2,
    "name": "Faith & Philosophy",
-   "ink": "var(--ink-2)",
-   "note": "How thinkers argue about scripture: literal or symbolic, human-shaped or beyond shape entirely."
+   "ink": "#3F9A85",
+   "note": "How thinkers argue about scripture: literal or symbolic, human-shaped or beyond shape entirely.",
+   "sort": 2
   },
   {
    "id": 3,
    "name": "Power & Conflict",
-   "ink": "var(--ink-3)",
-   "note": "What rulers do, what subjects endure, and what happens when either pushes too far."
+   "ink": "#C4485C",
+   "note": "What rulers do, what subjects endure, and what happens when either pushes too far.",
+   "sort": 3
   },
   {
    "id": 4,
    "name": "Rhetoric & Deception",
-   "ink": "var(--ink-4)",
-   "note": "The vocabulary of political argument — most of these appear in news analysis and opinion writing."
+   "ink": "#8C6FD4",
+   "note": "The vocabulary of political argument — most of these appear in news analysis and opinion writing.",
+   "sort": 4
   },
   {
    "id": 5,
    "name": "Character & Temperament",
-   "ink": "var(--ink-5)",
-   "note": "Words that judge a person. Nearly all carry approval or contempt, so they are rarely neutral."
+   "ink": "#4E8AD6",
+   "note": "Words that judge a person. Nearly all carry approval or contempt, so they are rarely neutral.",
+   "sort": 5
   },
   {
    "id": 6,
    "name": "Mind & Abstraction",
-   "ink": "var(--ink-6)",
-   "note": "Formal, essay-register words. These lift academic and professional writing more than any other group here."
+   "ink": "#C77FB0",
+   "note": "Formal, essay-register words. These lift academic and professional writing more than any other group here.",
+   "sort": 6
   },
   {
    "id": 7,
    "name": "Body, Vice & Survival",
-   "ink": "var(--ink-7)",
-   "note": "The physical and the disreputable. A few are blunt — the notes tell you when to be careful."
+   "ink": "#6E9E4E",
+   "note": "The physical and the disreputable. A few are blunt — the notes tell you when to be careful.",
+   "sort": 7
   },
   {
    "id": 8,
    "name": "Hardship & Social Order",
-   "ink": "var(--ink-8)",
-   "note": "Poverty, policing, and the language of who holds power over whom. This is the register of journalism and social science — and it is the field your list has grown into most."
+   "ink": "#6E7899",
+   "note": "Poverty, policing, and the language of who holds power over whom. This is the register of journalism and social science — and it is the field your list has grown into most.",
+   "sort": 8
+  }
+ ],
+ "corrections": [
+  {
+   "wrong": "brazon",
+   "right": "brazen",
+   "hint": "rhymes with <i>raisin</i>"
+  },
+  {
+   "wrong": "implusaible",
+   "right": "implausible",
+   "hint": "im-PLAW-zi-bull"
+  },
+  {
+   "wrong": "languishion",
+   "right": "languishing",
+   "hint": "from the verb <i>languish</i>"
+  },
+  {
+   "wrong": "inquistions",
+   "right": "inquisitions",
+   "hint": "in-kwi-ZISH-uns"
+  },
+  {
+   "wrong": "erie",
+   "right": "eerie",
+   "hint": "two e's. <i>Erie</i> is a lake"
+  },
+  {
+   "wrong": "ultimatums",
+   "right": "ultimatum"
   }
  ],
  "words": [
+  {
+   "w": "tarry",
+   "f": 1,
+   "p": "verb",
+   "d": "To linger, or to stay longer than intended.",
+   "e": "Do not *tarry* — the enemy draws closer with every hour.",
+   "a": "يتمهّل، يتلكّأ، يتأخّر"
+  },
   {
    "w": "fealty",
    "f": 1,
@@ -228,14 +275,6 @@
    "e": "*Mayhaps* the king will grant us an audience, if we arrive before noon.",
    "a": "رُبَّما (لفظ قديم/أدبي)",
    "n": "Nobody says this in modern speech. Use it only in historical or fantasy writing."
-  },
-  {
-   "w": "tarry",
-   "f": 1,
-   "p": "verb",
-   "d": "To linger, or to stay longer than intended.",
-   "e": "Do not *tarry* — the enemy draws closer with every hour.",
-   "a": "يتمهّل، يتلكّأ، يتأخّر"
   },
   {
    "w": "consort",
@@ -1278,33 +1317,39 @@
    "d": "Quiet, obedient and easy to control.",
    "e": "The regime preferred a *docile* press that printed whatever it was given.",
    "a": "وَديع مُطيع سهل الانقياد"
-  }
- ],
- "corrections": [
-  {
-   "wrong": "brazon",
-   "right": "brazen",
-   "hint": "rhymes with <i>raisin</i>"
   },
   {
-   "wrong": "implusaible",
-   "right": "implausible",
-   "hint": "im-PLAW-zi-bull"
+   "w": "cadence",
+   "f": 4,
+   "p": "noun",
+   "d": "The rhythmic flow of a sequence of sounds or words in speech and writing.",
+   "e": "The senator delivered her speech in a measured, persuasive *cadence* that captivated the entire audience.",
+   "a": "إِيقَاع"
   },
   {
-   "wrong": "languishion",
-   "right": "languishing",
-   "hint": "from the verb <i>languish</i>"
+   "w": "severe",
+   "f": 5,
+   "p": "adjective",
+   "d": "Strict, stern, or harsh in attitude, appearance, or judgment.",
+   "e": "The headmaster gave the misbehaving students a *severe* look that instantly silenced the room.",
+   "a": "صَارِم",
+   "n": "Can also describe hardship, pain, or weather, but here categorized by personal temperament."
   },
   {
-   "wrong": "inquistions",
-   "right": "inquisitions",
-   "hint": "in-kwi-ZISH-uns"
+   "w": "ultimatum",
+   "f": 3,
+   "p": "noun",
+   "d": "A final demand or statement of terms whose rejection will lead to direct retaliation or a breakdown in relations.",
+   "e": "The military commander issued a final *ultimatum* demanding immediate surrender before artillery shelling commenced.",
+   "a": "إنْذَار أِخِير"
   },
   {
-   "wrong": "erie",
-   "right": "eerie",
-   "hint": "two e's. <i>Erie</i> is a lake"
+   "w": "dissemination",
+   "f": 6,
+   "p": "noun",
+   "d": "The act of spreading news, information, or knowledge widely to an audience.",
+   "e": "Academic journals play a vital role in the rapid *dissemination* of groundbreaking scientific research globally.",
+   "a": "نَشْر — مَعْلُومَات أوْ مَعْرِفَة"
   }
  ]
 }
