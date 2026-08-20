@@ -210,10 +210,7 @@ on conflict do nothing;</div>
         </table>
       </div>
       <div class="row" style="margin-top:12px"><button id="addprov">+ Add provider</button></div>
-      <p class="note">The filled dot is the one enrichment uses. Every row carries its own key,
-        so choosing another provider cannot hand a key to an endpoint it was never issued for.
-        Deleting a row deletes its key with it — including the row in use, which switches
-        enrichment off rather than leaving it pointed at nothing.</p>
+      <p class="note">The filled dot is the one in use. Deleting a row deletes its key too.</p>
 
       <div class="editor" id="editor" hidden>
         <h3 id="editortitle">New provider</h3>
@@ -256,15 +253,13 @@ on conflict do nothing;</div>
           <button id="cancelprov">Cancel</button>
           <button class="danger" id="forgetkey">Forget key</button>
         </div>
-        <p class="note" id="keynote">The key is written once and never read back. This page can
-          only ever show that one is present and its last four characters — the function will
-          not send more, so a stolen session cannot lift it.</p>
+        <p class="note" id="keynote">Written once, never read back — only its last four
+          characters are ever shown.</p>
 
         <div class="dev" id="dev" hidden>
           <b style="color:var(--ochre); font-size:12px">Local model, this machine only</b>
-          <p class="note" style="margin-top:6px">An Edge Function cannot reach a model on your
-            desk, so this page can call it directly — but only from localhost, and only for
-            trying templates. It is not a path any reader can use.</p>
+          <p class="note" style="margin-top:6px">Called from this page, not through the
+            gateway. No reader can use this path.</p>
           <div class="row" style="margin-top:10px"><button id="devtest">Test against local endpoint</button></div>
         </div>
       </div>
@@ -279,25 +274,20 @@ on conflict do nothing;</div>
         <div><label for="tokens">Max tokens</label><input id="tokens" type="number" min="256" step="256"></div>
         <div><label for="batch">Words per request</label><input id="batch" type="number" min="1" max="100"></div>
       </div>
-      <p class="note">These describe this booklet's task rather than the account, so they stay
-        the same whichever provider is in use. A reasoning model spends most of an allowance
-        thinking: if replies arrive cut off, this is the pair to change.</p>
+      <p class="note">The same whichever provider is in use. If replies arrive cut off, raise
+        Max tokens or lower Words per request.</p>
     </section>
 
     <!-- 3. template -->
     <section>
       <h2>Template</h2>
-      <p class="note" style="margin-top:0">Assembled server-side. <code>{{WORDS}}</code> and
-        <code>{{FIELDS}}</code> are substituted; the reader's booklet builds the identical
-        string for its <b>Copy prompt</b> button, so the manual fallback stays a true
-        diagnostic. Do not let the two diverge.</p>
+      <p class="note" style="margin-top:0"><code>{{WORDS}}</code> and <code>{{FIELDS}}</code>
+        are substituted. The booklet builds the same string for <b>Copy prompt</b>.</p>
       <textarea id="template" spellcheck="false"></textarea>
       <div class="row" style="margin-top:10px">
         <button class="go" id="savetpl">Test &amp; save</button>
       </div>
-      <p class="note">Saving runs one real word through the whole path first and shows what
-        came back. A template that stops asking for a field does not fail — it quietly
-        produces plausible output without it, and nothing downstream notices.</p>
+      <p class="note">Saving sends one real word through first and shows the reply.</p>
     </section>
 
     <!-- 4. limits -->
@@ -308,8 +298,7 @@ on conflict do nothing;</div>
         <div><label for="perrun">Per run</label><input id="perrun" type="number" min="1"></div>
         <div><label for="budget">Whole booklet, per month</label><input id="budget" type="number" min="0"></div>
       </div>
-      <p class="note">Both ceilings are checked in the same request. A per-reader limit
-        multiplied by an unbounded number of readers is not a budget.</p>
+      <p class="note">Both are checked on every request.</p>
     </section>
 
     <!-- actions -->
@@ -323,8 +312,7 @@ on conflict do nothing;</div>
       </div>
       <p class="msg" id="msg"></p>
       <div class="out" id="out" hidden></div>
-      <p class="note" id="testnote">Readers are not offered automatic merging until a test
-        has passed. Send one word and read the Arabic before enabling anything.</p>
+      <p class="note" id="testnote"></p>
 
     </section>
   </div>
@@ -490,17 +478,18 @@ function paint(d){
   if(!prov) missing.push('a provider');
   else{
     if(!(d.keys||[]).some(k=>k.provider_id===prov.id) && !isLocal(prov.endpoint))
-      missing.push('an API key');
-    if(!prov.model) missing.push('a model name');
+      missing.push('a key');
+    if(!prov.model) missing.push('a model');
   }
-  if(!c.template || !c.template.trim()) missing.push('a template — run supabase/load-templates.sql');
+  if(!c.template || !c.template.trim()) missing.push('a template');
   $('test').disabled = missing.length > 0;
 
+  /* A status line, not advice: what is missing, or when it last worked. */
   $('testnote').textContent = missing.length
-    ? 'Still needed before a test can run: ' + missing.join(', ') + '.'
+    ? 'Still needed: ' + missing.join(', ')
     : c.tested_at
-      ? 'Last successful test ' + new Date(c.tested_at).toLocaleString() + '.'
-      : 'Nothing has been sent through yet. Press "Send one word" and read the Arabic before enabling anything.';
+      ? 'Last tested ' + new Date(c.tested_at).toLocaleString()
+      : 'Not tested yet';
 
 }
 
@@ -659,12 +648,11 @@ async function loadModels(){
     MODELS = ids.map(id => ({id, kind: kindOf(id)}));
     if(!MODELS.length) throw new Error('it answered with an empty list');
     const usable = MODELS.filter(m => !m.kind).length;
-    say('modelnote', MODELS.length + ' models, read from the provider a moment ago. '
-                   + usable + ' of them could answer a prompt.', 'ok');
+    say('modelnote', MODELS.length + ' models, ' + usable + ' usable.', 'ok');
     paintModels(true);
   }catch(e){
     MODELS = []; $('modellist').hidden = true;
-    say('modelnote','That provider did not answer with a list — type the name instead.','bad');
+    say('modelnote','No list — type the name.','bad');
   }finally{
     btn.disabled = false;
     btn.textContent = MODELS.length ? MODELS.length + ' found' : 'Fetch';
@@ -773,13 +761,11 @@ $('provrows').addEventListener('click', async e=>{
       await api('/admin/provider/delete', {method:'POST', body: JSON.stringify({id})});
       if(EDITING === id) shutEditor();
       await refresh();
-      say('msg', inUse ? 'Deleted, key and all. Nothing is selected now, so enrichment is off '
-                       + 'and readers fall back to the manual loop.'
+      say('msg', inUse ? 'Deleted. Nothing is selected, so enrichment is off.'
                        : 'Deleted, key and all.', inUse ? 'warn' : 'ok');
     }catch(err){
       say('msg', err.status === 404
-        ? 'This gateway has not been updated yet — deleting a provider needs the new '
-          + 'function deployed. Run: supabase functions deploy enrich'
+        ? 'Needs the new function deployed: supabase functions deploy enrich'
         : 'Could not delete that — '+err.message, 'bad');
     }
   }
@@ -886,13 +872,13 @@ $('save').addEventListener('click', async ()=>{
 $('toggle').addEventListener('click', async ()=>{
   const want = !(STATE && STATE.config.enabled);
   if(want && !(STATE && STATE.config.tested_at)){
-    return say('msg','Send one word through first. Enabling something that has never answered correctly is how every reader finds the fault for you.','warn');
+    return say('msg','Send one word through first.','warn');
   }
   say('msg', want ? 'Enabling…' : 'Disabling…');
   try{
     await api('/admin/config', {method:'POST', body: JSON.stringify({config:{enabled:want}})});
     await refresh();
-    say('msg', want ? 'Enrichment is on.' : 'Enrichment is off. Readers fall back to the manual loop and are told why.', 'ok');
+    say('msg', want ? 'Enrichment is on.' : 'Enrichment is off.', 'ok');
   }catch(e){ say('msg','Could not change that — '+e.message,'bad'); }
 });
 
@@ -917,7 +903,7 @@ async function callDirect({endpoint, adapter, model, prompt, temperature, maxTok
 
   let res;
   try{ res = await fetch(endpoint, {method:'POST', headers, body: JSON.stringify(body)}); }
-  catch(e){ throw new Error('could not reach ' + endpoint + ' — is the server running?'); }
+  catch(e){ throw new Error('could not reach ' + endpoint); }
 
   const raw = await res.text();
   if(!res.ok){
@@ -939,12 +925,11 @@ async function callDirect({endpoint, adapter, model, prompt, temperature, maxTok
 
   const why = j?.stop_reason ?? j?.choices?.[0]?.finish_reason;
   if(why === 'length' || why === 'max_tokens')
-    throw Object.assign(new Error('it ran out of room before finishing — raise Max tokens'),
+    throw Object.assign(new Error('ran out of room — raise Max tokens'),
                         {body:{detail: String(text||'').slice(0,1200)}});
   if(!text){
     const said = (j && (j.error?.message ?? (typeof j.error === 'string' ? j.error : ''))) || '';
-    throw Object.assign(new Error(said ? 'it answered with a complaint rather than words — ' + said
-                                       : 'it answered with no text in it'),
+    throw Object.assign(new Error(said ? 'it complained: ' + said : 'it answered with no text'),
                         {body:{detail: JSON.stringify(j).slice(0,1200)}});
   }
   return {text};
@@ -1033,13 +1018,11 @@ $('test').addEventListener('click', async ()=>{
          takes, which is the whole meaning of tested_at — so it does not set it, and the
          gateway stays unenabled rather than vouching for something never tried. */
       if(r.direct){
-        say('msg','That came back complete, called straight from this page. It does not count '
-                + 'as the gateway being proven: a reader goes through the function, which '
-                + 'cannot reach a model on this machine.','ok');
+        say('msg','Complete — called from this page, so it does not count as tested.','ok');
       }else{
         await api('/admin/config', {method:'POST', body: JSON.stringify({tested:true})});
         await refresh();
-        say('msg','That came back complete. Readers can be offered automatic merging now.','ok');
+        say('msg','Complete. Readers can be offered automatic merging now.','ok');
       }
     }else{
       say('msg','It answered, but without: '+r.miss.join(', ')+'. Read the reply below before enabling.','warn');
@@ -1062,8 +1045,7 @@ $('savetpl').addEventListener('click', async ()=>{
     const r = await runTest();
     await refresh();
     if(r.ok) say('msg','Saved, and it answers completely.'
-                    + (r.direct ? ' Called straight from this page, because the provider in '
-                                + 'use is on this machine.' : ''),'ok');
+                    + (r.direct ? ' Called from this page.' : ''),'ok');
     else say('msg','Saved — but the reply came back without: '+r.miss.join(', ')
                  +'. Edit it and test again.','warn');
   }catch(e){
@@ -1076,7 +1058,7 @@ $('savetpl').addEventListener('click', async ()=>{
 $('devtest').addEventListener('click', async ()=>{
   const endpoint = $('endpoint').value.trim();
   if(!isLocal(endpoint))
-    return say('msg','That endpoint is not local. Direct calls are only for a model on this machine.','bad');
+    return say('msg','That endpoint is not local.','bad');
   say('msg','Calling the local endpoint directly…');
   const out = $('out'); out.hidden=false; out.textContent='…';
 
@@ -1092,7 +1074,7 @@ $('devtest').addEventListener('click', async ()=>{
       maxTokens: Number($('tokens').value) || 4000
     });
     out.textContent = String(r.text).slice(0,2000);
-    say('msg','That is the raw reply. Nothing was saved and no quota was used.','ok');
+    say('msg','Raw reply. Nothing saved, no quota used.','ok');
   }catch(e){
     out.textContent = (e.body && e.body.detail) ? e.body.detail : '';
     say('msg','That did not work — '+e.message,'bad');
