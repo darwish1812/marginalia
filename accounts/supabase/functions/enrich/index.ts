@@ -608,6 +608,76 @@ Deno.serve(async (req) => {
       return json({ ok: true, config: await config() });
     }
 
+    // What does this provider actually serve? A model name means nothing to a provider that
+    // has never heard of it, and typing one from memory is how a model ends up on an endpoint
+    // that cannot answer to it. Every provider carried here keeps a catalogue beside the
+    // endpoint that answers words, so it is asked rather than guessed at.
+    //
+    // The console asks a local provider directly — no credential exists to withhold. It comes
+    // here for everything else, because the key is held here and nowhere else. The reply is a
+    // list of names: no capability is added that /admin/config did not already have, since
+    // saving a provider has always accepted an arbitrary endpoint and key.
+    if (route === '/admin/provider/models' && req.method === 'POST') {
+      const body = await req.json().catch(() => null);
+      const endpoint = String(body?.endpoint ?? '').trim();
+      if (!endpoint) return json({ error: 'bad request' }, 400);
+
+      // A key typed but not yet saved is used as given, so a provider can be checked before
+      // it is committed. Otherwise the stored one, if this row has one.
+      let apiKey = String(body?.api_key ?? '');
+      if (!apiKey && body?.id) {
+        const shared = await db.from('provider_secrets').select('api_key')
+          .eq('provider_id', Number(body.id)).is('user_id', null).maybeSingle();
+        apiKey = shared.data?.api_key ?? '';
+      }
+
+      // The catalogue sits where the verb was: chat / completions / messages are dropped and
+      // `models` put in their place, leaving whatever prefix the provider uses untouched.
+      // Cutting a fixed number of segments gets DeepSeek and LM Studio wrong, and a wrong
+      // guess is not always refused — /v1/chat/models comes back 200 with an empty list.
+      const VERB = /^(chat|completions|messages|responses|generate|invoke)$/i;
+      let url: string;
+      try {
+        const u = new URL(endpoint);
+        const parts = u.pathname.split('/').filter(Boolean);
+        let popped = 0;
+        while (parts.length && VERB.test(parts[parts.length - 1])) { parts.pop(); popped++; }
+        if (!popped) parts.pop();
+        u.pathname = '/' + parts.concat('models').join('/');
+        u.search = '';
+        url = u.toString();
+      } catch (_) {
+        return json({ error: 'bad endpoint' }, 400);
+      }
+
+      const adapter = body?.adapter === 'anthropic' ? 'anthropic' : 'openai';
+      const headers: Record<string, string> = adapter === 'anthropic'
+        ? { ...(apiKey ? { 'x-api-key': apiKey } : {}), 'anthropic-version': '2023-06-01' }
+        : { ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}) };
+
+      let res: Response;
+      try {
+        res = await fetch(url, { headers });
+      } catch (e) {
+        return json({ error: 'unreachable', message: 'That provider could not be reached.' }, 502);
+      }
+      if (!res.ok) {
+        const said = await res.text();
+        let msg = ''; try { msg = JSON.parse(said)?.error?.message ?? ''; } catch (_) {}
+        return json({ error: 'refused', status: res.status, message: msg || 'It would not list its models.' }, 502);
+      }
+
+      const j = await res.json().catch(() => null);
+      // Both shapes answer with `data`; a couple of self-hosted servers use `models`.
+      const raw = Array.isArray(j?.data) ? j.data : Array.isArray(j?.models) ? j.models : [];
+      const models = raw
+        .map((m: any) => (typeof m === 'string' ? m : m?.id ?? m?.name))
+        .filter((x: any) => typeof x === 'string' && x)
+        .slice(0, 500);   // a catalogue, not a payload
+
+      return json({ models });
+    }
+
     // Removing a key without removing the provider. There was no way to do this at all: the
     // only operation on a secret was to overwrite it with a different one.
     if (route === '/admin/provider/forget-key' && req.method === 'POST') {

@@ -118,6 +118,33 @@
           background:rgba(201,146,47,.045)}
   .editor h3{font-size:11px; font-weight:700; letter-spacing:.12em; text-transform:uppercase;
              color:var(--ochre); margin:0 0 14px}
+
+  .modelfield{display:flex; gap:8px; align-items:stretch}
+  .modelfield input{flex:1}
+  .modelfield button{padding:8px 12px}
+  .modelnote{font-size:11.5px; margin-top:6px; display:block; color:var(--dim)}
+  .modelnote.ok{color:var(--verd)} .modelnote.bad{color:var(--ochre)}
+
+  /* The list is drawn rather than left to a datalist, because the whole point is the two
+     groups and the labels — and a datalist can carry neither. */
+  .suggest{position:relative; margin-top:6px; background:var(--night-3);
+           border:1px solid rgba(241,239,233,.28); border-radius:6px; overflow:hidden;
+           max-height:242px; overflow-y:auto}
+  .suggest .r{padding:6px 10px; font:12.5px/1.35 ui-monospace,Menlo,monospace; color:var(--paper);
+              display:flex; align-items:center; gap:10px; cursor:pointer}
+  .suggest .r + .r{border-top:1px solid var(--rule)}
+  .suggest .r:hover, .suggest .r.on{background:#2B3160}
+  .suggest .nm{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .suggest .kind{margin-left:auto; flex:none; font-family:system-ui,sans-serif; font-size:10px;
+                 color:var(--dimmer); text-transform:uppercase; letter-spacing:.06em}
+  .suggest .r.muted .nm{color:var(--dimmer)}
+  .suggest .seam{display:flex; align-items:center; gap:9px; padding:7px 10px 6px;
+                 background:#1B1E44; border-top:1px solid rgba(241,239,233,.22);
+                 border-bottom:1px solid var(--rule)}
+  .suggest .seam span{font-family:system-ui,sans-serif; font-size:10px; letter-spacing:.08em;
+                      text-transform:uppercase; color:var(--dimmer); white-space:nowrap}
+  .suggest .seam i{flex:1; height:1px; background:var(--rule)}
+  .suggest .none{padding:8px 10px; font-size:11.5px; color:var(--dimmer)}
 </style>
 
 <div class="wrap">
@@ -213,8 +240,15 @@ on conflict do nothing;</div>
         </div>
         <div style="margin-top:12px"><label for="endpoint">Endpoint</label><input id="endpoint"></div>
         <div class="grid" style="margin-top:12px">
-          <div><label for="model">Model</label><input id="model"></div>
-          <div><label for="apikey">API key <span id="keyhas"></span></label>
+          <div><label for="model">Model</label>
+            <div class="modelfield">
+              <input id="model" autocomplete="off">
+              <button id="fetchmodels">Fetch</button>
+            </div>
+            <div class="suggest" id="modellist" hidden></div>
+            <span class="modelnote" id="modelnote"></span>
+          </div>
+          <div id="keywrap"><label for="apikey">API key <span id="keyhas"></span></label>
             <input id="apikey" type="password" placeholder="blank keeps the current key"></div>
         </div>
         <div class="row" style="margin-top:14px">
@@ -222,10 +256,9 @@ on conflict do nothing;</div>
           <button id="cancelprov">Cancel</button>
           <button class="danger" id="forgetkey">Forget key</button>
         </div>
-        <p class="note">The key is written once and never read back. This page can only ever
-          show that one is present and its last four characters — the function will not send
-          more, so a stolen session cannot lift it. An endpoint on this machine needs no key
-          at all, because there is nobody to present one to.</p>
+        <p class="note" id="keynote">The key is written once and never read back. This page can
+          only ever show that one is present and its last four characters — the function will
+          not send more, so a stolen session cannot lift it.</p>
 
         <div class="dev" id="dev" hidden>
           <b style="color:var(--ochre); font-size:12px">Local model, this machine only</b>
@@ -531,6 +564,150 @@ function syncDevBox(){
   $('dev').hidden = !(DEV_DIRECT && isLocal($('endpoint').value));
 }
 
+/* ---------- the model list ----------
+   A model name is only meaningful to the provider serving it, and typing one from memory is
+   how claude-sonnet-5 ended up on a local endpoint. Every provider here can be asked what it
+   serves, so it is asked.
+
+   The catalogue is not filtered. Two groups: what could answer a prompt, then everything
+   else, each keeping the provider's own order. A model sorts down only when its id plainly
+   announces itself as something else — anything unrecognised sorts UP, so a family the rule
+   has never heard of is treated as usable rather than buried. A wrong label is visible and
+   one click away; a wrong filter would be neither. */
+let MODELS = [];   /* [{id, kind}] for the provider being edited */
+
+const KINDS = [
+  [/embedding|embed(?![a-z])/i, 'embedding'],
+  [/whisper|transcribe|\btts\b|audio|speech|voice/i, 'audio'],
+  [/realtime/i,                 'realtime'],
+  [/dall-?e|image|vision-gen/i, 'image'],
+  [/moderation|guard/i,         'moderation'],
+  [/rerank/i,                   'rerank'],
+];
+const kindOf = id => (KINDS.find(([re]) => re.test(String(id)))||[])[1] || '';
+
+/* The catalogue sits where the verb was. Every endpoint carried here ends in one — chat,
+   completions, messages — so those are dropped and `models` put in their place, which leaves
+   whatever prefix the provider uses untouched:
+
+     /v1/chat/completions          -> /v1/models
+     /v1/messages                  -> /v1/models
+     /openai/v1/chat/completions   -> /openai/v1/models
+     /chat/completions             -> /models
+
+   Cutting a fixed number of segments instead gets DeepSeek or LM Studio wrong, and a wrong
+   guess is not always refused: /v1/chat/models comes back 200 with an empty list. */
+const VERB = /^(chat|completions|messages|responses|generate|invoke)$/i;
+function modelsUrl(endpoint){
+  const u = new URL(endpoint);
+  const parts = u.pathname.split('/').filter(Boolean);
+  let popped = 0;
+  while(parts.length && VERB.test(parts[parts.length-1])){ parts.pop(); popped++; }
+  if(!popped) parts.pop();          /* an endpoint naming something else: drop just the tail */
+  u.pathname = '/' + parts.concat('models').join('/');
+  u.search = '';
+  return u.toString();
+}
+
+/* `all` is the press of Fetch: the question then is "what is there", not "what matches the
+   name already in the box" — which would narrow the catalogue to the one line you can already
+   see. Typing afterwards filters as usual. */
+function paintModels(all){
+  const box = $('modellist'), typed = all ? '' : $('model').value.trim().toLowerCase();
+  if(!MODELS.length){ box.hidden = true; return; }
+  const hit = MODELS.filter(m => !typed || m.id.toLowerCase().includes(typed));
+  if(!hit.length){
+    box.innerHTML = '<div class="none">Nothing in the list matches. What you have typed is '
+                  + 'still what will be saved.</div>';
+    box.hidden = false; return;
+  }
+  const usable = hit.filter(m => !m.kind), other = hit.filter(m => m.kind);
+  const row = m => '<div class="r'+(m.kind?' muted':'')+'" data-pick="'+esc(m.id)+'">'
+    + '<span class="nm">'+esc(m.id)+'</span>'
+    + (m.kind ? '<span class="kind">'+esc(m.kind)+'</span>' : '') + '</div>';
+  box.innerHTML = usable.map(row).join('')
+    + (other.length ? '<div class="seam"><i></i><span>not chat models</span><i></i></div>' : '')
+    + other.map(row).join('');
+  box.hidden = false;
+}
+
+/* Local providers are asked straight from here — no credential exists to withhold. Remote
+   ones are asked through the function, which is the only thing holding the key. */
+async function loadModels(){
+  const endpoint = $('endpoint').value.trim();
+  const btn = $('fetchmodels');
+  if(!endpoint) return say('modelnote','','');
+  let url; try{ url = modelsUrl(endpoint); }
+  catch(e){ return say('modelnote','That endpoint is not a URL yet.','bad'); }
+
+  btn.disabled = true; btn.textContent = '…';
+  say('modelnote','');
+  try{
+    let ids;
+    if(isLocal(endpoint)){
+      const r = await fetch(url);
+      if(!r.ok) throw new Error('it answered ' + r.status);
+      const j = await r.json();
+      ids = (j.data || j.models || []).map(m => m.id || m.name).filter(Boolean);
+    } else {
+      const body = {endpoint, adapter: $('adapter').value};
+      if(EDITING !== 'new') body.id = EDITING;
+      const k = $('apikey').value.trim(); if(k) body.api_key = k;
+      const j = await api('/admin/provider/models', {method:'POST', body: JSON.stringify(body)});
+      ids = j.models || [];
+    }
+    MODELS = ids.map(id => ({id, kind: kindOf(id)}));
+    if(!MODELS.length) throw new Error('it answered with an empty list');
+    const usable = MODELS.filter(m => !m.kind).length;
+    say('modelnote', MODELS.length + ' models, read from the provider a moment ago. '
+                   + usable + ' of them could answer a prompt.', 'ok');
+    paintModels(true);
+  }catch(e){
+    MODELS = []; $('modellist').hidden = true;
+    say('modelnote','That provider did not answer with a list — type the name instead.','bad');
+  }finally{
+    btn.disabled = false;
+    btn.textContent = MODELS.length ? MODELS.length + ' found' : 'Fetch';
+    syncFetchButton();
+  }
+}
+
+/* A remote provider will not list anything for a caller with no credential, so the button
+   says why rather than offering a press that can only be refused. */
+function syncFetchButton(){
+  const btn = $('fetchmodels'), endpoint = $('endpoint').value.trim();
+  const local = isLocal(endpoint);
+  const hasKey = !!$('apikey').value.trim()
+    || (EDITING !== 'new' && (STATE.keys||[]).some(k => k.provider_id === EDITING));
+  const ok = !!endpoint && (local || hasKey);
+  btn.disabled = !ok;
+  btn.title = ok ? '' : (endpoint ? 'a key is needed before the list can be asked for'
+                                  : 'an endpoint is needed first');
+}
+
+/* A key field on a provider that cannot use one is furniture. It goes, and so does the
+   paragraph explaining a key this row will never hold, and Forget key, which could only ever
+   have been disabled here. All of it returns the moment the endpoint stops being local. */
+function syncKeyField(){
+  const local = isLocal($('endpoint').value);
+  $('keywrap').hidden = local;
+  $('keynote').hidden = local;
+  $('forgetkey').hidden = local;
+}
+
+$('fetchmodels').addEventListener('click', loadModels);
+$('model').addEventListener('input', ()=>paintModels());
+$('model').addEventListener('focus', ()=>paintModels());
+$('modellist').addEventListener('mousedown', e => {
+  const r = e.target.closest('[data-pick]'); if(!r) return;
+  e.preventDefault();
+  $('model').value = r.dataset.pick;
+  $('modellist').hidden = true;
+});
+$('model').addEventListener('blur', ()=> setTimeout(()=>{ $('modellist').hidden = true; }, 120));
+$('model').addEventListener('keydown', e => { if(e.key === 'Escape') $('modellist').hidden = true; });
+$('apikey').addEventListener('input', syncFetchButton);
+
 function openEditor(prov){
   EDITING = prov ? prov.id : 'new';
   $('editortitle').textContent = prov ? 'Editing — ' + (prov.name||'provider') : 'New provider';
@@ -552,6 +729,12 @@ function openEditor(prov){
                                    : (local ? '— none needed' : '— none set');
   $('keyhas').style.color = hasKey ? 'var(--verd)' : (local ? 'var(--dim)' : 'var(--ox)');
   $('forgetkey').disabled = !hasKey;
+  /* the catalogue belongs to the provider being edited, so it does not survive the switch */
+  MODELS = []; $('modellist').hidden = true;
+  $('fetchmodels').textContent = 'Fetch';
+  say('modelnote','');
+  syncKeyField();
+  syncFetchButton();
   syncDevBox();
   $('editor').hidden = false;
   $('endpoint').focus();
@@ -653,6 +836,8 @@ $('preset').addEventListener('change', ()=>{
   }
   syncName();
   syncDevBox();
+  syncKeyField();
+  syncFetchButton();
 });
 
 /* Typing an endpoint is the other way a provider gets identified, so the name and the
@@ -663,6 +848,8 @@ $('endpoint').addEventListener('input', ()=>{
     $('preset').value = 'custom';
   syncName();
   syncDevBox();
+  syncKeyField();
+  syncFetchButton();
 });
 
 

@@ -71,11 +71,18 @@ keep the key already stored, and omit `id` to create a row rather than edit one.
 | `POST /admin/config` | `{"config":{"template":"…"}}` | The prompt. Must contain `{{WORDS}}`. |
 | `POST /admin/provider/delete` | `{"id":3}` | Deletes it, and its key with it. Deleting the one in use clears the choice and switches enrichment off rather than leaving it pointed at nothing. |
 | `POST /admin/provider/forget-key` | `{"id":3}` | Removes a key without removing the provider. |
+| `POST /admin/provider/models` | `{"endpoint":"…","adapter":"openai","id":3}` | Asks the provider what it serves, and answers `{"models":[…]}`. Pass `api_key` to check a provider before saving it; otherwise the stored key is used. The console asks a **local** provider directly and never comes here, because no credential exists to withhold. |
 | `GET /admin/config` | — | Everything back. Keys are never returned; you get presence and a last-four. |
 
 The real template is `supabase/load-templates.sql`. `promptText()` in `index.html` assembles
 the identical string for **Copy prompt**, which is what keeps the manual fallback a true
 diagnostic — do not let the two diverge.
+
+The catalogue address is derived from the endpoint by replacing the verb: `chat`,
+`completions`, `messages` are dropped and `models` put in their place, so
+`/v1/chat/completions`, `/v1/messages`, `/openai/v1/chat/completions` and `/chat/completions`
+all resolve correctly. A provider that keeps its list elsewhere simply reports that it would
+not say, and the model name stays free text — nothing is ever hidden or forced.
 
 **A key is required unless the endpoint is local.** A model on somebody's own machine has
 nobody to present a credential to, so demanding one made a local provider impossible to use.
