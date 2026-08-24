@@ -94,6 +94,18 @@
   .btn:hover{color:var(--paper); border-color:rgba(241,239,233,.4)}
   .btn[aria-pressed="true"],.btn[aria-expanded="true"]{background:var(--paper); color:var(--night); border-color:var(--paper)}
   .btn:focus-visible{outline:2px solid var(--ink-1); outline-offset:2px}
+
+  /* The mark filter is three answers to one question, so it is one control rather than
+     three loose toggles: the borders are shared, and the pressed fill from .btn above
+     already says which answer is live. It stays open in the bar rather than folding into
+     a menu — a filter you cannot see is a booklet that looks like it has lost words. */
+  .seg{display:inline-flex}
+  .seg .btn{border-radius:0}
+  .seg .btn+.btn{margin-left:-1px}          /* one hairline between neighbours, not two */
+  .seg .btn:first-child{border-radius:7px 0 0 7px}
+  .seg .btn:last-child{border-radius:0 7px 7px 0}
+  .seg .btn[aria-pressed="true"]{z-index:1} /* the live one owns both edges it shares */
+
   /* Settings opens a panel rather than toggling a view, so it stops sitting inside the run
      of toggles: a hairline sets it apart, and the gear and caret say it leads somewhere. */
   /* the rule travels with the button so a wrapped bar never leaves it stranded at a line end */
@@ -159,6 +171,8 @@
   .card:hover{transform:translateY(-2px); box-shadow:0 10px 26px rgba(0,0,0,.28)}
   .card.done{background:var(--paper-2)}
   .card.done .word{text-decoration:line-through; text-decoration-color:rgba(34,36,63,.3); text-decoration-thickness:1.5px}
+  /* on its way out from under a filter it no longer answers — see the mark handler */
+  .card.leaving{opacity:0; transform:scale(.97); transition:opacity .16s ease, transform .16s ease}
   .top{display:flex; align-items:flex-start; gap:10px}
   /* parked in the card's bottom padding, where no content reaches */
   .no{
@@ -646,6 +660,11 @@
         <button class="btn" id="study" aria-pressed="false">Study mode</button>
         <button class="btn" id="arabic" aria-pressed="false" lang="ar">العربية</button>
         <button class="btn" id="reset">Reset marks</button>
+        <span class="seg" role="group" aria-label="Show which words">
+          <button class="btn" data-filter="all"  aria-pressed="true">All</button>
+          <button class="btn" data-filter="todo" aria-pressed="false">Not yet</button>
+          <button class="btn" data-filter="done" aria-pressed="false">Learned</button>
+        </span>
         <span class="bar-menu">
         <span class="bar-div" aria-hidden="true"></span>
         <button class="btn menubtn" id="setbtn" aria-haspopup="true" aria-expanded="false" aria-controls="settings">
@@ -1147,12 +1166,54 @@ function paint(){ tally.innerHTML=`<b>${done.size}</b> / ${W.length} learned`; }
    show up on the laptop. */
 function save(w, on){ store.setDone(w, on); }
 function loadProgress(){
-  store.doneList().forEach(w=>{
+  /* The store is the record; the set is what has been ticked since it was last read. On a
+     device that quietly refused to save — private browsing, a full disk — the two disagree,
+     and taking the store's word alone would rub out ticks the tally still counts, and hand
+     the filter below a page it would then get wrong. */
+  new Set([...store.doneList(), ...done]).forEach(w=>{
     const c=document.querySelector(`[data-w="${CSS.escape(w)}"]`);
     if(c){ done.add(w); c.classList.add('done'); c.querySelector('.mark').setAttribute('aria-pressed','true'); }
   });
   paint();
+  /* render() builds every card afresh and knows nothing of the view sitting over them,
+     so a merge would quietly drop the filter. Re-applying here catches all seven of its
+     call sites, since not one of them renders without loading progress after. */
+  applyFilters();
 }
+
+/* ---------- what is on the page ----------
+   The search box and the mark filter ask two questions about the same card, so one
+   function answers both and nothing else writes display. Two handlers, each hiding on
+   its own terms, would undo each other: a keystroke would bring back a card the filter
+   had just taken away. */
+const qBox = document.getElementById('q'), empty = document.getElementById('empty');
+let markFilter = 'all';           // 'all' | 'todo' | 'done'
+function applyFilters(){
+  const t = qBox.value.trim().toLowerCase();
+  let hits = 0;
+  document.querySelectorAll('.card').forEach(c=>{
+    const isDone = c.classList.contains('done');
+    const show = (!t || c.dataset.s.includes(t))
+              && (markFilter==='all' || (markFilter==='done')===isDone);
+    c.style.display = show?'':'none'; if(show) hits++;
+  });
+  document.querySelectorAll('.sec').forEach(s=>{
+    s.style.display = [...s.querySelectorAll('.card')].some(c=>c.style.display!=='none') ? '' : 'none';
+  });
+  /* an empty page owes you the right reason: "try a shorter word" is a poor answer to
+     having learned everything in front of you */
+  empty.textContent = t                   ? 'No entry matches that. Try a shorter word.'
+                    : markFilter==='todo' ? 'Every word is marked learned.'
+                    :                       'Nothing is marked learned yet.';
+  empty.style.display = hits?'none':'block';
+}
+qBox.addEventListener('input', applyFilters);
+document.querySelector('.seg').addEventListener('click',e=>{
+  const b = e.target.closest('[data-filter]'); if(!b) return;
+  markFilter = b.dataset.filter;
+  document.querySelectorAll('.seg .btn').forEach(x=>x.setAttribute('aria-pressed', String(x===b)));
+  applyFilters();
+});
 
 book.addEventListener('click',e=>{
   const s = e.target.closest('[data-say]');
@@ -1200,7 +1261,15 @@ book.addEventListener('click',e=>{
     const card=m.closest('.card'), id=card.dataset.w;
     if(done.has(id)){ done.delete(id); card.classList.remove('done'); m.setAttribute('aria-pressed','false'); }
     else{ done.add(id); card.classList.add('done'); m.setAttribute('aria-pressed','true'); }
-    paint(); save(id, done.has(id)); return;
+    paint(); save(id, done.has(id));
+    /* Under a filter the pile drains as you tick, which is the whole use of it. The card
+       fades on its way out: taken off the page in the same frame, the next one springs up
+       under a finger that is still coming down, and catches the tap. */
+    if(markFilter!=='all' && (markFilter==='done')!==done.has(id)){
+      card.classList.add('leaving');
+      setTimeout(()=>{ card.classList.remove('leaving'); applyFilters(); }, 160);
+    }
+    return;
   }
   if(document.body.classList.contains('study')){
     const c=e.target.closest('.card'); if(c) c.classList.toggle('open');
@@ -1395,6 +1464,8 @@ document.getElementById('reset').addEventListener('click',()=>{
   done.clear();
   document.querySelectorAll('.card').forEach(c=>{ c.classList.remove('done'); c.querySelector('.mark').setAttribute('aria-pressed','false'); });
   paint(); store.clearDone();
+  /* every card just changed sides at once; under a filter the page is now wrong */
+  applyFilters();
 });
 
 /* ---------- data loading ---------- */
@@ -3444,18 +3515,5 @@ document.getElementById('dlprog').addEventListener('click',()=>{
   download('progress.json', JSON.stringify([...done],null,1));
 });
 
-/* search */
-const empty=document.getElementById('empty');
-document.getElementById('q').addEventListener('input',e=>{
-  const q=e.target.value.trim().toLowerCase();
-  let hits=0;
-  document.querySelectorAll('.card').forEach(c=>{
-    const show = !q || c.dataset.s.includes(q);
-    c.style.display = show?'':'none'; if(show) hits++;
-  });
-  document.querySelectorAll('.sec').forEach(s=>{
-    s.style.display = [...s.querySelectorAll('.card')].some(c=>c.style.display!=='none') ? '' : 'none';
-  });
-  empty.style.display = hits?'none':'block';
-});
+/* search lives with the mark filter, up beside the progress it reads — see applyFilters */
 </script>

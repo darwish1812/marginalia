@@ -277,11 +277,21 @@ Cards are built as HTML strings and
 everything model-authored goes through `esc()` first — including before the `*asterisk*`
 transform, never after, because a signed-in session token lives in this browser and an
 unescaped card is how someone would take it. Each card also carries a flattened
-`data-s` string, which is the entire search index: search sets `display` on cards and then
-hides sections with no visible card left.
+`data-s` string, which is the entire search index.
 
-`loadProgress()` reads `store.doneList()` and re-applies the ✓ marks to the freshly built
-DOM, which is why it always runs immediately after `render()`.
+`applyFilters()` is the only thing that sets `display` on a card. The search box and the
+mark filter — All / Not yet / Learned, three segments in the bar — are two questions about
+the same card, and one function answers both before hiding any section with no visible card
+left. Two handlers hiding on their own terms would undo each other: a keystroke would bring
+back a card the filter had just taken away. Ticking a card that the current filter no longer
+wants fades it out over 160ms rather than dropping it on the frame, so the next card does
+not spring up under a finger still coming down.
+
+`loadProgress()` re-applies the ✓ marks to the freshly built DOM and then re-applies the
+filter over it, which is why it always runs immediately after `render()` — a merge would
+otherwise leave the filter showing a page it no longer describes. It marks the union of
+`store.doneList()` and the in-memory `done` set: on a device that quietly refused to save,
+the store's word alone would rub out ticks the tally still counts.
 
 ### 3.7 Auth gate
 
@@ -389,6 +399,7 @@ changes, and a banner comment is not. Search for the name.
 | **accounts** | The two Supabase constants, the `ACCOUNTS` flag, `FN_BASE`, the client, and the globals `FIELDS`, `W`, `SEED`, `CORRECTIONS`. |
 | **speech** | Voice discovery and filtering, the remembered choice, rate, and `speak()`. Degrades to nothing where `speechSynthesis` is absent. |
 | **render** | `esc()`, `posTags()`, `render()`, the swatch strip. Rebuilds the whole book from `W`. |
+| **what is on the page** | `applyFilters()`, `markFilter`, and the `.seg` control. The single owner of card `display`: search text and the ✓ filter, answered together. |
 | **the card menu** | The `⋯` overflow menu, filing and unfiling, the in-card removal confirm, and the delegated click handler covering speak / Arabic / ✓ / study-mode reveal. |
 | **data loading** | `norm`, `stem`, the ink palette, the `localStorage` accessors, `apply()` and `boot()`. |
 | **the storage seam** | `localStore` — the device-only half, including the overrides and tombstones that let a committed file be edited around. |
