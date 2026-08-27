@@ -174,13 +174,21 @@
   /* on its way out from under a filter it no longer answers — see the mark handler */
   .card.leaving{opacity:0; transform:scale(.97); transition:opacity .16s ease, transform .16s ease}
   .top{display:flex; align-items:flex-start; gap:10px}
+  /* A flex child will not shrink below its own content unless it is told it may, and
+     `anthropomorphism` on a phone is wider than the column it has. Without this the word
+     held its width and pushed the round buttons off the right edge, where overflow:hidden
+     cut them away — taking the ⋯ menu with them, so those cards could not be filed or
+     removed at all. */
+  .top > div:first-child{min-width:0}
+  .top .acts{flex:none}
   /* parked in the card's bottom padding, where no content reaches */
   .no{
     position:absolute; right:19px; bottom:6px;
     font-family:"Archivo",sans-serif; font-size:10px; font-weight:700; letter-spacing:.06em;
     color:var(--c); opacity:.65;
   }
-  .word{font-family:"Fraunces",Georgia,serif; font-weight:600; font-size:23px; letter-spacing:-.015em; line-height:1.15; margin:0}
+  /* and once it may shrink, a long word has to be allowed to break rather than overflow */
+  .word{font-family:"Fraunces",Georgia,serif; font-weight:600; font-size:23px; letter-spacing:-.015em; line-height:1.15; margin:0; overflow-wrap:anywhere}
   .pos{display:flex; flex-wrap:wrap; gap:5px; margin-top:7px}
   .pos:empty{display:none}
   .tag{
