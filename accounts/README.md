@@ -165,6 +165,10 @@ standing. It asks you to type the word `empty`, because it cannot be undone.
 - **Everything you own follows you.** Words, corrections and the ✓ marks all live on your
   account, so a word ticked on the iPad is ticked on the laptop. Preferences — pictures,
   voice, speed — stay per-device on purpose: the iPad and the laptop want different voices.
+- **Opening it** shows the wordmark while the booklet is fetched and your session is
+  checked. It goes as soon as there is something to read, and it is there because that wait
+  is real — a free Supabase project waking from a pause takes a few seconds, and a blank
+  blue screen for that long reads as a broken app.
 - **Offline** the booklet still opens: the last load is mirrored into the browser, so you can
   read, search, print and take the Arabic on a train with no signal. Saving needs a
   connection, and says so plainly rather than pretending.

@@ -761,12 +761,32 @@
     .fc-deck{width:min(620px,100%)}
   }
 
+  /* ---------- the splash ----------
+     Not decoration: #app is hidden until boot() has fetched words.json, asked who is
+     signed in and loaded their rows, and on a free Supabase project waking from a pause
+     that is several seconds of an empty blue screen. This covers exactly that wait and
+     leaves the moment there is anything to show. */
+  .splash{
+    position:fixed; inset:0; z-index:90; background:var(--night);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:26px;
+    transition:opacity .28s ease;
+  }
+  .splash.gone{opacity:0; pointer-events:none}
+  .splash h1{
+    font-family:"Fraunces",Georgia,serif; font-weight:600; font-size:clamp(38px,9vw,62px);
+    color:var(--paper); margin:0; letter-spacing:-.02em; line-height:1;
+  }
+  .splash h1 em{font-style:italic; color:var(--ink-1)}
+  .splash .inks{display:flex; gap:7px; width:min(280px,54vw)}
+  .splash .inks span{height:7px; flex:1; border-radius:99px}
+
   /* ---------- print: a real booklet ---------- */
   @media print{
     @page{margin:14mm}
     body{background:#fff; color:#000; font-size:10.5pt}
     /* pictures are screen-only: they break the two-column pagination and drink ink */
-    .bar-wrap,.panel,.gate,.mark,.say,.arbtn,.say-ex,.hint,.pic,.swatch .num,footer{display:none!important}
+    .bar-wrap,.panel,.gate,.mark,.say,.arbtn,.say-ex,.hint,.pic,.swatch .num,footer,
+    .splash{display:none!important}
     body.study .body{display:block!important}
     .cover{padding:0 0 18pt; border-color:#999}
     .cover h1{font-size:40pt; color:#000}
@@ -789,6 +809,46 @@
     .card.ar-on .ar{display:block}
   }
 </style>
+
+<!-- Painted before a line of script runs, and taken away by the observer below the
+     moment the book, the gate, the first-run picker or a load error is on the page. -->
+<div class="splash" id="splash" aria-hidden="true">
+  <h1>Margin<em>alia</em></h1>
+  <div class="inks">
+    <span style="background:var(--ink-1)"></span><span style="background:var(--ink-2)"></span>
+    <span style="background:var(--ink-3)"></span><span style="background:var(--ink-4)"></span>
+    <span style="background:var(--ink-5)"></span><span style="background:var(--ink-6)"></span>
+    <span style="background:var(--ink-7)"></span><span style="background:var(--ink-8)"></span>
+  </div>
+</div>
+
+<script>
+/* Watching for the result rather than being told about it. boot() reaches the book by
+   several routes — signed in, signed out, never stocked, load failed — and a splash that
+   one of them forgets to dismiss is worse than no splash at all. */
+(function(){
+  const splash = document.getElementById('splash');
+  if(!splash) return;
+  const shown = id => { const e = document.getElementById(id); return e && !e.hidden; };
+  const ready = () => shown('gate') || shown('firstrun')
+              || document.querySelector('#book .card')
+              || (document.getElementById('loaderr') || {}).textContent;
+  let done = false;
+  const clear = () => {
+    if(done || !ready()) return false;
+    done = true;
+    splash.classList.add('gone');
+    setTimeout(()=>splash.remove(), 320);
+    return true;
+  };
+  if(clear()) return;
+  const obs = new MutationObserver(()=>{ if(clear()) obs.disconnect(); });
+  obs.observe(document.body, {subtree:true, childList:true, attributes:true, attributeFilter:['hidden']});
+  /* and a hard stop, because a reader left looking at a wordmark has no way out of it */
+  setTimeout(()=>{ clear() || (done = true, splash.classList.add('gone'),
+                               setTimeout(()=>splash.remove(), 320)); obs.disconnect(); }, 8000);
+})();
+</script>
 
 <div class="wrap">
 
