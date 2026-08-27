@@ -186,6 +186,10 @@ standing. It asks you to type the word `empty`, because it cannot be undone.
   laptop. Rare words are occasionally mispronounced — verify anything that sounds odd.
 - **Printing** (Ctrl/Cmd+P) reflows into a two-column paper booklet, one field per page.
   Whatever language mode is on prints with it.
+- **On a phone the toolbar folds.** Below 720px the search box and the All / Not yet /
+  Learned filter stay out; Study mode, Flash cards, العربية, Reset marks, Settings and the
+  tally go behind a `⋯` beside the filter. Nothing is lost, and the bar stops taking a third
+  of the screen with it.
 - **Sign-in is per browser.** Signing in on the iPad and on the laptop is two sign-ins, and
   signing out of one leaves the other alone.
 

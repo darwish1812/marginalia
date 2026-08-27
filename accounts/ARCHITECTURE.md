@@ -492,6 +492,10 @@ code is worth knowing —
    confirm it is ticked there too.
 4. Go offline, reload, confirm the booklet still opens and says it is showing a cached copy.
 5. `Ctrl/Cmd+P` and confirm the print booklet reflows.
+6. Tick two fields in the flash-card picker, confirm the start button's total is their sum,
+   and run the deck to the end.
+7. Narrow the window under 720px: the bar should fall to two rows with a `⋯`, and everything
+   behind it should still work. Widen it again and the bar should be one row, unchanged.
 
 ### Deploy
 
@@ -537,7 +541,8 @@ changes, and a banner comment is not. Search for the name.
 | **what is on the page** | `applyFilters()`, `markFilter`, and the `.seg` control. The single owner of card `display`: search text and the ✓ filter, answered together. |
 | **flash cards** | `fcOpen()`, `fcPool()`, `fcDraw()`, `fcNext()`. `fcSel` holds the ticked fields; `fcPool()` takes a set of them. A deck built on start and dropped on close; it marks through `setLearned()`, never its own store. |
 | **holding the scroll still** | `keepStill()` and `topCard()`. Any toggle that changes a card's height goes through it. |
-| **the card menu** | The `⋯` overflow menu, filing and unfiling, the in-card removal confirm, and the delegated click handler covering speak / Arabic / ✓ / study-mode reveal. |
+| **the card menu** | The `⋯` on a card — not the one in the bar, below. Filing and unfiling, the in-card removal confirm, and the delegated click handler covering speak / Arabic / ✓ / study-mode reveal. |
+| **the bar on a phone** | `openMore()`, `.bar-extra`, `.morebtn`. The `⋯` in the toolbar, which exists only under 720px. Moves nothing: the controls are the same elements the wide bar shows in a row. |
 | **data loading** | `norm`, `stem`, the ink palette, the `localStorage` accessors, `apply()` and `boot()`. |
 | **the storage seam** | `localStore` — the device-only half, including the overrides and tombstones that let a committed file be edited around. |
 | **the same seam, against an account** | `cloudStore` — `rowToWord`/`wordToRow`, the Supabase half, and the offline row mirror. |
