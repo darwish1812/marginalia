@@ -734,7 +734,8 @@
     text-transform:uppercase; padding:14px 26px; border-radius:10px; cursor:pointer;
     border:1px solid var(--rule); background:transparent; color:var(--paper); flex:1;
   }
-  .fc-again:hover{border-color:var(--paper)}
+  .fc-again[disabled],.fc-know[disabled]{opacity:.32; cursor:default}
+  .fc-again:not([disabled]):hover{border-color:var(--paper)}
   .fc-know{background:var(--ink-7); border-color:var(--ink-7); color:var(--night)}
   .fc-hint{font-family:"Archivo",sans-serif; font-size:10.5px; letter-spacing:.12em;
            text-transform:uppercase; color:var(--dim); flex:none; text-align:center}
@@ -1834,10 +1835,10 @@ function fcDraw(){
          <i style="height:28px"></i><i style="height:15px"></i><i style="height:24px"></i>
          <i style="height:10px"></i><i style="height:18px"></i></div>
        <p class="fc-blank">· · · · ·</p>
-       <p class="fc-tap" id="fc-tap">Tap the circle to hear it · tap the card to turn it over</p>`
+       <p class="fc-tap" id="fc-tap">${fcTapText()}</p>`
     : `<h2 class="fc-w">${esc(x.w)}</h2>
        <div class="fc-pos">${posTags(x.p)}</div>
-       <p class="fc-tap" id="fc-tap">Tap to turn over</p>`;
+       <p class="fc-tap" id="fc-tap">${fcTapText()}</p>`;
 
   const ex = esc(x.e || '').replace(/\*(.+?)\*/g, '<span class="t">$1</span>');
   fcBody.innerHTML =
@@ -1857,10 +1858,10 @@ function fcDraw(){
        </article>
      </div>
      <div class="fc-acts">
-       <button class="fc-again" id="fc-a">Again</button>
-       <button class="fc-know" id="fc-k">I know it</button>
+       <button class="fc-again" id="fc-a" disabled>Again</button>
+       <button class="fc-know" id="fc-k" disabled>I know it</button>
      </div>
-     <p class="fc-hint">${fcHint()}</p>
+     <p class="fc-hint"></p>
      <p class="fc-keys">← Again · Space ${fcFront==='ear'?'replays':'turns it over'} · I know it →</p>`;
 
   const card = document.getElementById('fc-card');
@@ -1883,12 +1884,15 @@ function fcDraw(){
    these controls only ever replay. */
 /* A mouse does not tap and does not swipe. The words follow the pointer the reader
    actually has, and on a fine pointer the keys line below carries the rest. */
-function fcHint(){
-  const touch = matchMedia('(pointer: coarse)').matches;
-  if(fcFront === 'ear') return touch ? 'Turn it over, then swipe to answer'
-                                     : 'Turn it over, then answer';
-  return touch ? 'Tap to turn over · swipe to answer'
-               : 'Click to turn it over';
+/* A mouse does not tap and does not swipe, so the words follow the pointer the reader
+   actually has. The card carries the instruction because it is the thing being acted on;
+   this line stays empty until there is something new to say. */
+const fcTouch = () => matchMedia('(pointer: coarse)').matches;
+function fcTapText(){
+  const press = fcTouch() ? 'Tap' : 'Click';
+  return fcFront === 'ear'
+    ? press + ' the circle to hear it · ' + press.toLowerCase() + ' the card to turn it over'
+    : press + ' to turn it over';
 }
 
 function fcSpeak(btn){
@@ -1910,8 +1914,12 @@ function fcReveal(){
   const tap = document.getElementById('fc-tap');
   if(tap) tap.remove();
   /* and the hint below it was still telling you to turn a card you have just turned */
+  /* The answer buttons were live on a face-down card and did not answer it — a press on
+     "I know it" quietly turned the card instead. A control that does something other than
+     its label is worse than a control that waits its turn, so they arrive with the answer. */
+  ['fc-a','fc-k'].forEach(id=>{ const b=document.getElementById(id); if(b) b.disabled = false; });
   const hint = document.querySelector('.fc-hint');
-  if(hint) hint.textContent = 'Swipe to answer';
+  if(hint) hint.textContent = matchMedia('(pointer: coarse)').matches ? 'Swipe to answer' : '';
 
   /* The listening face has done its job. Leaving a 150px circle, a waveform and a row of
      dots standing for a word that is now printed below made the card top-heavy and kept it

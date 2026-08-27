@@ -363,8 +363,17 @@ skips the throw and answers immediately.
 
 Dragging works with a mouse as well as a finger and is left enabled at every width — there
 is no page scroll inside a fixed overlay for it to fight, and it costs nothing to leave on.
-What does change with the pointer is the wording: `fcHint()` says *tap* and *swipe* only on
-a coarse pointer, and on a fine one leaves the arrow keys to the line beneath.
+What does change with the pointer is the wording: `fcTapText()` says *tap* on a coarse
+pointer and *click* on a fine one, and it lives on the card because the card is the thing
+being acted on. The line under the buttons stays empty until there is something new to say.
+
+The answer buttons arrive **disabled** and are handed over by `fcReveal()`. Two presses to
+answer a card you already knew is not an accident and not friction to be removed — it is
+the method, and Anki works the same way: a deck you can tick without looking stops meaning
+anything, because a word you half-remembered gets written into the book as learned and the
+*Not yet* filter stops showing you the one word you needed. What was wrong was that the
+buttons looked live on a face-down card and, when pressed, quietly turned it instead. A
+control that does something other than its label is worse than one that waits its turn.
 
 The answer controls move with the grip, not the width alone: a row across the bottom on a
 phone, the two bottom corners on a tablet where the thumbs already are, and a centred pair
