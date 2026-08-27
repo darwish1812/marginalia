@@ -650,6 +650,15 @@
   .fc-body{flex:1; display:flex; flex-direction:column; align-items:center;
            justify-content:center; gap:18px; min-height:0; position:relative}
 
+  /* The picker can be taller than a phone: eight fields, the two fronts and a start button.
+     Plain "center" splits the overrun between both ends, so the heading climbs out through
+     the top — where no amount of scrolling can bring it back — and the start button falls
+     off the bottom unreachable. "safe" centres it only while it fits and aligns to the top
+     once it does not, which is what makes the scrollbar worth having. The first declaration
+     is the fallback for anything that does not know the keyword. The card screen is left
+     alone: a word you are being tested on must not be able to scroll away. */
+  .fc-body:not(.answering){overflow-y:auto; justify-content:center; justify-content:safe center}
+
   /* --- the picker --- */
   .fc-h{font-family:"Fraunces",Georgia,serif; font-size:30px; margin:0; text-align:center; color:var(--paper)}
   .fc-sub{font-size:14px; color:var(--dim); margin:-10px 0 0; text-align:center; max-width:44ch}
@@ -657,18 +666,58 @@
     font-family:"Archivo",sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em;
     text-transform:uppercase; color:var(--dim); margin:6px 0 -8px; text-align:center;
   }
-  .fc-fields{display:flex; flex-wrap:wrap; gap:10px; justify-content:center; max-width:760px}
-  .fc-f{
-    font-family:"Archivo",sans-serif; font-size:12px; font-weight:600; letter-spacing:.08em;
-    text-transform:uppercase; background:transparent; color:var(--paper);
-    border:1px solid var(--rule); border-left:4px solid var(--c,var(--ink-1));
-    padding:12px 16px; border-radius:7px; cursor:pointer; display:flex; align-items:center; gap:10px;
+  /* One rectangle, whatever the field count. The label, the grid and the start button share
+     an edge, so the block has a shape instead of drifting. */
+  .fc-frame{width:min(620px,100%)}
+  .fc-head{
+    display:flex; align-items:baseline; justify-content:space-between; gap:14px;
+    padding:0 2px 9px; border-bottom:1px solid var(--rule); margin-bottom:12px;
   }
-  .fc-f:hover{border-color:var(--c,var(--ink-1))}
-  .fc-f b{color:var(--c,var(--ink-1)); font-variant-numeric:tabular-nums}
-  .fc-f[disabled]{opacity:.35; cursor:not-allowed}
-  .fc-skip{display:flex; align-items:center; gap:9px; color:var(--dim); font-size:13.5px; cursor:pointer}
-  .fc-skip input{width:15px; height:15px; accent-color:var(--ink-1)}
+  .fc-bulk{display:flex; gap:14px}
+  .fc-bulk button{
+    background:none; border:0; padding:0; cursor:pointer; font-family:"Archivo",sans-serif;
+    font-size:11px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--dim);
+  }
+  .fc-bulk button:hover{color:var(--paper)}
+
+  /* A grid rather than wrapped flex: centred flex rows each centre themselves, so eight tiles
+     of different widths line up with nothing. minmax(0,1fr) and not 1fr — the default
+     min-width:auto lets a long field name widen its column and brings the ragged edge back. */
+  .fc-fields{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px}
+  .fc-f{
+    font-family:"Archivo",sans-serif; font-size:12px; font-weight:600; letter-spacing:.07em;
+    text-transform:uppercase; background:transparent; color:var(--paper);
+    border:1px solid var(--rule); padding:13px 15px; border-radius:8px; cursor:pointer;
+    display:flex; align-items:center; gap:11px;
+  }
+  /* the field's ink rides on the checkbox. A left stripe put it at a different x on every
+     row, which was most of what made this screen feel unsettled. */
+  .fc-f input{width:16px; height:16px; margin:0; flex:none; cursor:pointer; accent-color:var(--c,var(--ink-1))}
+  .fc-f:hover{border-color:rgba(241,239,233,.4)}
+  .fc-f b{margin-left:auto; color:var(--c,var(--ink-1)); font-variant-numeric:tabular-nums}
+  .fc-f.on{background:var(--night-2); border-color:var(--c,var(--ink-1))}
+  .fc-f.off{opacity:.3; cursor:not-allowed}
+
+  .fc-foot{
+    display:flex; align-items:center; gap:16px; margin-top:18px;
+    padding-top:16px; border-top:1px solid var(--rule);
+  }
+  .fc-skip{display:flex; align-items:center; gap:9px; color:var(--dim); font-size:13px;
+           cursor:pointer; line-height:1.35}
+  .fc-skip input{width:15px; height:15px; accent-color:var(--ink-1); flex:none}
+  .fc-go{
+    margin-left:auto; flex:none; font-family:"Archivo",sans-serif; font-size:12.5px;
+    font-weight:600; letter-spacing:.1em; text-transform:uppercase; padding:15px 30px;
+    border-radius:10px; cursor:pointer; border:1px solid var(--ink-7);
+    background:var(--ink-7); color:var(--night);
+  }
+  .fc-go[disabled]{opacity:.32; cursor:default; background:transparent;
+                   color:var(--paper); border-color:var(--rule)}
+  @media(max-width:560px){
+    .fc-fields{grid-template-columns:minmax(0,1fr)}
+    .fc-foot{flex-wrap:wrap}
+    .fc-go{width:100%; margin-left:0}
+  }
 
   /* --- the deck --- */
   /* depth for the flip. Without a perspective the rotation is an affine squash and the
@@ -1736,7 +1785,7 @@ sBtn.addEventListener('click',()=>{
 });
 
 /* ---------- flash cards ----------
-   One field at a time, shuffled, one word on the screen. "I know it" writes the same ✓ the
+   As many fields as you tick, shuffled together, one word on the screen. "I know it" writes the same ✓ the
    card in the book carries — same store, same tally, same Not yet filter — so the two can
    never drift apart. "Again" sends the word to the back of the pile rather than pretending
    you had it. The deck is built on open and dropped on close: it is a view of the words,
@@ -1749,6 +1798,9 @@ const fcEl   = document.getElementById('fc'),    fcBody  = document.getElementBy
       fcCount= document.getElementById('fc-count'), fcBar = document.getElementById('fc-bar');
 let fcDeck = [], fcAt = 0, fcTurned = false, fcMissed = 0, fcKnown = 0,
     fcSkip = true, fcInk = 'var(--ink-1)', fcFront = 'word';
+/* Which fields are ticked. Kept out here rather than read off the checkboxes, so that a
+   finished round can come back to the picker with the same ones still ticked. -1 is unfiled. */
+let fcSel = new Set();
 
 /* the one place a ✓ moves, so the book, the tally and the filter cannot disagree */
 function setLearned(w, on){
@@ -1767,54 +1819,92 @@ const fcShuffle = a=>{ for(let i=a.length-1;i>0;i--){ const j=Math.random()*(i+1
 
 /* what a field can actually test: enriched words, minus the ones already ticked unless
    you ask for them. A bare capture has no meaning to hide, so it is never in the deck. */
-function fcPool(id){
+/* Everything the book cannot place — no field, or a field that has since been deleted — falls
+   into the one bucket the picker calls Unfiled, so no enriched word is unreachable. */
+function fcPool(sel){
   const known = new Set(FIELDS.map(f=>f.id));
-  const inField = id==='all' ? (x=>!!x.d)
-                : id===-1    ? (x=>x.d && (x.f==null || !known.has(x.f)))
-                :              (x=>x.d && x.f===id);
-  return W.filter(x=>inField(x) && !(fcSkip && done.has(x.w)));
+  const key = x => (x.f == null || !known.has(x.f)) ? -1 : x.f;
+  return W.filter(x => x.d && sel.has(key(x)) && !(fcSkip && done.has(x.w)));
 }
+const fcOne = id => fcPool(new Set([id]));         /* one field's count, for the picker */
 
 /* A voice is not a given: iOS lets them be deleted, and a Linux browser may ship none.
    Without one, "by ear" is a test with nothing to hear, so it is not offered at all. */
 const fcCanHear = ()=> TTS && enVoices().length > 0;
 
+/* the fields on offer, each with what it could actually test right now */
+function fcRows(){
+  const known = new Set(FIELDS.map(f=>f.id));
+  const rows = FIELDS.map(f=>({id:f.id, name:f.name, ink:f.ink}));
+  if(W.some(x=>x.d && (x.f==null || !known.has(x.f))))
+    rows.push({id:-1, name:'Unfiled', ink:'var(--ink-0)'});
+  return rows.map(r=>Object.assign(r, {n: fcPool(new Set([r.id])).length}));
+}
+
+/* The start button carries the sum, so the tick and its consequence are never a screen apart.
+   Called on every toggle instead of re-rendering: a field's own count depends only on the
+   skip setting, so nothing else on this screen can have changed. */
+function fcTotal(){
+  const go = document.getElementById('fc-go');
+  if(!go) return;
+  const n = fcPool(fcSel).length;
+  go.textContent = n ? `Start · ${n} word${n===1?'':'s'}` : 'Start';
+  go.disabled = !n;
+}
+
 function fcPickScreen(){
   fcCount.textContent = ''; fcBar.style.width = '0';
   fcEl.style.removeProperty('--c');
   fcBody.classList.remove('answering');
-  const known = new Set(FIELDS.map(f=>f.id));
-  const rows = [{id:'all', name:'Every field', ink:'var(--ink-1)'}]
-    .concat(FIELDS.map(f=>({id:f.id, name:f.name, ink:f.ink})));
-  if(W.some(x=>x.d && (x.f==null || !known.has(x.f))))
-    rows.push({id:-1, name:'Unfiled', ink:'var(--ink-0)'});
+  const rows = fcRows();
+  /* a field emptied by the skip setting cannot be tested, so it cannot stay ticked */
+  const live = new Set(rows.filter(r=>r.n).map(r=>r.id));
+  fcSel.forEach(id=>{ if(!live.has(id)) fcSel.delete(id); });
   if(!fcCanHear()) fcFront = 'word';
 
   fcBody.innerHTML =
     `<p class="fc-h">What shall I test you on?</p>
-     <p class="fc-sub">One field at a time, shuffled. Turn each card over, then say whether you had it.</p>
+     <p class="fc-sub">Shuffled together. Turn each card over, then say whether you had it.</p>
      ${fcCanHear() ? `<p class="fc-ask">Ask me with</p>
      <span class="seg" role="group" aria-label="How to ask">
        <button class="btn" data-front="word" aria-pressed="${fcFront==='word'}">The word</button>
        <button class="btn" data-front="ear"  aria-pressed="${fcFront==='ear'}">By ear</button>
      </span>` : ''}
-     <p class="fc-ask">Which words</p>
-     <div class="fc-fields">${rows.map(r=>{
-        const n = fcPool(r.id).length;
-        return `<button class="fc-f" data-id="${r.id}" data-ink="${esc(r.ink)}"
-                        style="--c:${esc(r.ink)}"${n?'':' disabled'}>${esc(r.name)} <b>${n}</b></button>`;
-      }).join('')}</div>
-     <label class="fc-skip"><input type="checkbox" id="fc-skip"${fcSkip?' checked':''}>
-       Leave out the words I have already ticked</label>`;
+     <div class="fc-frame">
+       <div class="fc-head">
+         <span class="fc-ask" style="margin:0">Which words</span>
+         <span class="fc-bulk">
+           <button type="button" id="fc-all">All</button>
+           <button type="button" id="fc-none">None</button>
+         </span>
+       </div>
+       <div class="fc-fields">${rows.map(r=>{
+          const on = fcSel.has(r.id);
+          return `<label class="fc-f${r.n ? (on?' on':'') : ' off'}" style="--c:${esc(r.ink)}">
+                    <input type="checkbox" data-id="${r.id}"${on?' checked':''}${r.n?'':' disabled'}>
+                    ${esc(r.name)} <b>${r.n}</b>
+                  </label>`;
+        }).join('')}</div>
+       <div class="fc-foot">
+         <label class="fc-skip"><input type="checkbox" id="fc-skip"${fcSkip?' checked':''}>
+           Leave out the words I have already ticked</label>
+         <button class="fc-go" id="fc-go" disabled>Start</button>
+       </div>
+     </div>`;
   document.getElementById('fc-skip').addEventListener('change', e=>{
     fcSkip = e.target.checked; fcPickScreen();
   });
+  fcTotal();
 }
 
-function fcStart(id, ink){
-  fcInk = ink || 'var(--ink-1)';
+/* Ticking is not starting any more, so the deck is built from whatever is ticked when the
+   button is pressed. One field keeps its own ink; a mixed deck belongs to no field, and
+   takes the house ochre rather than borrowing a colour that would be a lie. */
+function fcStart(){
+  const only = fcSel.size === 1 ? fcRows().find(r=>fcSel.has(r.id)) : null;
+  fcInk = only ? only.ink : 'var(--ink-1)';
   fcEl.style.setProperty('--c', fcInk);
-  fcDeck = fcShuffle(fcPool(id === 'all' ? 'all' : +id).slice());
+  fcDeck = fcShuffle(fcPool(fcSel).slice());
   fcAt = 0; fcMissed = 0; fcKnown = 0;
   fcDeck.length ? fcDraw() : fcPickScreen();
 }
@@ -2053,10 +2143,11 @@ function fcDone(){
   fcCount.textContent = ''; fcBar.style.width = '100%';
   fcBody.classList.remove('answering');
   fcBody.innerHTML =
-    `<p class="fc-h">${fcKnown ? 'That is the field.' : 'Nothing ticked this time.'}</p>
+    `<p class="fc-h">${fcKnown ? (fcSel.size > 1 ? 'That is the lot.' : 'That is the field.')
+                               : 'Nothing ticked this time.'}</p>
      <p class="fc-sub">${fcKnown} marked learned${fcMissed ? `, ${fcMissed} to come back to` : ''}.</p>
      <div class="fc-acts">
-       <button class="fc-again" id="fc-more">Test another field</button>
+       <button class="fc-again" id="fc-more">Test more words</button>
        <button class="fc-know" id="fc-close2">Back to the book</button>
      </div>`;
   document.getElementById('fc-more').addEventListener('click', fcPickScreen);
@@ -2077,9 +2168,28 @@ function fcClose(){
 
 document.getElementById('flash').addEventListener('click', fcOpen);
 document.getElementById('fc-x').addEventListener('click', fcClose);
+/* The field rows are real checkboxes inside their labels, so ticking is the browser's job and
+   only the total is ours. Bulk and start stay on click; the fronts keep their pressed pair. */
+fcBody.addEventListener('change', e=>{
+  const box = e.target.closest('.fc-fields input[data-id]');
+  if(!box) return;
+  const id = +box.dataset.id;
+  box.checked ? fcSel.add(id) : fcSel.delete(id);
+  box.closest('.fc-f').classList.toggle('on', box.checked);
+  fcTotal();
+});
 fcBody.addEventListener('click', e=>{
-  const f = e.target.closest('.fc-f');
-  if(f && !f.disabled){ fcStart(f.dataset.id, f.dataset.ink); return; }
+  if(e.target.closest('#fc-go')) return fcStart();
+  if(e.target.closest('#fc-all') || e.target.closest('#fc-none')){
+    const on = !!e.target.closest('#fc-all');
+    fcBody.querySelectorAll('.fc-fields input[data-id]').forEach(b=>{
+      if(b.disabled) return;
+      b.checked = on;
+      on ? fcSel.add(+b.dataset.id) : fcSel.delete(+b.dataset.id);
+      b.closest('.fc-f').classList.toggle('on', on);
+    });
+    return fcTotal();
+  }
   const g = e.target.closest('[data-front]');
   if(g){
     fcFront = g.dataset.front;

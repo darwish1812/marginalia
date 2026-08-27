@@ -295,10 +295,33 @@ not spring up under a finger still coming down.
 ### 3.6b Flash cards
 
 A mode rather than a page: a fixed overlay over the book, opened from the bar. The picker
-asks two things — **how to ask** (the word, or by ear) and **which field** — then `fcPool()`
+asks two things — **how to ask** (the word, or by ear) and **which fields** — then `fcPool()`
 builds the deck: enriched words only, since a bare capture has no meaning to hide, and by
 default without the ones already ticked. The deck is shuffled, lives in a local array, and
 is dropped when the overlay closes. Nothing about it is persisted.
+
+The fields are checkboxes, so any number of them can go into one deck. `fcPool()` takes a
+`Set` of field ids and `fcSel` holds the ticks, out at module scope rather than read off the
+DOM, so a finished round returns to a picker with the same fields still ticked. Everything
+the book cannot place — no field, or a field since deleted — falls into one bucket the
+picker calls **Unfiled**, so no enriched word is unreachable.
+
+Ticking is no longer starting: with several fields in play the deck cannot be built until
+you say you are done choosing, so there is a start button carrying the running total. That
+costs a single field one extra tap, which is the price of the other seven being reachable
+together. Only the total is recomputed on a tick — a field's own count depends solely on the
+skip setting, so nothing else on the screen can have changed, and re-rendering would take
+the focus off the box just ticked. The skip setting does re-render, and a field it empties is
+disabled and dropped from `fcSel` rather than left ticked and untestable.
+
+One field keeps its own ink; a mixed deck belongs to no field and takes `--ink-1` rather than
+borrowing a colour that would be a lie.
+
+`.fc-body` centres with `justify-content: safe center`. The picker can be taller than a phone
+— eight fields, both fronts, a start button — and plain `center` splits the overrun between
+both ends, putting the heading above the top of the scroller where no scrolling can reach it
+and the start button off the bottom. `safe` centres only while it fits. The guard is
+`:not(.answering)`: a word you are being tested on must not be able to scroll away.
 
 Both fronts turn over into the same full card, so there is one thing to learn rather than
 two. On the ear front the circle is the single exception to *tap turns the card over*: it
@@ -492,7 +515,7 @@ changes, and a banner comment is not. Search for the name.
 | **speech** | Voice discovery and filtering, the remembered choice, rate, and `speak()`. Degrades to nothing where `speechSynthesis` is absent. |
 | **render** | `esc()`, `posTags()`, `render()`, the swatch strip. Rebuilds the whole book from `W`. |
 | **what is on the page** | `applyFilters()`, `markFilter`, and the `.seg` control. The single owner of card `display`: search text and the ✓ filter, answered together. |
-| **flash cards** | `fcOpen()`, `fcPool()`, `fcDraw()`, `fcNext()`. A deck built on open and dropped on close; it marks through `setLearned()`, never its own store. |
+| **flash cards** | `fcOpen()`, `fcPool()`, `fcDraw()`, `fcNext()`. `fcSel` holds the ticked fields; `fcPool()` takes a set of them. A deck built on start and dropped on close; it marks through `setLearned()`, never its own store. |
 | **holding the scroll still** | `keepStill()` and `topCard()`. Any toggle that changes a card's height goes through it. |
 | **the card menu** | The `⋯` overflow menu, filing and unfiling, the in-card removal confirm, and the delegated click handler covering speak / Arabic / ✓ / study-mode reveal. |
 | **data loading** | `norm`, `stem`, the ink palette, the `localStorage` accessors, `apply()` and `boot()`. |
