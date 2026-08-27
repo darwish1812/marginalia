@@ -136,6 +136,56 @@
   .tally{font-family:"Archivo",sans-serif; font-size:11.5px; letter-spacing:.1em; color:var(--dim); margin-left:auto; white-space:nowrap}
   .tally b{color:var(--paper); font-weight:600}
 
+  /* ---------- the bar on a phone ----------
+     Measured: the bar holds one row down to 1400px, two down to 720, and then falls apart —
+     three rows at 710, four at 520, five at 375, where it is 246px of sticky chrome eating
+     30% of the screen and never scrolling away. Search and the filter stay in the open bar
+     (a filter you cannot see is a booklet that looks like it has lost words, as above); the
+     rest goes behind a ⋯.
+
+     .bar-extra is display:contents on a wide screen, so its children are ordinary members of
+     the bar and the desktop layout is exactly what it was. That costs one thing: the wrapper
+     has to be a contiguous run in the markup, so the filter moved up beside search and these
+     `order` rules put it back. Default order is 0, which is what the four buttons want.
+     They are scoped to the bar on purpose: .seg is also the flash-card picker's "the word /
+     by ear" control, and unscoped, the order pushed it below the field grid there. */
+  .bar > .search{order:-1}
+  .bar > .seg{order:1}
+  .bar-extra > .bar-menu{order:2}
+  .bar-extra > .tally{order:3}
+  .bar-extra{display:contents}
+  .morebtn{display:none}
+
+  @media(max-width:719px){
+    .search{flex:1 1 100%; font-size:16px}  /* under 16px, iOS zooms the page in on focus */
+    /* second row: the filter takes the width it needs, ⋯ takes the corner. The order has to
+       be set here too — ⋯ is order 0 by default, which would sort it ahead of the filter. */
+    .morebtn{display:inline-block; order:2; margin-left:auto; font-size:15px; letter-spacing:0;
+             line-height:1; padding:10px 14px}
+    .seg{flex:1 1 auto; min-width:0}
+    .seg .btn{flex:1; padding-left:4px; padding-right:4px; text-align:center}
+    .bar{position:relative}
+    /* The sheet hangs off the bar rather than sitting in it, so opening it does not push the
+       book down the page — and it is the bar's own background, not a floating card, because
+       it belongs to the bar it came out of. */
+    .bar-extra{
+      display:none; position:absolute; top:100%; right:0; z-index:2; min-width:230px;
+      background:var(--night-2); border:1px solid var(--rule); border-radius:10px;
+      padding:6px; margin-top:9px; box-shadow:0 14px 34px rgba(0,0,0,.45);
+    }
+    .bar-extra.on{display:block}
+    /* full-width rows: a wrapped run of small pills is not a menu, and not a thumb target */
+    .bar-extra .btn{display:flex; width:100%; justify-content:flex-start; border:0;
+                    padding:12px 13px; border-radius:7px; text-align:left}
+    .bar-extra .btn:hover{background:rgba(241,239,233,.06)}
+    .bar-extra .bar-menu{display:block}
+    .bar-extra .menubtn{width:100%}
+    .bar-extra .menubtn .caret{margin-left:auto}
+    /* the tally is a reading, not a control: it closes the sheet rather than heading it */
+    .bar-extra .tally{display:block; margin:4px 0 2px; padding:10px 13px;
+                      border-top:1px solid var(--rule); text-align:left}
+  }
+
   /* ---------- sections ---------- */
   .sec{padding:52px 0 6px; scroll-margin-top:74px}
   .sec-head{display:flex; align-items:baseline; gap:16px; border-bottom:2px solid var(--c); padding-bottom:11px; margin-bottom:26px}
@@ -936,15 +986,24 @@
     <div class="wrap">
       <div class="bar">
         <input class="search" id="q" type="search" placeholder="Search a word, a meaning, an example…" aria-label="Search words">
-        <button class="btn" id="study" aria-pressed="false">Study mode</button>
-        <button class="btn" id="flash">Flash cards</button>
-        <button class="btn" id="arabic" aria-pressed="false" lang="ar">العربية</button>
-        <button class="btn" id="reset">Reset marks</button>
+        <!-- Search and the filter are the two the phone keeps in the open bar; the filter sits
+             next to search here rather than after Reset marks so that everything below is one
+             contiguous run that .bar-extra can wrap. The desktop order is unchanged — the
+             `order` rules in the stylesheet put the filter back where it has always been. -->
         <span class="seg" role="group" aria-label="Show which words">
           <button class="btn" data-filter="all"  aria-pressed="true">All</button>
           <button class="btn" data-filter="todo" aria-pressed="false">Not yet</button>
           <button class="btn" data-filter="done" aria-pressed="false">Learned</button>
         </span>
+        <button class="btn morebtn" id="morebtn" aria-expanded="false" aria-controls="barextra"
+                aria-label="More controls">⋯</button>
+        <!-- On a wide screen this wrapper is display:contents and its children are ordinary
+             members of the bar. Under 720px it becomes the sheet the ⋯ opens. -->
+        <div class="bar-extra" id="barextra">
+        <button class="btn" id="study" aria-pressed="false">Study mode</button>
+        <button class="btn" id="flash">Flash cards</button>
+        <button class="btn" id="arabic" aria-pressed="false" lang="ar">العربية</button>
+        <button class="btn" id="reset">Reset marks</button>
         <span class="bar-menu">
         <span class="bar-div" aria-hidden="true"></span>
         <button class="btn menubtn" id="setbtn" aria-haspopup="true" aria-expanded="false" aria-controls="settings">
@@ -954,6 +1013,7 @@
         </button>
         </span>
         <span class="tally" id="tally"><b>0</b> learned</span>
+        </div>
       </div>
     </div>
 
@@ -3310,18 +3370,32 @@ document.getElementById('fldbtn').addEventListener('click',()=>{
   openPanel(fldPanel.classList.contains('on') ? null : fldPanel);
 });
 
+/* The ⋯ sheet, which exists only under 720px. The controls inside it are the same elements
+   the wide bar shows in a row — moved by CSS, never by script — so their listeners, their
+   pressed states and the tally keep working without knowing where they are. Choosing one
+   closes the sheet, since every one of them either leaves the page or changes what is on it. */
+const moreBtn = document.getElementById('morebtn'), barExtra = document.getElementById('barextra');
+function openMore(on){
+  barExtra.classList.toggle('on', on);
+  moreBtn.setAttribute('aria-expanded', String(on));
+}
+moreBtn.addEventListener('click', ()=>openMore(!barExtra.classList.contains('on')));
+barExtra.addEventListener('click', e=>{ if(e.target.closest('.btn')) openMore(false); });
+
 /* A menu closes the way menus do — Escape, or a click anywhere off it. The rooms inside
    obey both too, and Escape hands focus back to the button. */
 function panelOpen(){ return PANELS.some(p=>p.classList.contains('on')); }
 document.addEventListener('keydown',e=>{
   if(e.key!=='Escape') return;
   if(document.querySelector('.card-menu')){ closeCardMenu(); return; }
+  if(barExtra.classList.contains('on')){ openMore(false); moreBtn.focus(); return; }
   if(!panelOpen()) return;
   openPanel(null); setBtn.focus();
 });
 document.addEventListener('pointerdown',e=>{
   /* the card menu is a menu too, and closes on a click off it like the rest */
   if(!e.target.closest('.card-menu, .more, .filebtn')) closeCardMenu();
+  if(!e.target.closest('#barextra, #morebtn')) openMore(false);
   if(!panelOpen()) return;
   if(e.target.closest('#panel, #settings, #account, #fields, #setbtn')) return;
   openPanel(null);

@@ -292,6 +292,26 @@ back a card the filter had just taken away. Ticking a card that the current filt
 wants fades it out over 160ms rather than dropping it on the frame, so the next card does
 not spring up under a finger still coming down.
 
+### 3.6a The bar on a phone
+
+The toolbar holds one row down to 1400px and two down to 720px, then falls apart: three rows
+at 710, four at 520, five at 375 — where it was 246px of `position:sticky` chrome eating 30%
+of the screen and never scrolling away. Under 720px the search box and the mark filter stay in
+the open bar, for the reason above, and everything else — Study mode, Flash cards, العربية,
+Reset marks, Settings and the tally — goes behind a `⋯` that opens a sheet. That is 116px, two
+rows. `719px` is the measured boundary rather than a round number.
+
+`.bar-extra` is `display:contents` on a wide screen, so its children are ordinary members of
+the bar and the desktop layout is untouched — the same elements, moved by CSS and never by
+script, so their listeners and their `aria-pressed` states carry across without knowing where
+they are. The one cost is that `display:contents` needs a contiguous run in the markup, so the
+filter moved up beside the search box and a handful of `order` rules put it back. Those rules
+are scoped to `.bar`: `.seg` is also the flash-card picker's "the word / by ear" control, and
+unscoped, the order pushed it below the field grid there.
+
+The search box goes to 16px on a phone. Below 16px, iOS Safari zooms the page in when the
+field takes focus and does not zoom back out.
+
 ### 3.6b Flash cards
 
 A mode rather than a page: a fixed overlay over the book, opened from the bar. The picker
