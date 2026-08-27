@@ -1860,7 +1860,7 @@ function fcDraw(){
        <button class="fc-again" id="fc-a">Again</button>
        <button class="fc-know" id="fc-k">I know it</button>
      </div>
-     <p class="fc-hint">${fcFront==='ear' ? 'Turn it over, then swipe to answer' : 'Tap to turn over · swipe to answer'}</p>
+     <p class="fc-hint">${fcHint()}</p>
      <p class="fc-keys">← Again · Space ${fcFront==='ear'?'replays':'turns it over'} · I know it →</p>`;
 
   const card = document.getElementById('fc-card');
@@ -1869,8 +1869,8 @@ function fcDraw(){
     if(say){ fcSpeak(say); return; }          // the two speakers are the only exceptions
     fcTurn();
   });
-  document.getElementById('fc-a').addEventListener('click', ()=>fcNext(false));
-  document.getElementById('fc-k').addEventListener('click', ()=>fcNext(true));
+  document.getElementById('fc-a').addEventListener('click', ()=>fcAnswer(false));
+  document.getElementById('fc-k').addEventListener('click', ()=>fcAnswer(true));
   fcDrag(card);
   if(fcFront === 'ear') fcSpeak(document.getElementById('fc-say'));
 }
@@ -1881,6 +1881,16 @@ function fcDraw(){
    and the pill are two ways of asking for the same thing — pressing one after the other
    should say the word twice, not say it and then stop it. So the toggle is cleared first:
    these controls only ever replay. */
+/* A mouse does not tap and does not swipe. The words follow the pointer the reader
+   actually has, and on a fine pointer the keys line below carries the rest. */
+function fcHint(){
+  const touch = matchMedia('(pointer: coarse)').matches;
+  if(fcFront === 'ear') return touch ? 'Turn it over, then swipe to answer'
+                                     : 'Turn it over, then answer';
+  return touch ? 'Tap to turn over · swipe to answer'
+               : 'Click to turn it over';
+}
+
 function fcSpeak(btn){
   const x = fcDeck[fcAt]; if(!x) return;
   const el = btn || document.getElementById('fc-say') || document.getElementById('fc-replay');
@@ -1952,6 +1962,23 @@ function fcTurn(){
 
 /* Answering before turning the card over is how you fool yourself, so an answer on a
    face-down card turns it and stops there. */
+/* One exit for one decision. The buttons used to call fcNext() straight out, so a card
+   answered by button was replaced on the spot while the same answer given by swipe was
+   sent off the screen first — the same act wearing two faces. Everything that answers a
+   card comes through here now: buttons, arrow keys and the swipe alike. */
+let fcLeaving = false;
+function fcAnswer(knew){
+  if(fcLeaving) return;
+  if(!fcTurned){ fcTurn(); return; }            // never grade a card that is face down
+  const card = document.getElementById('fc-card');
+  if(!card || matchMedia('(prefers-reduced-motion: reduce)').matches) return fcNext(knew);
+  fcLeaving = true;
+  card.classList.add('flying');
+  card.style.transform = `translateX(${knew ? 140 : -140}%) rotate(${knew ? 14 : -14}deg)`;
+  card.style.opacity = '0';
+  setTimeout(()=>{ fcLeaving = false; fcNext(knew); }, 190);
+}
+
 function fcNext(knew){
   if(!fcTurned){ fcTurn(); return; }
   const x = fcDeck[fcAt];
@@ -2008,12 +2035,7 @@ function fcDrag(card){
     if(axis === 'x' && e && e.pointerId != null)
       try{ card.releasePointerCapture(e.pointerId); }catch(err){}
     if(Math.abs(dx) < THRESHOLD) return reset();
-    const knew = dx > 0;
-    card.classList.add('flying');
-    card.style.transform = `translateX(${knew ? 1 : -1}px) rotate(0deg)`;
-    card.style.transform = `translateX(${knew ? 140 : -140}%) rotate(${knew ? 14 : -14}deg)`;
-    card.style.opacity = '0';
-    setTimeout(()=>fcNext(knew), 190);
+    fcAnswer(dx > 0);
   };
   card.addEventListener('pointerup', end);
   card.addEventListener('pointercancel', ()=>{ if(down){ down = false; reset(); } });
@@ -2062,8 +2084,8 @@ document.addEventListener('keydown', e=>{
   if(e.key === 'Escape'){ fcClose(); return; }
   if(!document.getElementById('fc-card')) return;
   if(e.key === ' '){ e.preventDefault(); fcFront==='ear' && !fcTurned ? fcSpeak() : fcTurn(); }
-  else if(e.key === 'ArrowRight') fcNext(true);
-  else if(e.key === 'ArrowLeft')  fcNext(false);
+  else if(e.key === 'ArrowRight') fcAnswer(true);
+  else if(e.key === 'ArrowLeft')  fcAnswer(false);
 });
 
 /* reset */

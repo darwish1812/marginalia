@@ -354,6 +354,18 @@ browser. **I know it** writes through `setLearned()` — the one place a ✓ mov
 book's card, the tally and the *Not yet* filter update together and cannot drift apart.
 **Again** pushes the word to the back of the deck rather than dropping it.
 
+Every way of answering goes through `fcAnswer()`, which sends the card off the screen and
+then calls `fcNext()`. The buttons used to call `fcNext()` directly, so a card answered by
+button was replaced on the spot while the same answer given by swipe was thrown — one
+decision with two different faces. `fcAnswer()` also guards the gap: a card already on its
+way out ignores further presses, so a double-click cannot burn two words. Reduced motion
+skips the throw and answers immediately.
+
+Dragging works with a mouse as well as a finger and is left enabled at every width — there
+is no page scroll inside a fixed overlay for it to fight, and it costs nothing to leave on.
+What does change with the pointer is the wording: `fcHint()` says *tap* and *swipe* only on
+a coarse pointer, and on a fine one leaves the arrow keys to the line beneath.
+
 The answer controls move with the grip, not the width alone: a row across the bottom on a
 phone, the two bottom corners on a tablet where the thumbs already are, and a centred pair
 with the keys named beneath them on a desktop, where there is no thumb to reach with.
