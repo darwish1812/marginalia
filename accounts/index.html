@@ -451,8 +451,7 @@
   body:is(.signed-out,.first-run) .swatches,
   body:is(.signed-out,.first-run) #book,
   body:is(.signed-out,.first-run) #fix,
-  body:is(.signed-out,.first-run) #empty,
-  body:is(.signed-out,.first-run) footer{display:none!important}
+  body:is(.signed-out,.first-run) #empty{display:none!important}
   /* The gate keeps the cover — it is the first thing anyone sees, and the booklet should
      introduce itself. Setting up is past that: they have signed in, they know what this
      is, and 430px of title above the only question on the screen just pushes it under
@@ -671,7 +670,6 @@
     font:13px/1 ui-monospace,Menlo,monospace; background:var(--night);
     padding:3px 7px; border-radius:4px; color:var(--ink-2);
   }
-  footer{padding:52px 0 70px; color:rgba(241,239,233,.35); font-size:14px; border-top:1px solid var(--rule); margin-top:64px}
 
   @media(prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
 
@@ -907,7 +905,7 @@
     @page{margin:14mm}
     body{background:#fff; color:#000; font-size:10.5pt}
     /* pictures are screen-only: they break the two-column pagination and drink ink */
-    .bar-wrap,.panel,.gate,.mark,.say,.arbtn,.say-ex,.hint,.pic,.swatch .num,footer,
+    .bar-wrap,.panel,.gate,.mark,.say,.arbtn,.say-ex,.hint,.pic,.swatch .num,
     .splash{display:none!important}
     body.study .body{display:block!important}
     .cover{padding:0 0 18pt; border-color:#999}
@@ -978,7 +976,7 @@
   <header class="cover">
     <div class="eyebrow" id="eyebrow">A working vocabulary · seven fields</div>
     <h1>Margin<em>alia</em></h1>
-    <p class="lede">Words caught in the margins of films, games and videos — then given somewhere to live. Each field has its own ink. Read the definition, then read the sentence: the sentence is where the word actually works.</p>
+    <p class="lede">Words caught in the margins of whatever you read and watch. A meaning, a sentence that shows the word working, an Arabic gloss, and a field to belong to.</p>
     <div class="swatches" id="swatches"></div>
   </header>
 
@@ -1273,7 +1271,6 @@
     <div class="fc-body" id="fc-body"></div>
   </section>
 
-  <footer id="foot" hidden>Tap any ink swatch to jump to that field. Each card has its own <b lang="ar">ع</b> button for the Arabic; the <b>العربية</b> button in the bar shows or hides every gloss at once. Speaker icons read a word or its sentence aloud; tap again to stop. Print (Ctrl/Cmd&nbsp;+&nbsp;P) for a two-column paper booklet — whatever language mode is on will print with it.</footer>
 </div>
 
 <script>
@@ -2689,7 +2686,6 @@ async function showFirstRun(){
   document.body.classList.add('first-run');
   document.getElementById('firstrun').hidden=false;
   document.getElementById('book').innerHTML='';
-  document.getElementById('foot').hidden=true;
   chosenPack=null;
   renderPacks();
   /* the ink strips are only honest once the packs have been read, so they arrive late
@@ -2741,7 +2737,6 @@ async function apply(data){
   document.body.classList.remove('first-run');
   document.getElementById('firstrun').hidden=true;
   document.getElementById('app').hidden=false;
-  document.getElementById('foot').hidden=false;
 }
 
 
