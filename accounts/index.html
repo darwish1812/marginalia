@@ -53,7 +53,10 @@
   @media(min-width:1800px){ .wrap{max-width:1760px} }   /* room for a third column at full measure */
 
   /* ---------- cover ---------- */
-  .cover{padding:74px 0 54px; border-bottom:1px solid var(--rule); position:relative; overflow:hidden}
+  /* Air above the wordmark, but not a flat 74px at every width: on a phone that was 9% of
+     the screen holding nothing, on top of a cover already taller than the viewport. */
+  .cover{padding:clamp(26px,4vw,44px) 0 54px; border-bottom:1px solid var(--rule);
+         position:relative; overflow:hidden}
   .eyebrow{
     font-family:"Archivo",system-ui,sans-serif; font-size:11px; font-weight:600;
     letter-spacing:.22em; text-transform:uppercase; color:var(--dim);
