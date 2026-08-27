@@ -778,7 +778,26 @@
   }
   .splash h1 em{font-style:italic; color:var(--ink-1)}
   .splash .inks{display:flex; gap:7px; width:min(280px,54vw)}
-  .splash .inks span{height:7px; flex:1; border-radius:99px}
+  .splash .inks span{
+    height:7px; flex:1; border-radius:99px; transform-origin:center;
+    animation:inkwave 1.2s cubic-bezier(.4,0,.2,1) infinite;
+  }
+  /* A wave down the strip, left to right, so the eight inks say "working" using the thing
+     that is already the index of the book rather than a spinner borrowed from elsewhere.
+     Only opacity and transform, so it never touches layout while the page is loading. */
+  @keyframes inkwave{
+    0%, 65%, 100%{ opacity:.3;  transform:scaleY(1) }
+    18%          { opacity:1;   transform:scaleY(2.1) }
+  }
+  .splash .inks span:nth-child(1){animation-delay:0s}
+  .splash .inks span:nth-child(2){animation-delay:.15s}
+  .splash .inks span:nth-child(3){animation-delay:.3s}
+  .splash .inks span:nth-child(4){animation-delay:.45s}
+  .splash .inks span:nth-child(5){animation-delay:.6s}
+  .splash .inks span:nth-child(6){animation-delay:.75s}
+  .splash .inks span:nth-child(7){animation-delay:.9s}
+  .splash .inks span:nth-child(8){animation-delay:1.05s}
+  /* the global reduced-motion rule stops the animation; the strip stays as the mark it is */
 
   /* ---------- print: a real booklet ---------- */
   @media print{
