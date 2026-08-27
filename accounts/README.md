@@ -127,6 +127,20 @@ the same thing in one press — same prompt, same reply, same review before anyt
 Whenever it cannot (no key, a ceiling reached, the model unreachable) the page falls back to
 the copy-and-paste loop and says why. See `supabase/functions/enrich/README.md`.
 
+## Testing yourself
+
+**Flash cards** in the bar covers the book with one word at a time. Choose how to be asked —
+**the word**, or **by ear**, where it is spoken and the word itself is hidden — then pick a
+field, or every field. Turn each card over and swipe: right if you had it, left to see it
+again. Buttons and the arrow keys do the same thing. *I know it* ticks the same ✓ the card in
+the book carries, so the tally and the **Not yet** filter follow along; *Again* puts the word
+at the back of the pile. By default the deck leaves out the words you have already
+ticked, which is the difference between a deck that shrinks and one that never ends.
+
+Words already ticked can be hidden from the book itself with **All / Not yet / Learned**,
+and **Study mode** collapses every card to the word alone if you would rather work down the
+page than through a deck.
+
 ## Filing, unfiling, removing
 
 A word that fits none of your fields is left **unfiled** rather than pushed into whichever

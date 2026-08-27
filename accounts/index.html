@@ -614,6 +614,145 @@
 
   @media(prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
 
+  /* ---------- flash cards ----------
+     A mode, not a page: it covers the book and borrows its words and its ✓ marks. Fixed
+     rather than scrolled, because a card you are being tested on should not be able to
+     wander off the top of the screen. */
+  .fc{
+    position:fixed; inset:0; z-index:60; background:var(--night);
+    display:flex; flex-direction:column; gap:18px; padding:18px 22px 22px;
+    overscroll-behavior:contain;
+  }
+  .fc[hidden]{display:none}
+  body.fc-on{overflow:hidden}
+
+  .fc-top{display:flex; align-items:center; gap:16px; flex:none}
+  .fc-count{
+    font-family:"Archivo",sans-serif; font-size:11.5px; letter-spacing:.1em; color:var(--dim);
+    white-space:nowrap; font-variant-numeric:tabular-nums; min-width:74px;
+  }
+  .fc-prog{flex:1; height:3px; background:var(--rule); border-radius:99px; overflow:hidden}
+  /* The field's ink lives here rather than down the edge of the card. On a page of mixed
+     cards the ink says which field a word belongs to and is worth its space; on one card
+     shown alone it says nothing the reader does not already know, and a coloured bar that
+     carries no information is just decoration. The bar earns it — it is the one thing on
+     screen that is about this field rather than this word. */
+  .fc-prog i{display:block; height:100%; width:0; background:var(--c,var(--ink-1)); transition:width .22s ease}
+
+  .fc-body{flex:1; display:flex; flex-direction:column; align-items:center;
+           justify-content:center; gap:18px; min-height:0; position:relative}
+
+  /* --- the picker --- */
+  .fc-h{font-family:"Fraunces",Georgia,serif; font-size:30px; margin:0; text-align:center; color:var(--paper)}
+  .fc-sub{font-size:14px; color:var(--dim); margin:-10px 0 0; text-align:center; max-width:44ch}
+  .fc-ask{
+    font-family:"Archivo",sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em;
+    text-transform:uppercase; color:var(--dim); margin:6px 0 -8px; text-align:center;
+  }
+  .fc-fields{display:flex; flex-wrap:wrap; gap:10px; justify-content:center; max-width:760px}
+  .fc-f{
+    font-family:"Archivo",sans-serif; font-size:12px; font-weight:600; letter-spacing:.08em;
+    text-transform:uppercase; background:transparent; color:var(--paper);
+    border:1px solid var(--rule); border-left:4px solid var(--c,var(--ink-1));
+    padding:12px 16px; border-radius:7px; cursor:pointer; display:flex; align-items:center; gap:10px;
+  }
+  .fc-f:hover{border-color:var(--c,var(--ink-1))}
+  .fc-f b{color:var(--c,var(--ink-1)); font-variant-numeric:tabular-nums}
+  .fc-f[disabled]{opacity:.35; cursor:not-allowed}
+  .fc-skip{display:flex; align-items:center; gap:9px; color:var(--dim); font-size:13.5px; cursor:pointer}
+  .fc-skip input{width:15px; height:15px; accent-color:var(--ink-1)}
+
+  /* --- the deck --- */
+  /* depth for the flip. Without a perspective the rotation is an affine squash and the
+     card looks like a closing door seen from infinitely far away. */
+  .fc-deck{position:relative; width:min(560px,100%); display:flex; justify-content:center;
+           perspective:1500px}
+  .fc-card{
+    position:relative; background:var(--paper); color:#22243F; border-radius:12px;
+    padding:30px 28px; width:100%;
+    max-height:100%; overflow-y:auto; cursor:pointer;
+    box-shadow:0 18px 46px rgba(0,0,0,.4); text-align:center;
+    touch-action:pan-y;                       /* let us have the horizontal, keep the vertical */
+    will-change:transform; backface-visibility:hidden;
+  }
+  /* the ear card holds a circle and nothing else, so it shrinks to fit it */
+  .fc-card.ear{width:340px; padding:34px 26px 30px}
+  .fc-card.flying{transition:transform .2s ease, opacity .2s ease}
+
+  .fc-w{font-family:"Fraunces",Georgia,serif; font-size:clamp(30px,6vw,46px); font-weight:600;
+        line-height:1.1; margin:0}
+  .fc-pos{margin-top:12px; display:flex; justify-content:center; gap:6px}
+  .fc-tap{font-family:"Archivo",sans-serif; font-size:11px; letter-spacing:.16em;
+          text-transform:uppercase; color:rgba(34,36,63,.45); margin:22px 0 0}
+  .fc-rev{margin-top:22px; border-top:1px solid rgba(34,36,63,.13); padding-top:20px; text-align:left}
+  .fc-rev .def{font-size:17px; line-height:1.5; margin:0}
+  /* .ar is hidden until a card is turned Arabic-side up; here the turn has already happened */
+  .fc-rev .ar{display:block; margin:14px 0 0}
+  .fc-rev .ex{margin:14px 0 0; font-size:16px}
+  .fc-replay{
+    display:inline-flex; align-items:center; gap:8px; margin:18px 0 0; padding:9px 14px;
+    background:transparent; border:1px solid rgba(34,36,63,.2); border-radius:99px;
+    font-family:"Archivo",sans-serif; font-size:11px; font-weight:700; letter-spacing:.11em;
+    text-transform:uppercase; color:rgba(34,36,63,.6); cursor:pointer;
+  }
+  .fc-replay svg{width:15px; height:15px; fill:currentColor}
+
+  /* the circle is the one part of the ear card that is not "turn me over" */
+  .fc-ear{
+    width:150px; height:150px; border-radius:50%; margin:0 auto; display:grid; place-items:center;
+    background:rgba(201,146,47,.14); border:1px solid rgba(201,146,47,.45); cursor:pointer;
+    padding:0; appearance:none; -webkit-appearance:none;   /* it is a button now */
+  }
+  .fc-ear:focus-visible{outline:2px solid var(--ink-1); outline-offset:4px}
+  .fc-ear svg{width:58px; height:58px; fill:var(--ink-1)}
+  .fc-ear:hover{background:rgba(201,146,47,.22)}
+  .fc-waves{display:flex; gap:6px; justify-content:center; align-items:flex-end; height:28px; margin-top:18px}
+  .fc-waves i{width:5px; border-radius:99px; background:rgba(201,146,47,.55)}
+  .fc-blank{font-family:"Fraunces",Georgia,serif; font-size:32px; letter-spacing:.12em;
+            color:rgba(34,36,63,.3); margin:16px 0 0}
+
+  /* the verdict stamps, which fade in as the card is dragged */
+  .fc-stamp{
+    position:absolute; top:20px; font-family:"Archivo",sans-serif; font-size:13px; font-weight:700;
+    letter-spacing:.16em; text-transform:uppercase; padding:7px 12px; border-radius:8px;
+    border:2px solid; background:var(--paper); opacity:0; pointer-events:none;
+  }
+  .fc-stamp.know{right:18px; color:var(--ink-7); border-color:var(--ink-7); transform:rotate(9deg)}
+  .fc-stamp.again{left:18px; color:var(--ink-3); border-color:var(--ink-3); transform:rotate(-9deg)}
+
+  .fc-acts{display:flex; gap:12px; flex-wrap:wrap; justify-content:center; flex:none; width:100%}
+  .fc-again,.fc-know{
+    font-family:"Archivo",sans-serif; font-size:12.5px; font-weight:600; letter-spacing:.1em;
+    text-transform:uppercase; padding:14px 26px; border-radius:10px; cursor:pointer;
+    border:1px solid var(--rule); background:transparent; color:var(--paper); flex:1;
+  }
+  .fc-again:hover{border-color:var(--paper)}
+  .fc-know{background:var(--ink-7); border-color:var(--ink-7); color:var(--night)}
+  .fc-hint{font-family:"Archivo",sans-serif; font-size:10.5px; letter-spacing:.12em;
+           text-transform:uppercase; color:var(--dim); flex:none; text-align:center}
+  .fc-keys{display:none; font-family:"Archivo",sans-serif; font-size:10.5px; letter-spacing:.13em;
+           text-transform:uppercase; color:var(--dim); text-align:center; flex:none}
+
+  /* A tablet is held at the edges, so the targets go to the corners where the thumbs
+     already are. A phone is held in one hand, so they stay a row across the bottom. */
+  @media(min-width:700px){
+    .fc-body.answering{padding-bottom:96px}
+    .fc-body.answering .fc-acts{
+      position:absolute; bottom:0; left:0; right:0; justify-content:space-between; pointer-events:none;
+    }
+    .fc-body.answering .fc-again,.fc-body.answering .fc-know{
+      flex:0 0 auto; width:210px; padding:21px 0; pointer-events:auto;
+    }
+  }
+  /* No thumbs to reach with here, and a button at each far corner is a mouse journey. */
+  @media(min-width:1200px){
+    .fc-body.answering{padding-bottom:0}
+    .fc-body.answering .fc-acts{position:static; justify-content:center}
+    .fc-body.answering .fc-again,.fc-body.answering .fc-know{width:190px; padding:14px 0}
+    .fc-keys{display:block}
+    .fc-deck{width:min(620px,100%)}
+  }
+
   /* ---------- print: a real booklet ---------- */
   @media print{
     @page{margin:14mm}
@@ -658,6 +797,7 @@
       <div class="bar">
         <input class="search" id="q" type="search" placeholder="Search a word, a meaning, an example…" aria-label="Search words">
         <button class="btn" id="study" aria-pressed="false">Study mode</button>
+        <button class="btn" id="flash">Flash cards</button>
         <button class="btn" id="arabic" aria-pressed="false" lang="ar">العربية</button>
         <button class="btn" id="reset">Reset marks</button>
         <span class="seg" role="group" aria-label="Show which words">
@@ -922,6 +1062,17 @@
   </div>
   <p class="empty" id="loaderr"></p>
 
+  <!-- Flash cards. Built fresh each time it opens and thrown away on close: the deck is a
+       view of the words, never a second copy of them. -->
+  <section class="fc" id="fc" hidden aria-label="Flash cards">
+    <div class="fc-top">
+      <span class="fc-count" id="fc-count"></span>
+      <span class="fc-prog" aria-hidden="true"><i id="fc-bar"></i></span>
+      <button class="btn" id="fc-x">Close</button>
+    </div>
+    <div class="fc-body" id="fc-body"></div>
+  </section>
+
   <footer id="foot" hidden>Tap any ink swatch to jump to that field. Each card has its own <b lang="ar">ع</b> button for the Arabic; the <b>العربية</b> button in the bar shows or hides every gloss at once. Speaker icons read a word or its sentence aloud; tap again to stop. Print (Ctrl/Cmd&nbsp;+&nbsp;P) for a two-column paper booklet — whatever language mode is on will print with it.</footer>
 </div>
 
@@ -978,8 +1129,24 @@ const vSel = document.getElementById('voice');
 /* Windows' built-in SAPI voices sound robotic beside the rest, so they never
    reach the list. Absent on iOS, where this filter does nothing. */
 const HIDE = /^Microsoft (David|Mark|Zira)\b/i;
-const enVoices = ()=> speechSynthesis.getVoices()
-  .filter(v=>/^en([-_]|$)/i.test(v.lang) && !HIDE.test(v.name));
+/* Apple ships a shelf of novelty voices beside the real ones — Bubbles, Zarvox, Bad News —
+   and on an iPad they outnumber the voices anybody would choose. None of them says a word
+   the way you need to hear it said. Matched on the leading name only, because iOS appends
+   the locale: "Eddy (English (UK))". */
+const NOVELTY = new RegExp('^(' + [
+  'Albert','Bad News','Bahh','Bells','Boing','Bubbles','Cellos','Deranged','Eddy','Flo',
+  'Fred','Good News','Grandma','Grandpa','Hysterical','Jester','Junior','Kathy','Organ',
+  'Pipe Organ','Princess','Ralph','Reed','Rocko','Sandy','Shelley','Superstar','Trinoids',
+  'Whisper','Wobble','Zarvox'
+].join('|') + ')\\b', 'i');
+
+/* If a device somehow has nothing but novelties, an empty list would take speech away
+   altogether — so the filter gives up rather than leave the reader with no voice at all. */
+const enVoices = ()=>{
+  const all  = speechSynthesis.getVoices().filter(v=>/^en([-_]|$)/i.test(v.lang));
+  const kept = all.filter(v=>!HIDE.test(v.name) && !NOVELTY.test(v.name));
+  return kept.length ? kept : all;
+};
 
 function pickVoice(){
   const en = enVoices();
@@ -1083,9 +1250,14 @@ if(W.some(x=>!x.d)) shown.push(INBOX);
 if(W.some(unfiled))  shown.push(UNFILED);
 FIELDS.forEach(f=>shown.push(f));
 shown.forEach(f=>{
-  const items = f.id===0  ? W.filter(x=>!x.d)
-              : f.id===-1 ? W.filter(unfiled)
-              :             W.filter(x=>x.f===f.id && x.d);
+  /* Alphabetical inside every section. The order words arrived in means something to
+     nobody but the person who typed them, and a field of thirty is only findable by eye
+     if it reads like a glossary. localeCompare so an accented word files where a reader
+     would look for it, and base sensitivity so case never decides. */
+  const items = (f.id===0  ? W.filter(x=>!x.d)
+               : f.id===-1 ? W.filter(unfiled)
+               :             W.filter(x=>x.f===f.id && x.d))
+               .sort((a,b)=>a.w.localeCompare(b.w,'en',{sensitivity:'base'}));
   const sec = document.createElement('section');
   sec.className='sec'; sec.id='f'+f.id; sec.style.setProperty('--c',f.ink);
   sec.innerHTML = `<div class="sec-head"><h2>${esc(f.name)}</h2><span class="count">${items.length} words</span></div>
@@ -1228,9 +1400,11 @@ book.addEventListener('click',e=>{
     e.stopPropagation();
     const card = a.closest('.card');
     const on = a.getAttribute('aria-pressed')==='true';
-    a.setAttribute('aria-pressed', String(!on));
-    card.classList.toggle('ar-on', !on);
-    if(!on) card.classList.add('open');   // .ar sits inside .body, which study mode collapses
+    keepStill(card, ()=>{
+      a.setAttribute('aria-pressed', String(!on));
+      card.classList.toggle('ar-on', !on);
+      if(!on) card.classList.add('open');  // .ar sits inside .body, which study mode collapses
+    });
     return;
   }
   /* All of these stop the click travelling: in study mode a bare tap on the card toggles
@@ -1423,6 +1597,20 @@ async function removeWord(w){
 
 /* Arabic: each card carries its own toggle; this one drives them all at once */
 const arBtn = document.getElementById('arabic');
+/* Showing a gloss makes its card taller, and everything below it slides. Measure one
+   element across the change and give the scroll back by however far it moved, so the card
+   you touched stays exactly where your eye left it. */
+function keepStill(anchor, change){
+  if(!anchor) return change();
+  const before = anchor.getBoundingClientRect().top;
+  change();
+  const after = anchor.getBoundingClientRect().top;
+  if(after !== before) window.scrollBy(0, after - before);
+}
+/* the master switch moves every card at once, so hold the topmost one still */
+const topCard = ()=> [...document.querySelectorAll('.card')]
+  .find(c=>c.style.display!=='none' && c.getBoundingClientRect().bottom > 0);
+
 function setArabicAll(on){
   document.querySelectorAll('.card').forEach(c=>{
     const b = c.querySelector('.arbtn');
@@ -1434,7 +1622,7 @@ function setArabicAll(on){
 arBtn.addEventListener('click',()=>{
   const on = arBtn.getAttribute('aria-pressed')==='true';
   arBtn.setAttribute('aria-pressed', String(!on));
-  setArabicAll(!on);
+  keepStill(topCard(), ()=>setArabicAll(!on));
 });
 
 /* speech speed */
@@ -1457,6 +1645,338 @@ sBtn.addEventListener('click',()=>{
   sBtn.setAttribute('aria-pressed', String(!on));
   document.body.classList.toggle('study', !on);
   document.querySelectorAll('.card.open').forEach(c=>c.classList.remove('open'));
+});
+
+/* ---------- flash cards ----------
+   One field at a time, shuffled, one word on the screen. "I know it" writes the same ✓ the
+   card in the book carries — same store, same tally, same Not yet filter — so the two can
+   never drift apart. "Again" sends the word to the back of the pile rather than pretending
+   you had it. The deck is built on open and dropped on close: it is a view of the words,
+   never a second copy of them.
+
+   Two fronts. THE WORD shows the word and hides the meaning; BY EAR speaks it and hides
+   the word itself. Both turn over into the same full card, so there is one thing to learn.
+   By ear is offered only where the device has a voice to say it with. */
+const fcEl   = document.getElementById('fc'),    fcBody  = document.getElementById('fc-body'),
+      fcCount= document.getElementById('fc-count'), fcBar = document.getElementById('fc-bar');
+let fcDeck = [], fcAt = 0, fcTurned = false, fcMissed = 0, fcKnown = 0,
+    fcSkip = true, fcInk = 'var(--ink-1)', fcFront = 'word';
+
+/* the one place a ✓ moves, so the book, the tally and the filter cannot disagree */
+function setLearned(w, on){
+  if(on) done.add(w); else done.delete(w);
+  const c = document.querySelector(`[data-w="${CSS.escape(w)}"]`);
+  if(c){
+    c.classList.toggle('done', on);
+    const m = c.querySelector('.mark');
+    if(m) m.setAttribute('aria-pressed', String(on));
+  }
+  paint(); save(w, on); applyFilters();
+}
+
+const fcShuffle = a=>{ for(let i=a.length-1;i>0;i--){ const j=Math.random()*(i+1)|0;
+                       [a[i],a[j]]=[a[j],a[i]]; } return a; };
+
+/* what a field can actually test: enriched words, minus the ones already ticked unless
+   you ask for them. A bare capture has no meaning to hide, so it is never in the deck. */
+function fcPool(id){
+  const known = new Set(FIELDS.map(f=>f.id));
+  const inField = id==='all' ? (x=>!!x.d)
+                : id===-1    ? (x=>x.d && (x.f==null || !known.has(x.f)))
+                :              (x=>x.d && x.f===id);
+  return W.filter(x=>inField(x) && !(fcSkip && done.has(x.w)));
+}
+
+/* A voice is not a given: iOS lets them be deleted, and a Linux browser may ship none.
+   Without one, "by ear" is a test with nothing to hear, so it is not offered at all. */
+const fcCanHear = ()=> TTS && enVoices().length > 0;
+
+function fcPickScreen(){
+  fcCount.textContent = ''; fcBar.style.width = '0';
+  fcEl.style.removeProperty('--c');
+  fcBody.classList.remove('answering');
+  const known = new Set(FIELDS.map(f=>f.id));
+  const rows = [{id:'all', name:'Every field', ink:'var(--ink-1)'}]
+    .concat(FIELDS.map(f=>({id:f.id, name:f.name, ink:f.ink})));
+  if(W.some(x=>x.d && (x.f==null || !known.has(x.f))))
+    rows.push({id:-1, name:'Unfiled', ink:'var(--ink-0)'});
+  if(!fcCanHear()) fcFront = 'word';
+
+  fcBody.innerHTML =
+    `<p class="fc-h">What shall I test you on?</p>
+     <p class="fc-sub">One field at a time, shuffled. Turn each card over, then say whether you had it.</p>
+     ${fcCanHear() ? `<p class="fc-ask">Ask me with</p>
+     <span class="seg" role="group" aria-label="How to ask">
+       <button class="btn" data-front="word" aria-pressed="${fcFront==='word'}">The word</button>
+       <button class="btn" data-front="ear"  aria-pressed="${fcFront==='ear'}">By ear</button>
+     </span>` : ''}
+     <p class="fc-ask">Which words</p>
+     <div class="fc-fields">${rows.map(r=>{
+        const n = fcPool(r.id).length;
+        return `<button class="fc-f" data-id="${r.id}" data-ink="${esc(r.ink)}"
+                        style="--c:${esc(r.ink)}"${n?'':' disabled'}>${esc(r.name)} <b>${n}</b></button>`;
+      }).join('')}</div>
+     <label class="fc-skip"><input type="checkbox" id="fc-skip"${fcSkip?' checked':''}>
+       Leave out the words I have already ticked</label>`;
+  document.getElementById('fc-skip').addEventListener('change', e=>{
+    fcSkip = e.target.checked; fcPickScreen();
+  });
+}
+
+function fcStart(id, ink){
+  fcInk = ink || 'var(--ink-1)';
+  fcEl.style.setProperty('--c', fcInk);
+  fcDeck = fcShuffle(fcPool(id === 'all' ? 'all' : +id).slice());
+  fcAt = 0; fcMissed = 0; fcKnown = 0;
+  fcDeck.length ? fcDraw() : fcPickScreen();
+}
+
+function fcDraw(){
+  if(fcAt >= fcDeck.length) return fcDone();
+  const x = fcDeck[fcAt];
+  fcTurned = false;
+  fcBody.classList.add('answering');
+  fcCount.textContent = `${fcAt + 1} / ${fcDeck.length}`;
+  /* a sliver even at the start, so the field's ink is on screen from the first card —
+     it is the only thing here that says which field you are in */
+  fcBar.style.width = Math.max(2, fcAt / fcDeck.length * 100) + '%';
+
+  const face = fcFront === 'ear'
+    ? `<button class="fc-ear" id="fc-say" aria-label="Hear the word">${SPK}</button>
+       <div class="fc-waves" aria-hidden="true"><i style="height:11px"></i><i style="height:20px"></i>
+         <i style="height:28px"></i><i style="height:15px"></i><i style="height:24px"></i>
+         <i style="height:10px"></i><i style="height:18px"></i></div>
+       <p class="fc-blank">· · · · ·</p>
+       <p class="fc-tap" id="fc-tap">Tap the circle to hear it · tap the card to turn it over</p>`
+    : `<h2 class="fc-w">${esc(x.w)}</h2>
+       <div class="fc-pos">${posTags(x.p)}</div>
+       <p class="fc-tap" id="fc-tap">Tap to turn over</p>`;
+
+  const ex = esc(x.e || '').replace(/\*(.+?)\*/g, '<span class="t">$1</span>');
+  fcBody.innerHTML =
+    `<div class="fc-deck">
+       <article class="fc-card${fcFront==='ear'?' ear':''}" id="fc-card" style="--c:${esc(fcInk)}">
+         <span class="fc-stamp again" id="fc-s-again">Again</span>
+         <span class="fc-stamp know"  id="fc-s-know">Know</span>
+         ${face}
+         <div class="fc-rev" id="fc-rev" hidden>
+           ${fcFront==='ear' ? `<h2 class="fc-w" style="text-align:center">${esc(x.w)}</h2>
+                                <div class="fc-pos">${posTags(x.p)}</div>` : ''}
+           <p class="def">${esc(x.d || '')}</p>
+           ${x.a ? `<p class="ar" lang="ar" dir="rtl">${esc(x.a)}</p>` : ''}
+           ${x.e ? `<p class="ex">${ex}</p>` : ''}
+           ${fcCanHear() ? `<button class="fc-replay" id="fc-replay">${SPK}Hear it again</button>` : ''}
+         </div>
+       </article>
+     </div>
+     <div class="fc-acts">
+       <button class="fc-again" id="fc-a">Again</button>
+       <button class="fc-know" id="fc-k">I know it</button>
+     </div>
+     <p class="fc-hint">${fcFront==='ear' ? 'Turn it over, then swipe to answer' : 'Tap to turn over · swipe to answer'}</p>
+     <p class="fc-keys">← Again · Space ${fcFront==='ear'?'replays':'turns it over'} · I know it →</p>`;
+
+  const card = document.getElementById('fc-card');
+  card.addEventListener('click', e=>{
+    const say = e.target.closest('#fc-say') || e.target.closest('#fc-replay');
+    if(say){ fcSpeak(say); return; }          // the two speakers are the only exceptions
+    fcTurn();
+  });
+  document.getElementById('fc-a').addEventListener('click', ()=>fcNext(false));
+  document.getElementById('fc-k').addEventListener('click', ()=>fcNext(true));
+  fcDrag(card);
+  if(fcFront === 'ear') fcSpeak(document.getElementById('fc-say'));
+}
+
+/* speak() is shared with the book, where a second tap on the same button stops a long
+   sentence part-way. Here that is wrong twice over: the ear card speaks itself on arrival,
+   so the first press of the circle would silence it rather than repeat it, and the circle
+   and the pill are two ways of asking for the same thing — pressing one after the other
+   should say the word twice, not say it and then stop it. So the toggle is cleared first:
+   these controls only ever replay. */
+function fcSpeak(btn){
+  const x = fcDeck[fcAt]; if(!x) return;
+  const el = btn || document.getElementById('fc-say') || document.getElementById('fc-replay');
+  if(!el) return;                              // the word front before it is turned over
+  if(current){ current.classList.remove('speaking'); current = null; }
+  speak(x.w.replace(/\s*\(.*?\)\s*/g,' ').trim(), el);
+}
+
+/* Everything the turn changes, in one place, so the flip can call it at the moment the
+   card is edge-on and none of it can be seen happening. */
+function fcReveal(){
+  document.getElementById('fc-rev').hidden = false;
+  /* "Tap to turn over" was an instruction for a card that is now turned, and the two
+     buttons below say what to do next perfectly well. Its 22px top margin also existed to
+     hold it off the content above it — content the ear card sheds on turning — so leaving
+     it behind stranded that margin at the top of the card. */
+  const tap = document.getElementById('fc-tap');
+  if(tap) tap.remove();
+  /* and the hint below it was still telling you to turn a card you have just turned */
+  const hint = document.querySelector('.fc-hint');
+  if(hint) hint.textContent = 'Swipe to answer';
+
+  /* The listening face has done its job. Leaving a 150px circle, a waveform and a row of
+     dots standing for a word that is now printed below made the card top-heavy and kept it
+     at the narrow listening width, so the text underneath was cramped. The revealed word
+     then moves up to lead the card, because a card that opens with a horizontal rule and
+     buries its own word beneath it reads as though it began somewhere off-screen. Turned,
+     both fronts are the same ordinary card — and the pill carries the replay. */
+  const card = document.getElementById('fc-card');
+  if(card && card.classList.contains('ear')){
+    card.classList.remove('ear');
+    card.querySelectorAll('.fc-ear, .fc-waves, .fc-blank').forEach(el=>el.remove());
+    const rev = document.getElementById('fc-rev');
+    rev.querySelectorAll('.fc-w, .fc-pos').forEach(el=>card.insertBefore(el, rev));
+  }
+}
+
+/* A card turns over rather than simply changing. The obvious build — two faces in one box,
+   one rotated 180° behind the other — will not work here, because the two faces are not the
+   same size: the listening card is 340px and short, the answer is 560px and tall, and a
+   two-faced box has to be one height. So the card rotates a quarter turn onto its edge,
+   swaps its face while it is invisible, and completes the turn from the other side. The
+   change of size happens at 90°, where there is nothing to see. */
+function fcTurn(){
+  if(fcTurned) return;
+  fcTurned = true;
+  const card = document.getElementById('fc-card');
+  if(!card) return fcReveal();
+
+  /* Somebody who has asked not to be moved gets the card, not the performance. */
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches) return fcReveal();
+
+  const OUT = 170, BACK = 190;
+  card.style.transition = `transform ${OUT}ms ease-in`;
+  card.style.transform  = 'rotateY(90deg)';
+  setTimeout(()=>{
+    fcReveal();
+    /* land on the far side with no transition, then let it swing back */
+    card.style.transition = 'none';
+    card.style.transform  = 'rotateY(-90deg)';
+    requestAnimationFrame(()=>{
+      card.style.transition = `transform ${BACK}ms ease-out`;
+      card.style.transform  = 'rotateY(0deg)';
+      /* hand the transform back to the drag, which owns it from here */
+      setTimeout(()=>{ card.style.transition = ''; card.style.transform = ''; }, BACK + 20);
+    });
+  }, OUT);
+}
+
+/* Answering before turning the card over is how you fool yourself, so an answer on a
+   face-down card turns it and stops there. */
+function fcNext(knew){
+  if(!fcTurned){ fcTurn(); return; }
+  const x = fcDeck[fcAt];
+  if(knew){ fcKnown++; setLearned(x.w, true); }
+  else    { fcMissed++; fcDeck.push(x); }        // to the back of the pile, not gone
+  fcAt++;
+  fcDraw();
+}
+
+/* --- the swipe ---
+   Dragging is live only once the card is face up, so a swipe can never grade a word you
+   have not looked at. The first few pixels decide whether the gesture is a swipe or a
+   scroll, and it stays that way for the rest of the drag — otherwise a slightly diagonal
+   flick both scrolls the card and answers it. */
+function fcDrag(card){
+  const THRESHOLD = 90;
+  let x0 = 0, y0 = 0, dx = 0, down = false, axis = null;
+  const know = document.getElementById('fc-s-know'), again = document.getElementById('fc-s-again');
+
+  const paintDrag = ()=>{
+    card.style.transform = `translateX(${dx}px) rotate(${dx / 26}deg)`;
+    const t = Math.min(Math.abs(dx) / THRESHOLD, 1);
+    know.style.opacity  = dx > 0 ? t : 0;
+    again.style.opacity = dx < 0 ? t : 0;
+  };
+  const reset = ()=>{
+    card.style.transition = 'transform .18s ease';
+    card.style.transform = ''; know.style.opacity = 0; again.style.opacity = 0;
+    setTimeout(()=>{ card.style.transition = ''; }, 190);
+  };
+
+  card.addEventListener('pointerdown', e=>{
+    if(!fcTurned || e.button) return;
+    down = true; axis = null; dx = 0; x0 = e.clientX; y0 = e.clientY;
+  });
+  card.addEventListener('pointermove', e=>{
+    if(!down) return;
+    const mx = e.clientX - x0, my = e.clientY - y0;
+    if(!axis){
+      if(Math.abs(mx) < 10 && Math.abs(my) < 10) return;
+      axis = Math.abs(mx) > Math.abs(my) ? 'x' : 'y';
+      /* Capture only now, and only for a swipe. Capturing on pointerdown retargets the
+         click to the card, which swallowed every tap on the two speakers — they sit
+         inside the card, so the delegated handler stopped seeing them. A tap never
+         travels ten pixels, so it never reaches this line. */
+      if(axis === 'x'){ try{ card.setPointerCapture(e.pointerId); }catch(err){} }
+    }
+    if(axis !== 'x') return;
+    dx = mx; paintDrag();
+  });
+  const end = e=>{
+    if(!down) return;
+    down = false;
+    if(axis === 'x' && e && e.pointerId != null)
+      try{ card.releasePointerCapture(e.pointerId); }catch(err){}
+    if(Math.abs(dx) < THRESHOLD) return reset();
+    const knew = dx > 0;
+    card.classList.add('flying');
+    card.style.transform = `translateX(${knew ? 1 : -1}px) rotate(0deg)`;
+    card.style.transform = `translateX(${knew ? 140 : -140}%) rotate(${knew ? 14 : -14}deg)`;
+    card.style.opacity = '0';
+    setTimeout(()=>fcNext(knew), 190);
+  };
+  card.addEventListener('pointerup', end);
+  card.addEventListener('pointercancel', ()=>{ if(down){ down = false; reset(); } });
+}
+
+function fcDone(){
+  fcCount.textContent = ''; fcBar.style.width = '100%';
+  fcBody.classList.remove('answering');
+  fcBody.innerHTML =
+    `<p class="fc-h">${fcKnown ? 'That is the field.' : 'Nothing ticked this time.'}</p>
+     <p class="fc-sub">${fcKnown} marked learned${fcMissed ? `, ${fcMissed} to come back to` : ''}.</p>
+     <div class="fc-acts">
+       <button class="fc-again" id="fc-more">Test another field</button>
+       <button class="fc-know" id="fc-close2">Back to the book</button>
+     </div>`;
+  document.getElementById('fc-more').addEventListener('click', fcPickScreen);
+  document.getElementById('fc-close2').addEventListener('click', fcClose);
+}
+
+function fcOpen(){
+  fcEl.hidden = false;
+  document.body.classList.add('fc-on');
+  fcPickScreen();
+}
+function fcClose(){
+  fcEl.hidden = true;
+  document.body.classList.remove('fc-on');
+  fcDeck = [];
+  if(TTS) speechSynthesis.cancel();
+}
+
+document.getElementById('flash').addEventListener('click', fcOpen);
+document.getElementById('fc-x').addEventListener('click', fcClose);
+fcBody.addEventListener('click', e=>{
+  const f = e.target.closest('.fc-f');
+  if(f && !f.disabled){ fcStart(f.dataset.id, f.dataset.ink); return; }
+  const g = e.target.closest('[data-front]');
+  if(g){
+    fcFront = g.dataset.front;
+    fcBody.querySelectorAll('[data-front]').forEach(b=>
+      b.setAttribute('aria-pressed', String(b === g)));
+  }
+});
+document.addEventListener('keydown', e=>{
+  if(fcEl.hidden) return;
+  if(e.key === 'Escape'){ fcClose(); return; }
+  if(!document.getElementById('fc-card')) return;
+  if(e.key === ' '){ e.preventDefault(); fcFront==='ear' && !fcTurned ? fcSpeak() : fcTurn(); }
+  else if(e.key === 'ArrowRight') fcNext(true);
+  else if(e.key === 'ArrowLeft')  fcNext(false);
 });
 
 /* reset */

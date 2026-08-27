@@ -273,6 +273,11 @@ disjoint, so every word in `W` renders exactly once no matter what `f` holds —
 what lets a field be deleted without its words falling off the page. They are released to
 Unfiled rather than lost.
 
+Within a section the words are sorted alphabetically by `localeCompare`, at base
+sensitivity. Insertion order meant something only to whoever typed the list; a field of
+thirty is findable by eye only if it reads like a glossary. The card numbers follow the
+render, so they number the page rather than the history.
+
 Cards are built as HTML strings and
 everything model-authored goes through `esc()` first — including before the `*asterisk*`
 transform, never after, because a signed-in session token lives in this browser and an
@@ -286,6 +291,72 @@ left. Two handlers hiding on their own terms would undo each other: a keystroke 
 back a card the filter had just taken away. Ticking a card that the current filter no longer
 wants fades it out over 160ms rather than dropping it on the frame, so the next card does
 not spring up under a finger still coming down.
+
+### 3.6b Flash cards
+
+A mode rather than a page: a fixed overlay over the book, opened from the bar. The picker
+asks two things — **how to ask** (the word, or by ear) and **which field** — then `fcPool()`
+builds the deck: enriched words only, since a bare capture has no meaning to hide, and by
+default without the ones already ticked. The deck is shuffled, lives in a local array, and
+is dropped when the overlay closes. Nothing about it is persisted.
+
+Both fronts turn over into the same full card, so there is one thing to learn rather than
+two. On the ear front the circle is the single exception to *tap turns the card over*: it
+replays the word, and it earns the exception by looking like a play button. By ear is
+offered only when `fcCanHear()` finds a voice — a listening test with nothing to hear is
+worse than no option at all.
+
+`fcSpeak()` clears `current` before delegating, which makes the two speakers here behave
+differently from the book's. In the book a second tap on the same button stops a sentence
+part-way, and that is right there. Here it is wrong twice: the ear card speaks itself on
+arrival, so the first press of the circle would have silenced it rather than repeated it,
+and the circle and the pill are two ways of asking for one thing — pressing one after the
+other should say the word twice, not say it and then stop it. Each control is also passed
+as its own button, so the speaking highlight lands on the one that was pressed. Both are
+real `<button>` elements: the circle began as a `<div>`, which put it outside the tab order
+and left it unnamed to a screen reader.
+
+Turning an ear card over removes its listening face — circle, waveform and the row of dots
+standing in for the hidden word — and drops the narrow listening width. All three were
+answering a question that has just been answered, and leaving them made the card top-heavy
+with its text cramped into 340px. The revealed word then moves up to lead the card: left
+inside the reveal it sat beneath a horizontal rule, so the card appeared to begin somewhere
+above its own top edge.
+
+Two pieces of copy are dropped on turning for the same reason — they describe a state that
+has passed. "Tap to turn over" goes (its 22px top margin had been holding it clear of
+content the ear card sheds, so leaving it stranded that margin at the top of the card), and
+the hint beneath the buttons stops saying *turn it over* and says *swipe to answer*. Turned,
+both fronts are the same ordinary card: word, part of speech, rule, meaning, gloss,
+sentence, replay.
+
+The turn is animated, and `fcReveal()` exists so that it can be. The obvious build — two
+faces in one box, one rotated 180° behind the other — does not work here, because the faces
+are different sizes: the listening card is 340px and short, the answer 560px and tall, and a
+two-faced box has to be one height. So `fcTurn()` rotates the card a quarter turn onto its
+edge, calls `fcReveal()` while it is invisible, drops it to −90° with no transition and
+swings it back. The change of size happens at 90°, where there is nothing to see. The deck
+carries the `perspective`; without one the rotation is an affine squash rather than a turn.
+Anyone who has asked not to be moved gets `fcReveal()` on its own. The inline transform is
+cleared at the end, because from then on the drag owns it.
+
+Answering is a swipe, with buttons and arrow keys saying the same thing. **The pointer is
+captured only once the drag has committed to the horizontal, never on `pointerdown`** —
+capturing early retargets the subsequent `click` to the card, and since both speakers sit
+inside the card, every tap on them was being swallowed and read as "turn the card over".
+It survived a first round of testing because a programmatic `.click()` fires no pointer
+events at all; only a real click reproduces it. Dragging is live only once the card is face up, so a swipe can never grade a word that was never looked at,
+and `fcNext()` turns a face-down card instead of recording an answer — answering before
+looking is how a reader fools themselves. The first ten pixels of a drag decide whether the
+gesture is a swipe or a scroll and it stays decided, because a slightly diagonal flick that
+both scrolls and answers is unusable; `touch-action: pan-y` leaves the vertical to the
+browser. **I know it** writes through `setLearned()` — the one place a ✓ moves — so the
+book's card, the tally and the *Not yet* filter update together and cannot drift apart.
+**Again** pushes the word to the back of the deck rather than dropping it.
+
+The answer controls move with the grip, not the width alone: a row across the bottom on a
+phone, the two bottom corners on a tablet where the thumbs already are, and a centred pair
+with the keys named beneath them on a desktop, where there is no thumb to reach with.
 
 `loadProgress()` re-applies the ✓ marks to the freshly built DOM and then re-applies the
 filter over it, which is why it always runs immediately after `render()` — a merge would
@@ -400,6 +471,8 @@ changes, and a banner comment is not. Search for the name.
 | **speech** | Voice discovery and filtering, the remembered choice, rate, and `speak()`. Degrades to nothing where `speechSynthesis` is absent. |
 | **render** | `esc()`, `posTags()`, `render()`, the swatch strip. Rebuilds the whole book from `W`. |
 | **what is on the page** | `applyFilters()`, `markFilter`, and the `.seg` control. The single owner of card `display`: search text and the ✓ filter, answered together. |
+| **flash cards** | `fcOpen()`, `fcPool()`, `fcDraw()`, `fcNext()`. A deck built on open and dropped on close; it marks through `setLearned()`, never its own store. |
+| **holding the scroll still** | `keepStill()` and `topCard()`. Any toggle that changes a card's height goes through it. |
 | **the card menu** | The `⋯` overflow menu, filing and unfiling, the in-card removal confirm, and the delegated click handler covering speak / Arabic / ✓ / study-mode reveal. |
 | **data loading** | `norm`, `stem`, the ink palette, the `localStorage` accessors, `apply()` and `boot()`. |
 | **the storage seam** | `localStore` — the device-only half, including the overrides and tombstones that let a committed file be edited around. |
