@@ -136,31 +136,36 @@ test.describe('the card menu', () => {
     await expect(page.locator(`#f3 [data-w="${word}"]`)).toHaveCount(1);
   });
 
+  /* These two were one test that opened the menu, cancelled, and opened it again. The
+     second open was flaky on CI — the menu hangs off <body> and is rebuilt each time, and
+     the card changes height underneath it as the confirmation comes and goes, so the click
+     sometimes landed on a node about to be replaced. It went green on the retry, which is
+     the worst outcome: a test that needs a retry is a test that will fail for real one day.
+     Two tests that each open the menu once, and no retry is needed. */
   test('removing asks first, and cancelling leaves the word alone', async ({ page }) => {
     await page.setViewportSize(DESKTOP);
     await stock(page);
     const card = page.locator('.card').first();
     const word = await card.getAttribute('data-w');
-    /* The menu hangs off <body> and is built fresh each time, so a second open has to wait
-       for the first to be gone — otherwise the click lands on a button that is about to be
-       detached, which is a flake and not a fault. */
-    const openMenu = async () => {
-      await expect(page.locator('.card-menu')).toHaveCount(0);
-      await card.locator('.more').click();
-      await expect(page.locator('.card-menu')).toBeVisible();
-    };
-
-    await openMenu();
+    await card.locator('.more').click();
     await page.locator('.card-menu [data-remove]').click();
     await expect(card.locator('.cm-confirm')).toBeVisible();
     await card.locator('[data-cancelremove]').click();
     await expect(card.locator('.cm-confirm')).toHaveCount(0);
     await expect(page.locator(`[data-w="${word}"]`), 'cancelling removed it anyway').toHaveCount(1);
+  });
 
-    await openMenu();
+  test('removing, once confirmed, takes the word out', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await stock(page);
+    const card = page.locator('.card').first();
+    const word = await card.getAttribute('data-w');
+    const before = await page.locator('.card').count();
+    await card.locator('.more').click();
     await page.locator('.card-menu [data-remove]').click();
     await card.locator('[data-reallyremove]').click();
     await expect(page.locator(`[data-w="${word}"]`)).toHaveCount(0);
+    await expect(page.locator('.card')).toHaveCount(before - 1);
   });
 });
 
