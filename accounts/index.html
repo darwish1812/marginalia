@@ -182,9 +182,12 @@
      has to be a contiguous run in the markup, so the filter moved up beside search and these
      `order` rules put it back. Default order is 0, which is what the four buttons want.
      They are scoped to the bar on purpose: .seg is also the flash-card picker's "the word /
-     by ear" control, and unscoped, the order pushed it below the field grid there. */
+     by ear" control, and unscoped, the order pushed it below the field grid there.
+
+     The filter used to carry `order:1`, which sent it back down the row behind the four
+     buttons. It does not any more: it belongs beside the search box, which is where the
+     markup already had it and where the phone has always shown it. */
   .bar > .search{order:-1}
-  .bar > .seg{order:1}
   .bar-extra > .bar-menu{order:2}
   .bar-extra > .tally{order:3}
   .bar-extra{display:contents}
@@ -568,7 +571,7 @@
   .btn:disabled{opacity:.5; cursor:default}
   .btn:disabled:hover{color:var(--dim); border-color:var(--rule)}
   .panel textarea:disabled{cursor:default}
-  .stepno{font-family:"Archivo",sans-serif; font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-1); font-weight:600; display:block; margin-bottom:7px}
+  .stepno,.set-h{font-family:"Archivo",sans-serif; font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-1); font-weight:600; display:block; margin-bottom:7px}
   .note{font-size:14px; color:var(--dim); margin:10px 0 0; line-height:1.6}
   .note.warn{color:var(--ink-1)}
   .note.bad{color:var(--ink-3)}
@@ -604,11 +607,19 @@
      align-items on a block, no gap, and a button sitting against its own caption. */
   #packgo{display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-top:22px}
 
-  /* the one bulk action, kept away from the rest of the account panel by a rule */
-  .empty-all{margin-top:22px; padding-top:18px; border-top:1px solid var(--rule)}
-  .empty-all .set-t{color:var(--ink-3)}
-  .empty-all input{background:var(--night-2); border:1px solid var(--ink-3); border-radius:7px;
+  /* Settings holds three kinds of thing and used to run them together as one list. A
+     group is a run of rows that belong to the same owner, under a label saying who. */
+  .set-group + .set-group{margin-top:28px; padding-top:24px; border-top:1px solid var(--rule)}
+  .set-h{margin-bottom:15px}
+  /* The two that act on everything at once. Stacked rather than laid out as a .set row,
+     because each grows its confirmation where its button was and a line with the label on
+     one end and the control on the other has nowhere to put one. */
+  .bulk{margin-top:22px; padding-top:18px; border-top:1px solid var(--rule)}
+  /* red is for the one there is no undo for; resetting marks you can earn back */
+  .bulk.grave .set-t{color:var(--ink-3)}
+  .bulk input{background:var(--night-2); border:1px solid var(--ink-3); border-radius:7px;
     padding:8px 11px; color:var(--paper); font:15px/1.4 "Newsreader",Georgia,serif; max-width:160px}
+  .bulk .row{margin-top:12px}
 
   /* ---------- the card menu ---------- */
   .more{
@@ -1098,10 +1109,10 @@
     <div class="wrap">
       <div class="bar">
         <input class="search" id="q" type="search" placeholder="Search a word, a meaning, an example…" aria-label="Search words">
-        <!-- Search and the filter are the two the phone keeps in the open bar; the filter sits
-             next to search here rather than after Reset marks so that everything below is one
-             contiguous run that .bar-extra can wrap. The desktop order is unchanged — the
-             `order` rules in the stylesheet put the filter back where it has always been. -->
+        <!-- Search and the filter answer the same question — what am I looking at — so they
+             stand together, and they are also the two the phone keeps out of the sheet. The
+             desktop used to pull the filter back down the row with an `order` rule; it does
+             not any more, so the wide bar and the phone now group these the same way. -->
         <span class="seg" role="group" aria-label="Show which words">
           <button class="btn" data-filter="all"  aria-pressed="true">All</button>
           <button class="btn" data-filter="todo" aria-pressed="false">Not yet</button>
@@ -1112,10 +1123,11 @@
         <!-- On a wide screen this wrapper is display:contents and its children are ordinary
              members of the bar. Under 720px it becomes the sheet the ⋯ opens. -->
         <div class="bar-extra" id="barextra">
+        <!-- and here the bar turns from what you are looking at to what you do with it -->
+        <span class="bar-div" aria-hidden="true"></span>
         <button class="btn" id="study" aria-pressed="false">Study mode</button>
-        <button class="btn" id="flash">Flash cards</button>
         <button class="btn" id="arabic" aria-pressed="false" lang="ar">العربية</button>
-        <button class="btn" id="reset">Reset marks</button>
+        <button class="btn" id="flash">Flash cards</button>
         <span class="bar-menu">
         <span class="bar-div" aria-hidden="true"></span>
         <button class="btn menubtn" id="setbtn" aria-haspopup="true" aria-expanded="false" aria-controls="settings">
@@ -1185,80 +1197,120 @@
              a word that would not move, a booklet being read from the offline copy. It sat
              inside the add-words panel before, which was a stranger place for it than this. -->
         <p class="note" id="sync"></p>
-        <div class="set">
-          <div>
-            <p class="set-t">Add words</p>
-            <p class="set-d" id="addhint">Paste a list, take the prompt to Claude, bring the reply back.</p>
-          </div>
-          <button class="btn" id="addbtn" aria-pressed="false">+ Add words</button>
-        </div>
 
-        <div class="set">
-          <div>
-            <p class="set-t">Account</p>
-            <p class="set-d" id="accthint">Your words live in your account, so they follow you between devices.</p>
+        <!-- Three kinds of thing sat in one flat list here, so a reader after the download
+             had to know it lived under a gear next to a voice picker. They are grouped now
+             by what they belong to: the rooms you can walk into, the booklet itself, and
+             this one device. That last line is the app's own — words, marks and corrections
+             follow the account; pictures, voice and speed never leave the machine. -->
+        <div class="set-group">
+          <div class="set">
+            <div>
+              <p class="set-t">Add words</p>
+              <p class="set-d" id="addhint">Paste a list, take the prompt to Claude, bring the reply back.</p>
+            </div>
+            <button class="btn" id="addbtn" aria-pressed="false">+ Add words</button>
           </div>
-          <button class="btn" id="acctbtn" aria-pressed="false">Sign in</button>
-        </div>
 
-        <div class="set">
-          <div>
-            <p class="set-t">Fields</p>
-            <p class="set-d" id="fldhint">The inks down the side of the page. Rename them, recolour them, or make your own.</p>
+          <!-- Hidden entirely unless enrichment is on. Whether a fetched reply lands in your
+               booklet or waits to be read first is a question about your own words, so it is
+               yours and not the administrator's. It sits under the door it changes. -->
+          <div class="set" id="automerge-row" hidden>
+            <div>
+              <p class="set-t">Merging</p>
+              <p class="set-d">Enriched words can go straight into your booklet, or wait in the
+                box so you can read them first. There is no undo, so waiting is the default.</p>
+            </div>
+            <button class="btn" id="automerge" aria-pressed="false">Merge automatically</button>
           </div>
-          <button class="btn" id="fldbtn" aria-pressed="false">Edit fields</button>
-        </div>
 
-        <!-- Hidden entirely unless enrichment is on. Whether a fetched reply lands in your
-             booklet or waits to be read first is a question about your own words, so it is
-             yours and not the administrator's. -->
-        <div class="set" id="automerge-row" hidden>
-          <div>
-            <p class="set-t">Merging</p>
-            <p class="set-d">Enriched words can go straight into your booklet, or wait in the
-              box so you can read them first. There is no undo, so waiting is the default.</p>
+          <div class="set">
+            <div>
+              <p class="set-t">Account</p>
+              <p class="set-d" id="accthint">Your words live in your account, so they follow you between devices.</p>
+            </div>
+            <button class="btn" id="acctbtn" aria-pressed="false">Sign in</button>
           </div>
-          <button class="btn" id="automerge" aria-pressed="false">Merge automatically</button>
-        </div>
 
-        <!-- Not a step in adding words — it never was, really. Keeping a copy is something
-             you do to the booklet, so it lives with the other things you do to the booklet. -->
-        <div class="set">
-          <div>
-            <p class="set-t">Keep a copy</p>
-            <p class="set-d" id="copyhint">Your words save themselves as you add them. Take a
-              copy whenever you want one of your own.</p>
-          </div>
-          <div class="row" style="margin:0">
-            <button class="btn" id="dl">Download words.json</button>
-            <button class="btn" id="dlprog">Export progress</button>
+          <div class="set">
+            <div>
+              <p class="set-t">Fields</p>
+              <p class="set-d" id="fldhint">The inks down the side of the page. Rename them, recolour them, or make your own.</p>
+            </div>
+            <button class="btn" id="fldbtn" aria-pressed="false">Edit fields</button>
           </div>
         </div>
 
-        <div class="set">
-          <div>
-            <p class="set-t">Pictures</p>
-            <p class="set-d">A few words carry a drawing, watermarked into the corner of the card.
-              Turning them off leaves the text exactly as it was.</p>
+        <div class="set-group">
+          <span class="set-h">The whole booklet</span>
+
+          <!-- Not a step in adding words — it never was, really. Keeping a copy is something
+               you do to the booklet, so it lives with the other things you do to the booklet. -->
+          <div class="set">
+            <div>
+              <p class="set-t">Keep a copy</p>
+              <p class="set-d" id="copyhint">Your words save themselves as you add them. Take a
+                copy whenever you want one of your own.</p>
+            </div>
+            <div class="row" style="margin:0">
+              <button class="btn" id="dl">Download words.json</button>
+              <button class="btn" id="dlprog">Export progress</button>
+            </div>
           </div>
-          <button class="btn" id="pics" aria-pressed="true">Pictures on</button>
+
+          <!-- Every tick at once. This stood in the toolbar wearing the same pill as Study
+               mode and went off on a single click — cheaper than removing one word, which
+               asks twice. It is beside the other thing that acts on everything now, and it
+               asks. -->
+          <div class="bulk">
+            <p class="set-t">Reset marks</p>
+            <p class="set-d">Puts every card back to unlearned. The words stay exactly as they
+              are; only what you have marked goes.</p>
+            <div class="row" id="resetrow"><button class="btn" id="reset">Reset marks</button></div>
+            <p class="note" id="resetmsg"></p>
+          </div>
+
+          <!-- The only bulk action in the app. Removing words one at a time is right for
+               a booklet you are tending; it is cruelty for someone who signed up, got a
+               hundred and fifty words about castles, and wanted none of them. -->
+          <div class="bulk grave">
+            <p class="set-t">Empty this booklet</p>
+            <p class="set-d" id="emptydesc">Removes every word. There is no undo — take a copy
+              from <b>Keep a copy</b> above first if you want one. What is left is the booklet a
+              new account starts with, so you are asked the same question one is: what do you read.</p>
+            <div class="row" id="emptyrow"><button class="btn fld-del" id="emptybtn">Empty this booklet</button></div>
+            <p class="note" id="emptymsg"></p>
+          </div>
         </div>
 
-        <div class="set set-sound">
-          <div>
-            <p class="set-t">Reading voice</p>
-            <p class="set-d">Which of your device's voices reads the cards. The list differs between
-              the iPad and a laptop, and rare words are occasionally mispronounced whichever you pick.</p>
-          </div>
-          <select class="btn" id="voice" aria-label="Reading voice"></select>
-        </div>
+        <div class="set-group">
+          <span class="set-h">This device only</span>
 
-        <div class="set set-sound">
-          <div>
-            <p class="set-t">Reading speed</p>
-            <p class="set-d">Slower is easier to shadow aloud when a word is new.</p>
+          <div class="set">
+            <div>
+              <p class="set-t">Pictures</p>
+              <p class="set-d">A few words carry a drawing, watermarked into the corner of the card.
+                Turning them off leaves the text exactly as it was.</p>
+            </div>
+            <button class="btn" id="pics" aria-pressed="true">Pictures on</button>
           </div>
-          <button class="btn" id="speed">Speed 0.9×</button>
+
+          <div class="set set-sound">
+            <div>
+              <p class="set-t">Reading voice</p>
+              <p class="set-d">Which of your device's voices reads the cards. The list differs between
+                the iPad and a laptop, and rare words are occasionally mispronounced whichever you pick.</p>
+            </div>
+            <select class="btn" id="voice" aria-label="Reading voice"></select>
+          </div>
+
+          <div class="set set-sound">
+            <div>
+              <p class="set-t">Reading speed</p>
+              <p class="set-d">Slower is easier to shadow aloud when a word is new.</p>
+            </div>
+            <button class="btn" id="speed">Speed 0.9×</button>
+          </div>
         </div>
       </section>
 
@@ -1292,18 +1344,6 @@
             account as you add them; nothing needs downloading or committing.</p>
           <div class="row"><button class="btn" id="signout">Sign out</button></div>
           <p class="note" id="acctmsg2"></p>
-
-          <!-- The only bulk action in the app. Removing words one at a time is right for
-               a booklet you are tending; it is cruelty for someone who signed up, got a
-               hundred and fifty words about castles, and wanted none of them. -->
-          <div class="empty-all">
-            <p class="set-t">Empty this booklet</p>
-            <p class="set-d" id="emptydesc">Removes every word. There is no undo — take a copy
-              from <b>Settings → Keep a copy</b> first if you want one. What is left is the booklet a
-              new account starts with, so you are asked the same question one is: what do you read.</p>
-            <div class="row" id="emptyrow"><button class="btn fld-del" id="emptybtn">Empty this booklet</button></div>
-            <p class="note" id="emptymsg"></p>
-          </div>
         </div>
 
         <div class="acct" id="acct-off" hidden>
@@ -2371,12 +2411,52 @@ document.addEventListener('keydown', e=>{
 });
 
 /* reset */
-document.getElementById('reset').addEventListener('click',()=>{
-  done.clear();
-  document.querySelectorAll('.card').forEach(c=>{ c.classList.remove('done'); c.querySelector('.mark').setAttribute('aria-pressed','false'); });
-  paint(); store.clearDone();
-  /* every card just changed sides at once; under a filter the page is now wrong */
-  applyFilters();
+/* ---------- resetting the marks ----------
+   Two taps, the way removing a single word already asks twice. This went off on one click
+   from the toolbar until now, which made the cheapest gesture in the app the one that threw
+   away every decision in it. The count is in the confirm because "reset marks" does not say
+   how much you are about to lose and "reset 55 marks" does. */
+function resetIdle(){
+  const row=document.getElementById('resetrow'), msg=document.getElementById('resetmsg');
+  row.textContent='';
+  const b=document.createElement('button');
+  b.className='btn'; b.id='reset'; b.textContent='Reset marks';
+  /* nothing learned is nothing to reset, and a live button that does nothing is a lie */
+  b.disabled = done.size===0;
+  row.appendChild(b);
+  msg.className='note'; msg.textContent='';
+}
+
+document.getElementById('resetrow').addEventListener('click', e=>{
+  const row=document.getElementById('resetrow'), msg=document.getElementById('resetmsg');
+
+  if(e.target.closest('#reset')){
+    const n=done.size;
+    const go=document.createElement('button');
+    go.className='btn fld-del'; go.id='resetgo';
+    go.textContent='Reset '+n+(n===1?' mark':' marks');
+    const no=document.createElement('button');
+    no.className='btn'; no.id='resetno'; no.textContent='Cancel';
+    row.textContent=''; row.append(go,no);
+    msg.className='note warn';
+    msg.textContent = store.id==='cloud'
+      ? 'Every tick goes, on every device. The words stay where they are.'
+      : 'Every tick goes from this browser. The words stay where they are.';
+    return;
+  }
+
+  if(e.target.closest('#resetno')){ resetIdle(); return; }
+
+  if(e.target.closest('#resetgo')){
+    done.clear();
+    document.querySelectorAll('.card').forEach(c=>{ c.classList.remove('done'); c.querySelector('.mark').setAttribute('aria-pressed','false'); });
+    paint(); store.clearDone();
+    /* every card just changed sides at once; under a filter the page is now wrong */
+    applyFilters();
+    resetIdle();
+    msg.className='note good';
+    msg.textContent='Reset. Nothing is marked as learned.';
+  }
 });
 
 /* ---------- data loading ---------- */
@@ -3539,6 +3619,9 @@ function openPanel(which){
   setBtn.setAttribute('aria-expanded', String(!!which));
   if(which){
     which.scrollTop = 0;           // a panel reopens at its own top, not where you left it
+    /* and at rest: a confirmation left half-open is a question nobody is being asked any
+       more, and the reset button's own state depends on a count that moves while you read */
+    if(which===setPanel){ resetIdle(); emptyIdle(); }
     /* Opened from the cover, the bar is halfway down the screen and a panel dropping out of
        it has a few inches to live in. The bar is sticky, so standing it up at the top of the
        window is a scroll and nothing else: the panel still opens where you are standing, the

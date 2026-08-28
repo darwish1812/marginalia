@@ -329,9 +329,19 @@ on scroll, on resize and on `visualViewport` resize, and writes only when the nu
 `openPanel()` calls it, and first straightens the bar — a scroll to the top of the sticky
 element, nothing more — when there would be less than 420px to open into.
 
-Under 720px the search box and the mark filter stay in the open bar, for the reason above, and everything else — Study mode, Flash cards, العربية,
-Reset marks, Settings and the tally — goes behind a `⋯` that opens a sheet. That is 116px, two
-rows. `719px` is the measured boundary rather than a round number.
+Under 720px the search box and the mark filter stay in the open bar, for the reason above,
+and everything else — Study mode, العربية, Flash cards, Settings and the tally — goes behind
+a `⋯` that opens a sheet. That is 116px, two rows. `719px` is the measured boundary rather
+than a round number.
+
+**The row is ordered by the job, not by history.** Search and the filter both answer *what am
+I looking at*, so they stand together at the head of the bar; a `.bar-div` hairline, then
+Study mode, العربية and Flash cards, which are what you do with what you are looking at. That
+grouping cost nothing to build: the markup already had search and the filter adjacent, for
+the `display:contents` run the phone sheet needs, and the desktop was pulling the filter back
+down the row with an `order:1` rule that has simply been deleted. The wide bar and the phone
+now group these the same way. Reset marks left the bar entirely (§3.6c), which freed about
+127px and took one row down from roughly 1010px to 890.
 
 `.bar-extra` is `display:contents` on a wide screen, so its children are ordinary members of
 the bar and the desktop layout is untouched — the same elements, moved by CSS and never by
@@ -649,6 +659,7 @@ changes, and a banner comment is not. Search for the name.
 | **holding the scroll still** | `keepStill()` and `topCard()`. Any toggle that changes a card's height goes through it. |
 | **the card menu** | The `⋯` on a card — not the one in the bar, below. Filing and unfiling, the in-card removal confirm, and the delegated click handler covering speak / Arabic / ✓ / study-mode reveal. |
 | **the bar on a phone** | `openMore()`, `.bar-extra`, `.morebtn`. The `⋯` in the toolbar, which exists only under 720px. Moves nothing: the controls are the same elements the wide bar shows in a row. Between 720 and 1400 the bar is set tighter instead, so a tablet keeps one row. |
+| **resetting the marks** | `resetIdle()` and the `#resetrow` handler — the second of the two bulk actions, and the second to ask before it acts. |
 | **panel sizing** | `sizePanels()`, `--barh`, `--panelmax`. How much room a panel dropping out of the sticky bar actually has, measured rather than assumed. |
 | **data loading** | `norm`, `stem`, the ink palette, the `localStorage` accessors, `apply()` and `boot()`. |
 | **the storage seam** | `localStore` — the device-only half, including the overrides and tombstones that let a committed file be edited around. |

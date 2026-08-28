@@ -167,7 +167,10 @@ to Unfiled, and the button says how many before you press it. Eight fields at mo
 ink can only belong to one of them, because the swatch strip along the top is the index of
 the whole book.
 
-**Settings → Account → Empty this booklet** clears every word at once. It asks you to type
+**Settings → The whole booklet** holds the three things that act on all of it at once —
+keeping a copy, resetting the marks, and emptying it. **Reset marks** puts every card back to
+unlearned and asks first, naming the number it is about to clear; the words are untouched.
+**Empty this booklet** clears every word at once. It asks you to type
 the word `empty`, because it cannot be undone. What is left is the same empty booklet a new
 account starts with, so you are asked the same question a new account is asked — **what do
 you read?** — and can stock it from any of the packs, or leave it empty and go on with the
@@ -198,11 +201,15 @@ fields you already had.
   laptop. Rare words are occasionally mispronounced — verify anything that sounds odd.
 - **Printing** (Ctrl/Cmd+P) reflows into a two-column paper booklet, one field per page.
   Whatever language mode is on prints with it.
-- **On a phone the toolbar folds.** Below 720px the search box and the All / Not yet /
-  Learned filter stay out; Study mode, Flash cards, العربية, Reset marks, Settings and the
-  tally go behind a `⋯` beside the filter. Nothing is lost, and the bar stops taking a third
-  of the screen with it. On a tablet nothing folds — the bar is simply set tighter, so it
-  holds one row down to about 1010px and an iPad in landscape keeps every control in sight.
+- **The toolbar reads left to right in two halves.** Search and the All / Not yet / Learned
+  filter come first — they answer *what am I looking at* — then a hairline, then Study mode,
+  العربية and Flash cards, which are what you do with it. Settings and the tally close the
+  row.
+- **On a phone the toolbar folds.** Below 720px the search box and the filter stay out;
+  Study mode, العربية, Flash cards, Settings and the tally go behind a `⋯` beside the filter.
+  Nothing is lost, and the bar stops taking a third of the screen with it. On a tablet
+  nothing folds — the bar is simply set tighter, so it holds one row down to about 890px and
+  an iPad in landscape keeps every control in sight.
 - **Sign-in is per browser.** Signing in on the iPad and on the laptop is two sign-ins, and
   signing out of one leaves the other alone.
 
