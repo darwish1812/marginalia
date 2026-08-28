@@ -1,0 +1,45 @@
+name: accounts2 — the booklet still opens
+
+# The suite lives in accounts2/, and so does a copy of this workflow — but GitHub only runs
+# workflows found at the root of a repository, so the copy down there is inert. This is the
+# one that fires. It is scoped to accounts2/** so that pushes touching the original booklet
+# at the root, or the accounts/ copy beside it, do not spend minutes running tests that have
+# nothing to say about them.
+on:
+  push:
+    paths: ['accounts2/**']
+  pull_request:
+    paths: ['accounts2/**']
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: accounts2
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: accounts2/package-lock.json
+
+      - run: npm ci
+
+      # Only the browser the suite uses. --with-deps because a bare runner has none of the
+      # libraries a headless Chromium expects.
+      - run: npx playwright install --with-deps chromium
+
+      - run: npx playwright test
+
+      # Worth having exactly when the run failed.
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: accounts2/playwright-report/
+          retention-days: 14
