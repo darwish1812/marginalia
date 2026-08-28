@@ -167,8 +167,11 @@ to Unfiled, and the button says how many before you press it. Eight fields at mo
 ink can only belong to one of them, because the swatch strip along the top is the index of
 the whole book.
 
-**Settings → Account → Empty this booklet** clears every word at once and leaves your fields
-standing. It asks you to type the word `empty`, because it cannot be undone.
+**Settings → Account → Empty this booklet** clears every word at once. It asks you to type
+the word `empty`, because it cannot be undone. What is left is the same empty booklet a new
+account starts with, so you are asked the same question a new account is asked — **what do
+you read?** — and can stock it from any of the packs, or leave it empty and go on with the
+fields you already had.
 
 ## Notes
 

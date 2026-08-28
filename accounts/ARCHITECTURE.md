@@ -148,6 +148,7 @@ once and none of them learns where it is saving to.
 | `saveField(f)` / `removeField(id, moveTo)` | Rewrites the local field list; `removeField` records the moves. | `upsert` / one `remove_field()` call. |
 | `setField(w, f)` / `removeWord(w)` | Records an override or a tombstone beside the file. | `update` / `delete` on that one row. |
 | `removeAllWords()` | Clears local additions and tombstones the rest. | `delete` across the account. Fields are left standing. |
+| `restock(pack)` | Forgets the tombstones and the overrides, then stocks the pack as if for the first time. | The same writes as a seed, by the ordinary paths — `remove_field` for the fields the pack does not name, `upsert` for the ones it does, `merge_words` for its words. |
 | `addFixes(fixes)` | Appends to the local corrections list. | `upsert` on `(user_id, norm_wrong)`, ignoring duplicates. |
 | `doneList()` | The `vocab-booklet-progress` array. | `this.ready`, taken straight off the loaded rows' `done` column. |
 | `setDone(w, on)` | Rewrites the whole array from the in-memory set; the arguments are ignored. | Updates that one row. Optimistic — the tick has already moved on screen, and a failure is reported in the status line rather than snatched back. |
@@ -170,6 +171,16 @@ Fields, words, corrections and the stamp are four writes that are only correct t
 the client makes one call to `seed_account()` and Postgres does them in one transaction.
 Every insert ignores conflicts, so a seed interrupted halfway is harmless: the next sign-in
 completes it. `seeded_at` is stamped last.
+
+**Restocking is a different call on purpose.** Emptying the booklet leaves a reader in the
+one state the first-run picker was written for — fields standing, not a word in them — so the
+picker is offered there too, and `store.restock(pack)` is what its start button reaches. It
+cannot be `seed_account()`: that is guarded by `seeded_at`, and the guard is doing exactly
+its job. So `restock()` asks for the same four writes through the ordinary paths instead —
+the fields the pack names replace the ones standing, including all of them when it names
+none — which is also the honest description of what it is. Locally there is one more thing to
+undo first: `removeAllWords()` writes every word into the tombstone list, and without
+clearing it the pack's words would be filtered straight back out on the way in.
 
 **Three functions exist for exactly this reason** — `seed_account`, `merge_words` and
 `remove_field`. Each is several statements that are only right as a unit, and a browser
@@ -535,6 +546,8 @@ code is worth knowing —
    behind it should still work. Widen it again and the bar should be one row, unchanged.
 8. At 1194px — an iPad in landscape — the bar should be one row, and Settings opened from the
    top of the page should end above the bottom of the window and scroll to its last row.
+9. Empty the booklet from **Account**; the picker should come back, offering the packs and a
+   way to leave it empty.
 
 ### Deploy
 
@@ -587,7 +600,7 @@ changes, and a banner comment is not. Search for the name.
 | **the storage seam** | `localStore` — the device-only half, including the overrides and tombstones that let a committed file be edited around. |
 | **the same seam, against an account** | `cloudStore` — `rowToWord`/`wordToRow`, the Supabase half, and the offline row mirror. |
 | **stocking a new account** | `asError`, `errText`, `seedAccount()`. |
-| **first run** | The pack list, `loadPack()`, `showFirstRun()` and the picker. |
+| **first run** | The pack list, `loadPack()`, `showFirstRun()` and the picker — offered again, as `restocking`, to a booklet that has just been emptied. |
 | **signed in, signed out** | `enter()`, `setAcctState()`, `syncNote()`. |
 | **the sign-in gate** | The three-mode form, OAuth provider discovery, sign-out, `authText()`. |
 | **fields** | `renderFields()`, the inline editor, the ink palette and the eight-field cap. |
