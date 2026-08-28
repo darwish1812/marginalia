@@ -1696,6 +1696,55 @@ const sb = ACCOUNTS ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_K
    worked before because boot() is async, which is too fine a thread to hang a global on. */
 let FIELDS = [], W = [], SEED = null, CORRECTIONS = [];
 
+/* ---------- faults ----------
+   There is no build step here, so there is no version to read off one: bump this by hand
+   when you publish, or a report cannot tell you which booklet it came from. */
+const VERSION = '2026-08-29';
+
+/* What broke, written to the faults table so the person who has to fix it does not wait
+   to be told. Signed in only — the anon key is public and a table anyone may write to is
+   a table anyone will fill — which means a sign-in that fails has nobody to write as, and
+   the faults at the gate are the ones this will never catch. Stated plainly rather than
+   half-solved.
+
+   Three rules hold it to being a reporter and not a second source of faults:
+   it never throws, it never blocks anything, and it stops talking. */
+const faultsSeen = new Set();
+let faultsFiled = 0;
+function fault(kind, err, note){
+  try{
+    if(!ACCOUNTS || !sb || !cloudStore.uid) return;      // nobody to file it as
+    /* A fault inside render() arrives once per card. Twelve rows a session is a signal;
+       twelve hundred is a bill and a table nobody will read. */
+    if(faultsFiled >= 12) return;
+    const message = String((err && err.message) || err || note || 'unknown').slice(0, 500);
+    const sig = kind + '|' + message;
+    if(faultsSeen.has(sig)) return;
+    faultsSeen.add(sig); faultsFiled++;
+    /* No await and no catch that matters: a booklet must not wait on, or break because of,
+       the thing that reports breakages. */
+    sb.from('faults').insert({
+      kind,
+      message,
+      stack : err && err.stack ? String(err.stack).slice(0, 2000) : null,
+      build : VERSION,
+      /* origin and path only. A query string can carry a recovery token, and a booklet
+         does not put one of those in a table. */
+      page  : location.origin + location.pathname,
+      agent : navigator.userAgent.slice(0, 300),
+      screen: innerWidth + 'x' + innerHeight
+    }).then(()=>{}, ()=>{});
+  }catch(e){}
+}
+
+/* The two that cost nothing and would have caught every fault shipped this week. */
+window.addEventListener('error', e=>{
+  /* An image that will not load fires this too, and a missing drawing is already handled
+     by taking the figure out. Only script faults are worth a row. */
+  if(e && e.error) fault('uncaught', e.error);
+});
+window.addEventListener('unhandledrejection', e=>{ if(e) fault('promise', e.reason); });
+
 /* ---------- speech ---------- */
 const SPK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.8-1-3.3-2.5-4v8c1.5-.7 2.5-2.2 2.5-4zM14 3.2v2.1c2.9.9 5 3.5 5 6.7s-2.1 5.8-5 6.7v2.1c4-1 7-4.5 7-8.8s-3-7.8-7-8.8z"/></svg>';
 const TTS = 'speechSynthesis' in window;
@@ -2221,7 +2270,7 @@ function confirmRemove(card){
 
 async function fileWord(w, f){
   try{ await store.setField(w, f); }
-  catch(e){ syncNote('That word did not move — '+errText(e)); return; }
+  catch(e){ fault('sync', e, 'file'); syncNote('That word did not move — '+errText(e)); return; }
   const x=W.find(y=>y.w===w); if(x) x.f=f;
   syncNote('');
   render(); loadProgress(); showLocal(); renderFields();
@@ -2229,7 +2278,7 @@ async function fileWord(w, f){
 
 async function removeWord(w){
   try{ await store.removeWord(w); }
-  catch(e){ syncNote('That word was not removed — '+errText(e)); return; }
+  catch(e){ fault('sync', e, 'remove'); syncNote('That word was not removed — '+errText(e)); return; }
   W = W.filter(y=>y.w!==w);
   done.delete(w);
   syncNote('');
@@ -3285,6 +3334,10 @@ async function apply(data){
 function failed(msg){
   const el=document.getElementById('loaderr');
   el.style.display='block'; el.innerHTML=msg;
+  /* Every route to this line is a booklet that would not open: a project paused, a schema
+     never run, a network that went. The reader is being told; this is how you are. The
+     message is already built for reading and carries no word in it. */
+  fault('boot', null, String(msg).replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim());
 }
 
 async function boot(){

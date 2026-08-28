@@ -307,6 +307,46 @@ begin
 end;
 $$;
 
+-- ---------------------------------------------------------------- faults
+-- Where the booklet says what broke, so the person who has to fix it does not learn about
+-- it from an email that never comes. Every fault the reader is shown — a word that would
+-- not move, a booklet that would not load — is written here too.
+--
+-- Insert only, and only for the person signed in. There is no anonymous policy on purpose:
+-- the anon key is public, and a table anyone can write to is a table anyone can fill. The
+-- cost of that choice is real and worth stating — a sign-in that fails has nobody to write
+-- as, so the faults that happen at the gate are exactly the ones this will never see.
+--
+-- Nothing from a word goes in here. Not the word, not its meaning, not the Arabic. What is
+-- kept is what a fix needs: what broke, where in the code, which build, and on what kind of
+-- screen. `at` is set by the database rather than the browser, because a device with a
+-- wrong clock should not be able to file a fault in the wrong week.
+create table if not exists public.faults (
+  id      uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users on delete cascade default auth.uid(),
+  at      timestamptz not null default now(),
+  kind    text not null,                       -- 'uncaught' | 'promise' | 'sync' | 'boot'
+  message text not null,
+  stack   text,
+  build   text,                                -- the VERSION constant in index.html
+  page    text,                                -- origin and path, never the query string
+  agent   text,
+  screen  text
+);
+
+alter table public.faults enable row level security;
+
+-- Insert, and nothing else. The reader has no reason to read these back and the app never
+-- asks for them; they are read in the dashboard, as the service role, by whoever is fixing
+-- it. No select policy means no select, which is the smallest door that still works.
+drop policy if exists "file my own faults" on public.faults;
+create policy "file my own faults" on public.faults
+  for insert to authenticated
+  with check (auth.uid() = user_id);
+
+-- Read newest-first while looking for what is going wrong today.
+create index if not exists faults_at_idx on public.faults (at desc);
+
 -- ---------------------------------------------------------------- last line
 -- PostgREST answers the browser from a cached picture of what this database offers, and
 -- it does not always notice a function that appeared a moment ago. Without this, a schema

@@ -22,7 +22,7 @@ the moment it is merged, and it is there on the other device too.
 | `index.legacy.html` | The booklet as it was before the shell — one sticky toolbar, panels dropping out of it, the ink strip on the cover. Kept as it was, and not served. |
 | `words.json` | The literary starter pack — 150 words and eight fields. Read once, to stock a new booklet. |
 | `packs/` | The other starter packs. Same shape as `words.json`; add your own by dropping a file in. |
-| `supabase/schema.sql` | Tables and the security policies that keep accounts apart. |
+| `supabase/schema.sql` | Tables and the security policies that keep accounts apart, including the `faults` table the app reports into. |
 | `img/` | Optional pictures for the few words that can have one. |
 | `manifest.json`, `icon.svg` | Make "Add to Home Screen" work on iPad. |
 | `ARCHITECTURE.md` | How it is put together inside, for whoever has to change it. |
@@ -180,6 +180,31 @@ the word `empty`, because it cannot be undone. What is left is the same empty bo
 account starts with, so you are asked the same question a new account is asked — **what do
 you read?** — and can stock it from any of the packs, or leave it empty and go on with the
 fields you already had.
+
+## When something breaks
+
+The booklet writes its own faults to a **`faults`** table in your project, so you find out
+before anyone thinks to tell you. Read them in the Supabase dashboard — **Table Editor →
+faults**, or:
+
+```sql
+select at, kind, message, build, screen from public.faults order by at desc limit 50;
+```
+
+Four kinds land there: `uncaught` and `promise` for a fault in the code itself, `sync` for a
+word that would not move or would not be removed, and `boot` for a booklet that would not
+open — which is how you learn your project has paused without waiting for an email.
+
+**No word ever goes in it.** Not the word, not its meaning, not the Arabic. What is kept is
+what a fix needs: what broke, where in the code, which build, and the size of the screen. A
+session files twelve rows at most and never the same fault twice, because a table nobody
+will read is the same as no table.
+
+Two things it deliberately does not do. It writes **only for someone signed in** — the anon
+key is public, and a table anyone may write to is a table anyone will fill — so a sign-in
+that fails has nobody to file as, and faults at the gate are invisible to it. And `build` is
+the **`VERSION`** constant at the top of the script, which has no build step behind it:
+bump it by hand when you publish or every fault will claim to come from the same day.
 
 ## Notes
 
