@@ -114,11 +114,23 @@
     border-right:1px solid var(--rule); display:flex; flex-direction:column;
     padding-top:env(safe-area-inset-top,0px);
   }
+  .navtop{display:flex; align-items:center; gap:8px; padding:18px 14px 16px; flex:none}
   .brand{
     font-family:"Fraunces",Georgia,serif; font-weight:600; font-size:20px; letter-spacing:-.02em;
-    padding:20px 20px 16px; flex:none;
+    flex:1; min-width:0; overflow:hidden;
   }
   .brand em{font-style:italic; font-weight:400; color:var(--ink-1)}
+  /* Folding is a preference about your own screen, so it is remembered per device, like the
+     voice and the pictures — the laptop and the iPad want different amounts of rail. */
+  .navfold{
+    flex:none; width:28px; height:28px; display:grid; place-items:center; cursor:pointer;
+    background:transparent; border:1px solid var(--rule); border-radius:7px; color:var(--dim);
+  }
+  .navfold svg{width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:1.8;
+               stroke-linecap:round; stroke-linejoin:round; transition:transform .2s ease}
+  .navfold:hover{color:var(--paper); border-color:rgba(241,239,233,.4)}
+  .navfold:focus-visible{outline:2px solid var(--ink-1); outline-offset:2px}
+  .navfold[aria-expanded="false"] svg{transform:rotate(180deg)}
 
   .dests{display:flex; flex-direction:column; gap:2px; padding:0 10px; flex:none}
   .dest{
@@ -270,6 +282,31 @@
     white-space:nowrap; flex:none;
   }
   .tally b{color:var(--paper); font-weight:600}
+
+  /* ---------- the sidebar, folded ----------
+     Only where there is a sidebar to fold: a tablet is already a rail and a phone is a bar
+     along the bottom, and neither has anything to gain. Folded it keeps both jobs — the four
+     destinations and the ink index — because an index you have to unfold to read is one you
+     will stop using. The names come off; the bars, the counts and the filter stay. */
+  /* There is only a sidebar to fold above this width. Below it the button would be a
+     control that does nothing — and on a phone it sat in the bottom bar taking width off
+     the four tabs, which is worse than useless. */
+  @media(max-width:1179px){ .navtop{display:none} }
+  @media(min-width:1180px){
+    body.nav-tight .shell{grid-template-columns:78px minmax(0,1fr)}
+    body.nav-tight .brand{display:none}
+    body.nav-tight .navtop{justify-content:center; padding:18px 8px 14px}
+    body.nav-tight .dest{flex-direction:column; gap:6px; padding:11px 4px; justify-content:center}
+    body.nav-tight .dest .lbl{font-size:9px; letter-spacing:.08em}
+    body.nav-tight .dest[aria-current="true"]::before{left:-8px}
+    body.nav-tight .dest .badge{position:absolute; top:4px; right:9px; margin:0; font-size:9px;
+                                min-width:17px; height:17px}
+    body.nav-tight .idxwrap{padding:14px 8px 18px}
+    body.nav-tight .idxh{display:none}
+    body.nav-tight .idxrow{padding:7px 6px}
+    body.nav-tight .idxrow .nm,body.nav-tight .idxrow .ct{display:none}
+    body.nav-tight .idxrow .bar{height:5px; margin-top:0}
+  }
 
   /* ---------- the shell on a tablet ----------
      An iPad in landscape offers 1136px inside the gutters and the old bar wanted 1172 for
@@ -479,8 +516,8 @@
      At rest: the word, what it is, what it means, and the speaker - which stays, because
      hearing a word is the point of this booklet and never goes behind a gesture. The
      sentence, the picture, the warning and the Arabic unfold on a press, in place. */
-  .card .ex,.card .say-ex,.card .pic,.card .flag,.card .filebtn{display:none}
-  .card.open .ex,.card.open .pic,.card.open .flag{display:block}
+  .card .ex,.card .say-ex,.card .flag,.card .filebtn{display:none}
+  .card.open .ex,.card.open .flag{display:block}
   .card.open .say-ex,.card.open .filebtn{display:inline-flex}
   .card.open .ar{display:block}
   .card:focus-visible{outline:2px solid var(--ink-1); outline-offset:3px}
@@ -1231,7 +1268,13 @@
        stylesheet takes the whole of it away and the cover above is the page. -->
   <div class="shell" id="shell">
     <nav class="nav" aria-label="Sections of the booklet">
-      <div class="brand">Margin<em>alia</em></div>
+      <div class="navtop">
+        <div class="brand">Margin<em>alia</em></div>
+        <button class="navfold" id="navfold" aria-expanded="true" aria-controls="shell"
+                aria-label="Collapse the sidebar" title="Collapse the sidebar">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3.5 5.5 8l4.5 4.5"/></svg>
+        </button>
+      </div>
       <div class="dests">
         <button class="dest" data-dest="book" aria-current="true">
           <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4.6A1.6 1.6 0 0 1 4.6 3H9a3 3 0 0 1 3 3v10a2.5 2.5 0 0 0-2.5-2.5H3z"/><path d="M21 4.6A1.6 1.6 0 0 0 19.4 3H15a3 3 0 0 0-3 3v10a2.5 2.5 0 0 1 2.5-2.5H21z"/></svg>
@@ -1716,7 +1759,7 @@ function renderIndex(){
   const max = Math.max(1, ...rows.map(r=>r.n));
   document.getElementById('inkindex').innerHTML = rows.map(r=>`
     <button class="idxrow" data-field="${r.id}" aria-pressed="${fieldFilter===r.id}"
-            style="--c:${esc(r.ink)}; --tint:${tint(r.ink)}">
+            title="${esc(r.name)} — ${r.n}" style="--c:${esc(r.ink)}; --tint:${tint(r.ink)}">
       <span class="r"><span class="nm">${esc(r.name)}</span><span class="ct">${r.n}</span></span>
       <span class="bar" style="width:${Math.max(8, Math.round(r.n/max*100))}%"></span>
     </button>`).join('');
@@ -1920,6 +1963,29 @@ book.addEventListener('click',e=>{
     e.stopPropagation();
     const card = s.closest('.card');
     speak(s.dataset.say==='word' ? card.dataset.word : card.dataset.ex, s);
+    return;
+  }
+  /* All of these stop the click travelling: a bare tap on the card toggles it open, and
+     a menu that closed the card underneath itself would be unusable. */
+  const more = e.target.closest('.more, .filebtn');
+  if(more){
+    e.stopPropagation();
+    const card=more.closest('.card');
+    if(card.querySelector('.card-menu')) closeCardMenu();
+    else openCardMenu(card, more.classList.contains('more') ? more : null);
+    return;
+  }
+  /* Filing and Remove live on the menu's own handler — the menu hangs off <body> and never
+     reaches this listener. The confirm below does sit inside the card, so it stays here. */
+  if(e.target.closest('[data-reallyremove]')){
+    e.stopPropagation();
+    removeWord(e.target.closest('.card').dataset.w);
+    return;
+  }
+  const cancelRm = e.target.closest('[data-cancelremove]');
+  if(cancelRm){
+    e.stopPropagation();
+    const box=cancelRm.closest('.cm-confirm'); if(box) box.remove();
     return;
   }
   const m = e.target.closest('.mark');
@@ -3781,6 +3847,20 @@ function go(dest){
 }
 document.querySelectorAll('.dest').forEach(b=>
   b.addEventListener('click',()=>go(b.dataset.dest)));
+
+/* ---------- folding the sidebar ----------
+   Remembered per device beside the voice and the pictures: what a laptop wants of its rail
+   is not what an iPad wants of it. */
+const NKEY='vocab-nav-tight', navFold=document.getElementById('navfold');
+function setNavTight(on){
+  document.body.classList.toggle('nav-tight', on);
+  navFold.setAttribute('aria-expanded', String(!on));
+  const what = on ? 'Open the sidebar' : 'Collapse the sidebar';
+  navFold.setAttribute('aria-label', what); navFold.title = what;
+  try{ localStorage.setItem(NKEY, on?'1':'0'); }catch(e){}
+}
+navFold.addEventListener('click',()=>setNavTight(!document.body.classList.contains('nav-tight')));
+try{ if(localStorage.getItem(NKEY)==='1') setNavTight(true); }catch(e){}
 
 addBtn.addEventListener('click',()=>openPanel(panel));
 document.querySelectorAll('.back').forEach(b=>b.addEventListener('click',()=>openPanel(setPanel)));

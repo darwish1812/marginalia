@@ -210,6 +210,11 @@ fields you already had.
   on a laptop, a narrower rail on a tablet, a bar along the bottom on a phone. Whatever you
   are doing, every one of them is one press away, and Add is no longer two rooms deep inside
   Settings.
+- **The sidebar folds.** The chevron beside the wordmark takes it down to a rail of icons
+  and the ink index as a strip of colour — the names go, the counts move to the tooltip, and
+  the filter goes on working. Remembered per device, like the voice and the pictures: a
+  laptop and an iPad want different amounts of rail. There is nothing to fold below 1180px,
+  where the sidebar is already a rail or a bar, so the button is not there.
 - **The ink index stays on screen.** The eight fields and their counts used to sit on the
   cover, which meant the index of the whole booklet was gone on the first flick. It stands
   beside the book now — and it is the filter as well as the map: press a field to hold the
