@@ -185,9 +185,10 @@ standing. It asks you to type the word `empty`, because it cannot be undone.
 - **A free Supabase project pauses after about a week of no use, and does not resume on its
   own.** Waiting and reloading will not bring it back: someone has to open the project in the
   [Supabase dashboard](https://supabase.com/dashboard) and press **Resume**, which takes a
-  minute or two. The booklet links straight to your project's page — from **Settings →
-  Account → The project**, and in the message it shows when a load fails, including on the
-  sign-in screen, since a paused project is the one fault you cannot sign in your way past.
+  minute or two. The booklet links straight to your project's page from the message it shows
+  when a load fails, including on the sign-in screen, since a paused project is the one fault
+  you cannot sign in your way past. It is offered there, at the moment it means something,
+  rather than standing in the account panel every other day of the week.
   Meanwhile the last cached copy still opens, so you can read; saving waits. A paid plan
   removes the pausing entirely and changes nothing else.
 - **Audio** uses your device's built-in speech engine, so voices differ between iPad and

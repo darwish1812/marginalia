@@ -438,9 +438,6 @@
   .acct .set-d{margin-bottom:4px}
   .dash{color:var(--ink-1); text-underline-offset:3px}
   .dash:hover{color:var(--paper)}
-  #projrow{display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:10px}
-  .dash-btn{text-decoration:none; display:inline-block}
-  .dash-btn:hover{color:var(--paper); border-color:rgba(241,239,233,.4)}
   /* the sign-in gate stands where the book would be, so it is sized like a section head
      rather than like a dialog — nobody is being interrupted, there is simply nothing yet */
   .gate{max-width:56ch; padding:60px 0 40px}
@@ -1271,17 +1268,6 @@
             <div class="row" id="emptyrow"><button class="btn fld-del" id="emptybtn">Empty this booklet</button></div>
             <p class="note" id="emptymsg"></p>
           </div>
-        </div>
-
-        <!-- Not a reader's concern, but this booklet's reader is also its keeper, and a
-             paused project is the one fault they will actually meet. Two taps, always
-             here, rather than only appearing once something has already gone wrong. -->
-        <div class="acct" id="acct-proj" hidden>
-          <p class="set-t">The project</p>
-          <p class="set-d">A free Supabase project is paused after about a week of no use, and
-            does not resume on its own. If the booklet stops loading, this is the first place
-            to look — press <b>Resume</b> and reload. A paid plan removes the pausing.</p>
-          <div class="row" id="projrow"></div>
         </div>
 
         <div class="acct" id="acct-off" hidden>
@@ -2923,19 +2909,11 @@ function setAcctState(email){
   const btn=document.getElementById('acctbtn'), hint=document.getElementById('accthint');
   const out=document.getElementById('acct-out'), inn=document.getElementById('acct-in'), off=document.getElementById('acct-off');
   out.hidden = inn.hidden = off.hidden = true;
-  /* Shown whenever there is a project at all, signed in or not — it is about the project,
-     not about the person. Filled once; the link never changes. */
-  const proj=document.getElementById('acct-proj'), row=document.getElementById('projrow');
-  proj.hidden = !ACCOUNTS;
-  if(ACCOUNTS && !row.firstChild){
-    const a=dashLink('Open the project dashboard');
-    a.className='btn dash-btn';
-    row.appendChild(a);
-    const ref=document.createElement('span');
-    ref.className='note'; ref.style.margin='0';
-    ref.textContent = PROJECT_REF ? 'Project '+PROJECT_REF : '';
-    row.appendChild(ref);
-  }
+  /* The dashboard used to have a standing row of its own here, on the grounds that this
+     booklet's reader is also its keeper. It was housekeeping sitting in the account panel
+     every day for the sake of the week the project is asleep. The two places it is actually
+     needed — the load that failed and the sign-in that could not reach the project — still
+     offer it, at the moment it means something. */
   if(!ACCOUNTS){
     off.hidden = false;
     btn.textContent = 'Not set up';
