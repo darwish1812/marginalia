@@ -83,6 +83,14 @@ your own reading instead of having to invent eight categories before you own fif
 
 ### Social sign-in
 
+On a wide screen the sign-in page is two panes: the form on the left, the booklet
+introducing itself on the right. On a phone or a tablet held upright it is one column, the
+cover and then the form.
+
+Signing in with **Google** or **Microsoft** asks which account you want every time, rather
+than silently reusing the last one — signing out and being signed straight back in as the
+same person is not a sign-in.
+
 The gate reads the project's own settings and shows a button for **every provider you have
 switched on** — nothing to edit in the code, and no dead buttons for providers you haven't
 set up. Dashboard → **Authentication → Providers**, turn one on, fill in its client id and

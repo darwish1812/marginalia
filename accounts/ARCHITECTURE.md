@@ -460,6 +460,22 @@ and renders one button per provider actually switched on, so there are never dea
 nothing to keep in step by hand. Marks are drawn inline for Google, Apple, Microsoft
 (`azure`) and GitHub; the rest get a labelled button.
 
+Two providers hand back the account you used last without asking. That is right for a site
+nobody leaves and wrong for a booklet somebody has just signed out of — signing out and
+straight back in as the same person is not a sign-in, it is a stutter with no way past it. So
+Google and `azure` are sent `prompt=select_account`, the providers' own parameter, passed
+through `queryParams` untouched. The rest have no equivalent and are sent nothing.
+
+Above 900px the sign-in page is two panes: the form on the left, where the reading starts,
+and the cover on the right, introducing the booklet. That cover is a logo more than a cover,
+so it drops the eyebrow — a reading of how many words and how many fields, taken off a
+booklet the reader does not have yet — and carries the splash's strip of eight inks under
+the wordmark instead, held still. The strip's shape is `.inks`, shared; only `.splash .inks
+span` animates. It is a grid on `#app` under
+`body.signed-out`, which by then holds nothing else — the bar, the book and the empty-search
+line are all already hidden in that state. Below 900px it is the single column it always was.
+The wordmark is sized for a whole page, so it is brought down to a half one there.
+
 A password-reset link arrives as a perfectly valid session, which would otherwise drop the
 user straight into the booklet and skip the form the link was sent to open. A dedicated
 `PASSWORD_RECOVERY` listener sets a `recovering` flag that the main `onAuthStateChange`

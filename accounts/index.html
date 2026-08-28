@@ -69,6 +69,17 @@
   .cover h1 em{font-style:italic; color:var(--ink-1); font-weight:400}
   .lede{max-width:46ch; margin:22px 0 0; color:var(--dim); font-size:19px}
   .swatches{display:flex; gap:8px; margin-top:34px; flex-wrap:wrap}
+  /* Signed in, the cover's colour is the swatch strip below the lede: the same eight inks
+     with their names and their counts written on them. Signed out there are no counts to
+     give and no field to jump to, so what stands under the wordmark is the mark alone —
+     the splash's strip, held still. Its measure comes from .wordmark, the wrapper around
+     the two of them, which is only ever as wide as the letters are — so the strip tracks
+     the wordmark through every step of its clamp instead of matching it at one width and
+     overhanging it at the rest. */
+  /* Not .mark — that is the learned tick on a card, and it is a 24px grid. */
+  .wordmark{width:max-content; max-width:100%}
+  .cover .inks{display:none; margin-top:24px}
+  body.signed-out .cover .inks{display:flex}
   .swatch{
     display:flex; flex-direction:column; gap:8px; min-width:104px; flex:1 1 104px;
     background:none; border:0; padding:0; cursor:pointer; text-align:left; color:inherit;
@@ -484,6 +495,32 @@
      is, and 430px of title above the only question on the screen just pushes it under
      the fold on a laptop. The screen carries its own eyebrow instead. */
   body.first-run .cover{display:none!important}
+  /* ---------- the sign-in page ----------
+     Two panes on anything wider than a tablet stood upright: the form on the left, where the
+     hands are and where the reading starts, and the booklet introducing itself on the right.
+     Below that width it is the single column it has always been — the cover, then the form
+     under it. The wordmark is sized for a whole page, so it comes down to a half one: 104px
+     of "Marginalia" next to a password field is a title with a coupon beside it. */
+  /* The eyebrow is a reading off a booklet — how many words, how many fields. Nobody on
+     this page has one yet, and the starter pack's figures are not theirs to be told. The
+     ink strip stands where it stood. Scoped to .cover on purpose: .eyebrow is also the
+     first-run screen's own label, and that one is the heading of the screen it is on. */
+  body.signed-out .cover .eyebrow{display:none}
+  @media(min-width:900px){
+    body.signed-out #app{
+      display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+      gap:clamp(36px,5vw,80px); align-items:center; min-height:100dvh;
+    }
+    /* the rule between the panes is the one the cover already carried, stood on its end */
+    body.signed-out .cover{
+      order:2; padding:0 0 0 clamp(30px,4vw,58px);
+      border-bottom:0; border-left:1px solid var(--rule);
+    }
+    body.signed-out .cover h1{font-size:clamp(44px,5.2vw,74px); max-width:none}
+    body.signed-out .lede{font-size:17px; max-width:38ch}
+    /* the column is the measure now; inside it the form keeps the one it always had */
+    body.signed-out .gate{order:1; padding:0; max-width:46ch; width:100%; justify-self:center}
+  }
   /* The add panel is opened from inside settings, so it needs a door back out —
      the bar button alone works but reads as a dead end once you are in here. */
   .back{margin:0 0 20px; padding:7px 13px; font-size:10.5px}
@@ -905,10 +942,15 @@
     color:var(--paper); margin:0; letter-spacing:-.02em; line-height:1;
   }
   .splash h1 em{font-style:italic; color:var(--ink-1)}
-  .splash .inks{display:flex; gap:7px; width:min(280px,54vw)}
+  /* The strip of eight inks is the index of the book reduced to its colours, and it is a
+     mark before it is anything else — so the shape of it belongs to nobody in particular.
+     Only on the splash does it move. */
+  .inks{display:flex; gap:7px}
+  .inks span{height:7px; flex:1; border-radius:99px}
+  /* The shape is shared; the measure belongs to wherever it is standing. */
+  .splash .inks{width:min(280px,54vw)}
   .splash .inks span{
-    height:7px; flex:1; border-radius:99px; transform-origin:center;
-    animation:inkwave 1.2s cubic-bezier(.4,0,.2,1) infinite;
+    transform-origin:center; animation:inkwave 1.2s cubic-bezier(.4,0,.2,1) infinite;
   }
   /* A wave down the strip, left to right, so the eight inks say "working" using the thing
      that is already the index of the book rather than a spinner borrowed from elsewhere.
@@ -1001,8 +1043,21 @@
 
   <div id="app" hidden>
   <header class="cover">
-    <div class="eyebrow" id="eyebrow">A working vocabulary · seven fields</div>
-    <h1>Margin<em>alia</em></h1>
+    <div class="eyebrow" id="eyebrow">A working vocabulary</div>
+    <!-- The wordmark and the strip are one thing. The wrapper exists only so the strip can
+         be exactly as wide as the letters above it, at whatever size the clamp lands on —
+         a fixed width matches the wordmark at one viewport and overhangs it at every other.
+         The spans are the splash's own. Decoration, so it is kept out of the accessibility
+         tree: the fields it stands for are named further down the page. -->
+    <div class="wordmark">
+      <h1>Margin<em>alia</em></h1>
+      <div class="inks" aria-hidden="true">
+        <span style="background:var(--ink-1)"></span><span style="background:var(--ink-2)"></span>
+        <span style="background:var(--ink-3)"></span><span style="background:var(--ink-4)"></span>
+        <span style="background:var(--ink-5)"></span><span style="background:var(--ink-6)"></span>
+        <span style="background:var(--ink-7)"></span><span style="background:var(--ink-8)"></span>
+      </div>
+    </div>
     <p class="lede">Words caught in the margins of whatever you read and watch. A meaning, a sentence that shows the word working, an Arabic gloss, and a field to belong to.</p>
     <div class="swatches" id="swatches"></div>
   </header>
@@ -2858,11 +2913,6 @@ async function enter(session){
     document.getElementById('gate').hidden = false;
     document.getElementById('firstrun').hidden = true;
     document.getElementById('book').innerHTML = '';
-    /* render() writes the real counts; signed out it never runs, and the placeholder in
-       the markup would sit there claiming seven fields for a booklet that has eight. */
-    document.getElementById('eyebrow').textContent = SEED
-      ? `A working vocabulary · ${SEED.words.length} words · ${SEED.fields.length} fields`
-      : 'A working vocabulary';
     setAcctState(null);
     openPanel(null);
   }
@@ -3052,8 +3102,18 @@ if(ACCOUNTS){
     box.addEventListener('click', async e=>{
       const b=e.target.closest('[data-p]'); if(!b) return;
       b.disabled=true;
+      /* Google and Microsoft hand back the account you used last without asking. That is
+         right for a site you never leave and wrong for a booklet somebody has just signed
+         out of: signing out and straight back in as the same person is not a sign-in, it is
+         a stutter, and there is no way past it. prompt=select_account is the provider's own
+         parameter and is passed through untouched. The others have no equivalent and are
+         left alone rather than sent something they will only ignore. */
+      const prov = b.dataset.p;
+      const chooser = (prov==='google' || prov==='azure')
+        ? {queryParams:{prompt:'select_account'}} : {};
       try{
-        const {error} = await sb.auth.signInWithOAuth({provider:b.dataset.p, options:{redirectTo:back()}});
+        const {error} = await sb.auth.signInWithOAuth({
+          provider:prov, options:Object.assign({redirectTo:back()}, chooser)});
         if(error) throw asError(error);
       }catch(err){ b.disabled=false; say('bad', authText(err)); }
     });
