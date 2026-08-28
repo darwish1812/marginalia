@@ -1699,7 +1699,7 @@ let FIELDS = [], W = [], SEED = null, CORRECTIONS = [];
 /* ---------- faults ----------
    There is no build step here, so there is no version to read off one: bump this by hand
    when you publish, or a report cannot tell you which booklet it came from. */
-const VERSION = '2026-08-29-allvoices';
+const VERSION = '2026-08-29';
 
 /* What broke, written to the faults table so the person who has to fix it does not wait
    to be told. Signed in only — the anon key is public and a table anyone may write to is
@@ -1771,22 +1771,10 @@ const NOVELTY = new RegExp('^(' + [
   'Whisper','Wobble','Zarvox'
 ].join('|') + ')\\b', 'i');
 
-/* ---------------------------------------------------------------------------------------
-   TEMPORARY — 2026-08-29. Every filter is off, to find out what this phone is really
-   offering. With this true the picker lists whatever speechSynthesis hands over: every
-   language, the novelty voices, the lot.
-
-   To put the booklet back the way it was, set this to false. Nothing else has changed and
-   nothing below it was deleted.
-   --------------------------------------------------------------------------------------- */
-const ALL_VOICES = true;
-
 /* If a device somehow has nothing but novelties, an empty list would take speech away
    altogether — so the filter gives up rather than leave the reader with no voice at all. */
 const enVoices = ()=>{
-  const every = speechSynthesis.getVoices();
-  if(ALL_VOICES) return every;
-  const all  = every.filter(v=>/^en([-_]|$)/i.test(v.lang));
+  const all  = speechSynthesis.getVoices().filter(v=>/^en([-_]|$)/i.test(v.lang));
   const kept = all.filter(v=>!HIDE.test(v.name) && !NOVELTY.test(v.name));
   return kept.length ? kept : all;
 };
