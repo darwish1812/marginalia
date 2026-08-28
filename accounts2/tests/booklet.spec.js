@@ -22,6 +22,25 @@ async function stock(page) {
   await expect(page.locator('.card').first()).toBeVisible({ timeout: 15000 });
 }
 
+/* A test runner has no speech voices, so the booklet correctly offers no "by ear" and hides
+ * the control that carries it. A developer's laptop has voices and shows it. That divergence
+ * hid a broken test until CI ran it for the first time — it passed here and failed there,
+ * which is the worst way round.
+ *
+ * One fake voice, installed before the page loads, so the branch is exercised identically
+ * everywhere. Call it before stock(). The no-voice path is still covered: every other deck
+ * test runs without this, and on CI that is genuinely a machine that cannot speak. */
+async function withVoice(page) {
+  await page.addInitScript(() => {
+    const voices = [{ name: 'Test English', lang: 'en-GB', default: true,
+                      localService: true, voiceURI: 'test' }];
+    try {
+      Object.defineProperty(window.speechSynthesis, 'getVoices',
+        { value: () => voices, configurable: true });
+    } catch { /* if an engine refuses, the assertion below will say so plainly */ }
+  });
+}
+
 /* Nothing in this app should ever reach the console. A thrown exception is the exact class
  * of fault that shipped twice, so it fails the test that provoked it rather than being left
  * for someone to notice in a screenshot. */
@@ -113,7 +132,7 @@ test.describe('the card menu', () => {
     const word = await card.getAttribute('data-w');
     await card.locator('.more').click();
     await expect(page.locator('.card-menu')).toBeVisible();
-    await page.locator('.card-menu button', { hasText: 'Power & Conflict' }).click();
+    await page.locator('.card-menu [data-file="3"]').click();
     await expect(page.locator(`#f3 [data-w="${word}"]`)).toHaveCount(1);
   });
 
@@ -132,14 +151,14 @@ test.describe('the card menu', () => {
     };
 
     await openMenu();
-    await page.locator('.card-menu button', { hasText: /Remove/i }).click();
+    await page.locator('.card-menu [data-remove]').click();
     await expect(card.locator('.cm-confirm')).toBeVisible();
     await card.locator('[data-cancelremove]').click();
     await expect(card.locator('.cm-confirm')).toHaveCount(0);
     await expect(page.locator(`[data-w="${word}"]`), 'cancelling removed it anyway').toHaveCount(1);
 
     await openMenu();
-    await page.locator('.card-menu button', { hasText: /Remove/i }).click();
+    await page.locator('.card-menu [data-remove]').click();
     await card.locator('[data-reallyremove]').click();
     await expect(page.locator(`[data-w="${word}"]`)).toHaveCount(0);
   });
@@ -173,6 +192,7 @@ test.describe('the deck', () => {
      34px tall and looks nearly right, which is why it reached a reader. */
   test('the way of being asked is a control, not two lines', async ({ page }) => {
     await page.setViewportSize(PHONE);
+    await withVoice(page);                 // or there is nothing to ask by ear with
     await stock(page);
     await page.locator('.dest[data-dest="study"]').click();
     const ask = page.locator('#fc .seg button');
@@ -181,6 +201,26 @@ test.describe('the deck', () => {
     const btn = await ask.first().boundingBox();
     expect(seg.height, 'the control collapsed and its buttons hang out of it')
       .toBeGreaterThanOrEqual(btn.height);
+  });
+
+  /* The other half of the same divergence. A device with no voice must lose the choice and
+     keep the deck — this asserts it here rather than leaving it to whichever machine happens
+     to be silent. Between the two, both branches are covered on every machine. */
+  test('a device with no voice loses the choice, not the deck', async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await page.addInitScript(() => {
+      try {
+        Object.defineProperty(window.speechSynthesis, 'getVoices',
+          { value: () => [], configurable: true });
+      } catch { /* nothing to silence */ }
+    });
+    await stock(page);
+    await page.locator('.dest[data-dest="study"]').click();
+    await expect(page.locator('#fc .seg')).toHaveCount(0);
+    await page.locator('#fc-all').click();
+    await expect(page.locator('#fc-go')).toBeEnabled();
+    await page.locator('#fc-go').click();
+    await expect(page.locator('#fc-card')).toBeVisible();
   });
 
   test('deals, turns and answers', async ({ page }) => {

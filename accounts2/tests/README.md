@@ -40,6 +40,14 @@ Also uncovered: printing, speech (the runner has no voice), and anything that ne
 touchscreen — the swipe is driven by mouse events, which exercises the same handler but not
 iOS's own gesture handling.
 
+## Where it runs
+
+`accounts2/.github/workflows/test.yml` is inert: GitHub only reads workflows at the root of
+a repository, and this tree is published into a subdirectory of another one. The live copy
+is `.github/workflows/accounts2.yml` at the root of `darwish1812/marginalia`, scoped to
+`accounts2/**` so pushes touching the original booklet do not run it. The file here is kept
+because it is what this tree would need if it ever gained a remote of its own.
+
 ## Writing a new one
 
 Cases here are mostly faults that reached a reader, and each says which one it stands for.
