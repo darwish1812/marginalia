@@ -667,6 +667,7 @@ matter. There is no build artefact and nothing to invalidate.
 | `index.html` | The booklet — markup, CSS and JavaScript in one file. Everything a reader touches. |
 | `index.legacy.html` | The same file before the shell, kept whole: one sticky toolbar, panels dropping out of it, the ink strip on the cover. Nothing links to it and nothing serves it; it is there to diff against. |
 | `admin.html` | The gateway console. One administrator's page: providers, the prompt template, the ceilings, and the switch. Never served to readers, and holds no secret of its own. |
+| `tests/` | The harness. A Playwright suite run against `index.html` with the accounts blanked at run time — built each run, never a copy kept in the repo, because a copy goes stale and then passes while testing an app that no longer exists. |
 | `words.json` | The literary starter pack — 150 words, 8 fields, 5 corrections. Kept at the root under its own name so a booklet can still trade files with the original. |
 | `packs/` | The other starter packs, same shape. A new one is a file; nothing in the app needs changing. |
 | `supabase/schema.sql` | Four tables, four RLS policies, one index, one signup trigger, and three functions for the writes that must happen all at once. Idempotent. |

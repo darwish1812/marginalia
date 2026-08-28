@@ -7,3 +7,9 @@ supabase/.temp/
 .env
 .env.*
 supabase/functions/.env*
+
+# the test harness — the app itself still has no build step
+node_modules/
+index.local.html
+test-results/
+playwright-report/

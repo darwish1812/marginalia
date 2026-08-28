@@ -1,0 +1,16 @@
+{
+  "name": "marginalia-accounts",
+  "private": true,
+  "type": "module",
+  "description": "Test harness only. The booklet itself is index.html and has no build step: open it in a browser and it runs.",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "build:local": "node tests/local-build.mjs",
+    "serve": "node tests/local-build.mjs && node tests/serve.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}

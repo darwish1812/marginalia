@@ -137,6 +137,23 @@ the same thing in one press — same prompt, same reply, same review before anyt
 Whenever it cannot (no key, a ceiling reached, the model unreachable) the page falls back to
 the copy-and-paste loop and says why. See `supabase/functions/enrich/README.md`.
 
+## Testing the booklet
+
+```bash
+npm install && npx playwright install chromium
+npm test
+```
+
+Nineteen cases, about five seconds. Nearly every one is a fault that reached a reader in the
+week the shell was built, written down so it cannot reach one twice — each says in a comment
+which fault it stands for. The app itself still has no build step: all of this is tooling,
+`index.html` opens in a browser exactly as it did, and none of it ships.
+
+The suite runs against `index.html` as it is, with `SUPABASE_URL` blanked at run time — the
+app's own no-account mode. **It cannot reach anything behind a sign-in**: sync, row-level
+security in practice, stocking a new account, the offline mirror, the gate. That is not a
+small gap, and it is where a real fault already hid. See `tests/README.md`.
+
 ## Testing yourself
 
 **Study** covers the book with one word at a time. Choose how to be asked —
