@@ -1830,7 +1830,35 @@ if(vSel) vSel.addEventListener('change',()=>{
   speechSynthesis.speak(u);
 });
 
-if(TTS){ pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+/* The list used to be read twice — once here, and once more if onvoiceschanged fired — and
+   never again for the life of the page. On a phone that is not long enough. Voices are
+   downloaded in Settings while the booklet is still open, and a booklet added to the Home
+   Screen is usually resumed rather than reloaded, so "I closed it and opened it" can run
+   none of this a second time: the list stays the one captured whenever the page first
+   loaded, which may have been days ago.
+
+   So it is read again whenever the app comes back to the front, and whenever You is opened
+   — the same argument the reset button makes a few lines further down, that a number which
+   moves while you read has to be recomputed when you look at it rather than when the page
+   was built. */
+let voiceSig = '';
+function refreshVoices(){
+  if(!TTS) return;
+  const sig = enVoices().map(v=>v.name).join('|');
+  /* Only when the list has actually changed. Rebuilding the <select> under a reader who has
+     just opened it would shut it in their face. */
+  if(sig === voiceSig) return;
+  voiceSig = sig;
+  pickVoice();
+}
+if(TTS){
+  pickVoice(); voiceSig = enVoices().map(v=>v.name).join('|');
+  speechSynthesis.onvoiceschanged = refreshVoices;
+  /* Coming back to the front, by either name: pageshow covers a resume from the back/forward
+     cache, visibilitychange covers the app switcher. */
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) refreshVoices(); });
+  window.addEventListener('pageshow', refreshVoices);
+}
 else document.body.classList.add('nosound');
 
 function speak(text, btn){
@@ -3965,7 +3993,7 @@ function openPanel(which){
     which.scrollTop = 0;           // a panel reopens at its own top, not where you left it
     /* and at rest: a confirmation left half-open is a question nobody is being asked any
        more, and the reset button's own state depends on a count that moves while you read */
-    if(which===setPanel){ resetIdle(); emptyIdle(); }
+    if(which===setPanel){ resetIdle(); emptyIdle(); refreshVoices(); }
   }
   window.scrollTo({top:0});
   closeLens();

@@ -693,7 +693,7 @@ changes, and a banner comment is not. Search for the name.
 |---|---|
 | **accounts** | The two Supabase constants, the `ACCOUNTS` flag, `FN_BASE`, the client, and the globals `FIELDS`, `W`, `SEED`, `CORRECTIONS`. |
 | **faults** | `VERSION`, `fault()`, and the two window listeners. Writes what broke to the `faults` table: uncaught errors, unhandled rejections, the two sync failures the reader is already shown, and a booklet that would not open. Signed in only, twelve rows a session, deduplicated, and never a word of anybody's content. Never throws and never blocks: a reporter that can break the app is a second fault, not a first. |
-| **speech** | Voice discovery and filtering, the remembered choice, rate, and `speak()`. Degrades to nothing where `speechSynthesis` is absent. |
+| **speech** | Voice discovery and filtering, the remembered choice, rate, and `speak()`. `refreshVoices()` re-reads the list when the app returns to the front and when You opens — it was read twice in the life of a page, which is not enough on a phone that downloads voices and resumes rather than reloads. Degrades to nothing where `speechSynthesis` is absent. |
 | **render** | `esc()`, `posTags()`, `render()`, and the ink index. Rebuilds the whole book from `W`. |
 | **what is on the page** | `applyFilters()`, `markFilter`, `fieldFilter`, and the `.seg` control. The single owner of card `display`: the search text, the ✓ filter and the chosen field, answered together. |
 | **flash cards** | `fcOpen()`, `fcPool()`, `fcDraw()`, `fcNext()`. `fcSel` holds the ticked fields; `fcPool()` takes a set of them. A deck built on start and dropped on close; it marks through `setLearned()`, never its own store. |

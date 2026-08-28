@@ -245,6 +245,13 @@ bump it by hand when you publish or every fault will claim to come from the same
   rather than standing in the account panel every other day of the week.
   Meanwhile the last cached copy still opens, so you can read; saving waits. A paid plan
   removes the pausing entirely and changes nothing else.
+- **A voice downloaded while the booklet is open turns up on its own.** iOS publishes a new
+  voice the moment you finish downloading it in Settings → Accessibility → Spoken Content →
+  Voices, but a booklet on the Home Screen is usually *resumed* rather than reloaded, so
+  closing and reopening it need not re-read anything. The list is re-read when the app comes
+  back to the front and whenever **You** is opened, so a new voice appears without a reload.
+  Siri's own voices are not among them on any device: Apple keeps those to itself and no web
+  page can reach them.
 - **Audio** uses your device's built-in speech engine, so voices differ between iPad and
   laptop. Rare words are occasionally mispronounced — verify anything that sounds odd.
 - **Printing** (Ctrl/Cmd+P) reflows into a two-column paper booklet, one field per page.
