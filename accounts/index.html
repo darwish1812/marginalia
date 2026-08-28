@@ -97,8 +97,15 @@
     background:none; border:0; padding:0; cursor:pointer; text-align:left; color:inherit;
     font-family:"Archivo",system-ui,sans-serif;
   }
-  .swatch .bar{height:7px; border-radius:99px; background:var(--c); transition:height .18s ease}
-  .swatch:hover .bar,.swatch:focus-visible .bar{height:14px}
+  /* Named .ink, not .bar. As .bar these spans were also picking up the toolbar's own rule
+     further down this stylesheet — display:flex, and 13px of padding they had no use for —
+     and since that padding is taller than the 7px height, border-box sizing gave every
+     swatch 26px of solid colour where a hairline belonged. Two elements sharing one class
+     name, one of them a toolbar and the other a rule, was never going to end anywhere else.
+     The growth to 14px on hover is a separate fault and still does not fire; it is not the
+     padding, and it is not shrink either — the swatch has the room. Unsolved. */
+  .swatch .ink{height:7px; border-radius:99px; background:var(--c); transition:height .18s ease}
+  .swatch:hover .ink,.swatch:focus-visible .ink{height:14px}
   .swatch .lbl{font-size:10.5px; letter-spacing:.11em; text-transform:uppercase; color:var(--dim); line-height:1.35}
   .swatch .num{font-size:10.5px; color:var(--c); font-weight:600}
   .swatch:focus-visible{outline:2px solid var(--paper); outline-offset:5px; border-radius:3px}
@@ -1611,7 +1618,7 @@ const strip = W.some(unfiled) ? [UNFILED].concat(FIELDS) : FIELDS;
 document.getElementById('swatches').innerHTML = strip.map(f=>{
   const c = f.id===-1 ? W.filter(unfiled).length : W.filter(x=>x.f===f.id).length;
   return `<button class="swatch" style="--c:${esc(f.ink)}" data-go="f${f.id}">
-            <span class="bar"></span><span class="lbl">${esc(f.name)}</span><span class="num">${c}</span></button>`;
+            <span class="ink"></span><span class="lbl">${esc(f.name)}</span><span class="num">${c}</span></button>`;
 }).join('');
 document.getElementById('eyebrow').textContent =
   `A working vocabulary · ${W.length} entries · ${FIELDS.length} fields`;
