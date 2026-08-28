@@ -213,8 +213,10 @@ fields you already had.
 - **The sidebar folds.** The chevron beside the wordmark takes it down to a rail of icons
   and the ink index as a strip of colour — the names go, the counts move to the tooltip, and
   the filter goes on working. Remembered per device, like the voice and the pictures: a
-  laptop and an iPad want different amounts of rail. There is nothing to fold below 1180px,
-  where the sidebar is already a rail or a bar, so the button is not there.
+  laptop and an iPad want different amounts of rail. An iPad held upright folds too — there
+  the column of field names gives way to the same strip of chips a phone shows, so the index
+  changes shape rather than going away. Only a phone has nothing to fold, its nav being a bar
+  along the bottom already, and there the button is not shown at all.
 - **The ink index stays on screen.** The eight fields and their counts used to sit on the
   cover, which meant the index of the whole booklet was gone on the first flick. It stands
   beside the book now — and it is the filter as well as the map: press a field to hold the

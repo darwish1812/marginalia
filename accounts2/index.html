@@ -276,11 +276,20 @@
   .prow[aria-pressed="true"] .sw{background:rgba(201,146,47,.4)}
   .prow[aria-pressed="true"] .sw::after{transform:translateX(15px); background:var(--ink-1)}
   /* the three answers to one question keep their shared borders and their pressed fill */
-  .seg{display:flex; margin:4px 6px 8px; border:1px solid var(--rule); border-radius:7px;
-       overflow:hidden}
-  .seg .btn{flex:1; border:0; border-radius:0; padding:9px 4px; text-align:center;
-            font-size:10px; letter-spacing:.08em}
-  .seg .btn + .btn{border-left:1px solid var(--rule)}
+  /* Two controls wear this class: the three-way mark filter inside the View lens, and the
+     deck's "the word / by ear". These are the shared rules, unchanged from the toolbar the
+     shell replaced — anything the lens wants beyond them is scoped to #lens below. */
+  .seg{display:inline-flex}
+  .seg .btn{border-radius:0}
+  .seg .btn + .btn{margin-left:-1px}         /* one hairline between neighbours, not two */
+  .seg .btn:first-child{border-radius:7px 0 0 7px}
+  .seg .btn:last-child{border-radius:0 7px 7px 0}
+  .seg .btn[aria-pressed="true"]{z-index:1}  /* the live one owns both edges it shares */
+  #lens .seg{display:flex; margin:4px 6px 8px; border:1px solid var(--rule);
+             border-radius:7px; overflow:hidden}
+  #lens .seg .btn{flex:1; border:0; border-radius:0; padding:9px 4px; text-align:center;
+                  font-size:10px; letter-spacing:.08em; margin-left:0}
+  #lens .seg .btn + .btn{border-left:1px solid var(--rule)}
 
   .scrim{position:fixed; inset:0; z-index:35}
 
@@ -304,7 +313,8 @@
   /* There is only a sidebar to fold above this width. Below it the button would be a
      control that does nothing — and on a phone it sat in the bottom bar taking width off
      the four tabs, which is worse than useless. */
-  @media(max-width:1179px){ .navtop{display:none} }
+  /* Only a phone has no sidebar to fold — its nav is a bar along the bottom. */
+  @media(max-width:719px){ .navtop{display:none} }
   @media(min-width:1180px){
     body.nav-tight .shell{grid-template-columns:78px minmax(0,1fr)}
     body.nav-tight .brand{display:none}
@@ -328,9 +338,23 @@
      down the edge, the field index beside them, the book taking the rest. */
   @media(min-width:720px) and (max-width:1179px){
     .shell{grid-template-columns:292px minmax(0,1fr)}
-    .nav{flex-direction:row; align-items:stretch}
+    .nav{flex-direction:row; align-items:stretch; position:relative}
+    /* The rail runs down the edge here, so the fold button cannot sit in a row above it
+       without claiming a column of its own. It stands over the rail instead, and the
+       destinations begin below where it stands. */
+    .navtop{position:absolute; top:12px; left:0; width:78px; justify-content:center; padding:0}
+    /* Folded, the field index would have nowhere to go — so it changes shape rather than
+       disappearing, into the same strip of chips a phone shows. The index is still there;
+       it is the column of names that folds. */
+    body.nav-tight .shell{grid-template-columns:78px minmax(0,1fr)}
+    body.nav-tight .idxwrap{display:none}
+    body.nav-tight .chips{display:flex}
     .brand{display:none}
-    .dests{width:78px; flex:none; padding:14px 8px; border-right:1px solid var(--rule)}
+    /* 52 at the top, not 14: the fold button stands over this column and the first
+       destination has to begin below it. Set in the shorthand rather than as a separate
+       padding-top, because a shorthand further down the block would reset that — which is
+       exactly what happened the first time. */
+    .dests{width:78px; flex:none; padding:52px 8px 14px; border-right:1px solid var(--rule)}
     .dest{flex-direction:column; gap:6px; padding:11px 4px; justify-content:center}
     .dest .lbl{font-size:9px; letter-spacing:.08em}
     .dest[aria-current="true"]::before{left:-8px}
@@ -965,6 +989,17 @@
             max(22px, env(safe-area-inset-left,0px));
     overscroll-behavior:contain;
   }
+  /* On a phone the deck used to cover the four destinations, so the only way out of Study
+     was the deck's own Close — the navigation disappeared on the one screen where that bar
+     is the whole navigation. The bar stands over the deck now and the deck ends above it.
+     Written here rather than in the shell's phone block: these correct .fc and .nav, and up
+     there they carried the same specificity from an earlier line and lost. */
+  @media(max-width:719px){
+    .nav{z-index:70}
+    .fc{padding-bottom:calc(78px + env(safe-area-inset-bottom,0px))}
+    /* and the picker keeps its scrollbar off the field rows it was drawing across */
+    .fc-body:not(.answering){scrollbar-gutter:stable; padding-right:6px}
+  }
   .fc[hidden]{display:none}
   body.fc-on{overflow:hidden}
 
@@ -1064,6 +1099,10 @@
     max-height:100%; overflow-y:auto; cursor:pointer;
     box-shadow:0 18px 46px rgba(0,0,0,.4); text-align:center;
     touch-action:pan-y;                       /* let us have the horizontal, keep the vertical */
+    /* A card is for turning and throwing, not for quoting. Without this a drag beginning on
+       the definition started a text selection and the swipe never happened — which made the
+       word at the top the only dependable place to start one. */
+    -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
     will-change:transform; backface-visibility:hidden;
   }
   /* the ear card holds a circle and nothing else, so it shrinks to fit it */
@@ -3878,6 +3917,9 @@ function openPanel(which){
 /* The four destinations. Study is the deck, which is an overlay rather than a view, so it
    opens over whatever you were reading and gives the tab back when it closes. */
 function go(dest){
+  /* The deck is an overlay, so walking away from Study by the bar has to close it —
+     otherwise it stays up over the destination you just asked for. */
+  if(dest!=='study' && !document.getElementById('fc').hidden) fcClose();
   if(dest==='book') return openPanel(null);
   if(dest==='add')  return openPanel(panel);
   if(dest==='you')  return openPanel(setPanel);
