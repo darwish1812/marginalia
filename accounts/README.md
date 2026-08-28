@@ -189,7 +189,8 @@ standing. It asks you to type the word `empty`, because it cannot be undone.
 - **On a phone the toolbar folds.** Below 720px the search box and the All / Not yet /
   Learned filter stay out; Study mode, Flash cards, العربية, Reset marks, Settings and the
   tally go behind a `⋯` beside the filter. Nothing is lost, and the bar stops taking a third
-  of the screen with it.
+  of the screen with it. On a tablet nothing folds — the bar is simply set tighter, so it
+  holds one row down to about 1010px and an iPad in landscape keeps every control in sight.
 - **Sign-in is per browser.** Signing in on the iPad and on the laptop is two sign-ins, and
   signing out of one leaves the other alone.
 

@@ -186,6 +186,26 @@
                       border-top:1px solid var(--rule); text-align:left}
   }
 
+  /* ---------- the bar on a tablet ----------
+     Between the phone's sheet and a laptop the bar had everything in it and nowhere to put
+     it: one row wants 1172px, and an iPad held in landscape offers 1136 inside the gutters.
+     Settings and the tally dropped to a second line — a menu button standing on its own
+     underneath the controls it opens, which is the thing that reads as broken. Nothing
+     leaves the bar here. It is set tighter instead, which is the honest answer to a row that
+     misses by forty pixels. Two steps, because .wrap stops growing at 1080 and the lower
+     half of the band is that much tighter than the upper. */
+  @media(min-width:720px) and (max-width:1399px){
+    .bar{gap:9px}
+    .bar .btn{padding-left:11px; padding-right:11px; letter-spacing:.06em}
+    .bar > .search{flex-basis:170px}
+  }
+  @media(min-width:720px) and (max-width:1179px){
+    .bar{gap:8px}
+    .bar .btn{padding-left:9px; padding-right:9px; font-size:11px}
+    .bar > .search{flex-basis:140px}
+    .tally{font-size:11px; letter-spacing:.06em}
+  }
+
   /* ---------- sections ---------- */
   .sec{padding:52px 0 6px; scroll-margin-top:74px}
   .sec-head{display:flex; align-items:baseline; gap:16px; border-bottom:2px solid var(--c); padding-bottom:11px; margin-bottom:26px}
@@ -370,10 +390,17 @@
   .panel{
     display:none; margin:9px 0 0; padding:24px; border:1px solid var(--rule); border-radius:8px;
     background:var(--night-2); pointer-events:auto; box-shadow:0 22px 48px rgba(0,0,0,.45);
-    /* a long add-words panel scrolls inside itself rather than off the bottom of the screen;
-       --barh is the toolbar's own height, which changes as the bar wraps */
+    /* A long panel scrolls inside itself rather than off the bottom of the screen. --barh
+       is the toolbar's own height, and it was the right bound only while the bar was stuck
+       to the top of the window. Opened from the cover, where the bar is still standing
+       halfway down the page, the panel was handed a whole screen of height it did not have:
+       it ran off the bottom, and since the panels are absolutely positioned the page cannot
+       scroll down to reach the rest — the panel's own scrollbar simply stopped short of its
+       last row. --panelmax is the room actually left under the bar, measured. The --barh
+       lines stay beneath it as the answer before any script has run. */
     max-height:calc(100vh - var(--barh,96px) - 18px);
     max-height:calc(100dvh - var(--barh,96px) - 18px);
+    max-height:var(--panelmax, calc(100dvh - var(--barh,96px) - 18px));
     overflow:auto; overscroll-behavior:contain;
   }
   .panel.on{display:block}
@@ -3335,11 +3362,30 @@ document.getElementById('fldadd').addEventListener('click',()=>{
 const panel=document.getElementById('panel'), addBtn=document.getElementById('addbtn');
 const setBtn=document.getElementById('setbtn'), setPanel=document.getElementById('settings');
 
-/* The panels drop from the bar and may not fit the screen beneath it, so they need to know
-   how tall the bar is — which changes whenever it wraps to another line. */
+/* The panels drop from the bar and may not fit the screen beneath it, so they need two
+   numbers. --barh is how tall the bar is, which changes whenever it wraps to another line.
+   --panelmax is how much room a panel may actually take: the distance from the bottom edge
+   of the bar, wherever it happens to be standing, to the bottom of the window. The bar is
+   sticky, so that distance shrinks and grows as the page scrolls, and it is the second
+   number — never the first — that bounds a panel. */
 const barWrap=document.querySelector('.bar-wrap');
-new ResizeObserver(()=>document.documentElement.style
-  .setProperty('--barh', barWrap.getBoundingClientRect().height+'px')).observe(barWrap);
+let lastBarh='', lastMax='';
+function sizePanels(){
+  const r = barWrap.getBoundingClientRect();
+  const vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+  const barh = r.height+'px';
+  const max = Math.max(200, Math.round(vh - r.bottom - 18))+'px';
+  const css = document.documentElement.style;
+  /* Written only when they actually change. This runs on every scroll frame, and setting a
+     custom property invalidates style for the whole document whether or not the value moved
+     — which, once the bar is stuck to the top, it stops doing. */
+  if(barh!==lastBarh){ css.setProperty('--barh', barh); lastBarh=barh; }
+  if(max!==lastMax){ css.setProperty('--panelmax', max); lastMax=max; }
+}
+new ResizeObserver(sizePanels).observe(barWrap);
+window.addEventListener('resize', sizePanels);
+window.addEventListener('scroll', sizePanels, {passive:true});
+if(window.visualViewport) window.visualViewport.addEventListener('resize', sizePanels);
 
 /* The panels share the space under the bar, so opening one closes the others. Kept as a
    list rather than pairs because a panel can be opened from more than one button — the
@@ -3354,7 +3400,17 @@ function openPanel(which){
   /* The bar button announces a menu, not a toggle, and the rest are rooms inside that
      menu — so the caret stays turned down for as long as any panel is on screen. */
   setBtn.setAttribute('aria-expanded', String(!!which));
-  if(which) which.scrollTop = 0;   // a panel reopens at its own top, not where you left it
+  if(which){
+    which.scrollTop = 0;           // a panel reopens at its own top, not where you left it
+    /* Opened from the cover, the bar is halfway down the screen and a panel dropping out of
+       it has a few inches to live in. The bar is sticky, so standing it up at the top of the
+       window is a scroll and nothing else: the panel still opens where you are standing, the
+       bar just straightens first. Below that the room is taken as it is found. */
+    const vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+    if(vh - barWrap.getBoundingClientRect().bottom < 420)
+      window.scrollTo({top: barWrap.getBoundingClientRect().top + window.scrollY, behavior:'smooth'});
+    sizePanels();
+  }
 }
 addBtn.addEventListener('click',()=>openPanel(panel.classList.contains('on') ? null : panel));
 setBtn.addEventListener('click',()=>openPanel(setPanel.classList.contains('on') ? null : setPanel));

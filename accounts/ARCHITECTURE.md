@@ -292,12 +292,33 @@ back a card the filter had just taken away. Ticking a card that the current filt
 wants fades it out over 160ms rather than dropping it on the frame, so the next card does
 not spring up under a finger still coming down.
 
-### 3.6a The bar on a phone
+### 3.6a The bar on a phone and on a tablet
 
-The toolbar holds one row down to 1400px and two down to 720px, then falls apart: three rows
+The toolbar held one row down to 1400px and two down to 720px, then fell apart: three rows
 at 710, four at 520, five at 375 — where it was 246px of `position:sticky` chrome eating 30%
-of the screen and never scrolling away. Under 720px the search box and the mark filter stay in
-the open bar, for the reason above, and everything else — Study mode, Flash cards, العربية,
+of the screen and never scrolling away.
+
+Between those two ends sat every tablet. One row wants 1172px; an iPad held in landscape
+offers 1136 inside the gutters, so Settings and the tally dropped to a second line and the
+menu button stood on its own underneath the controls it opens. Nothing leaves the bar to fix
+that — it is set tighter instead, in two steps, because `.wrap` stops growing at 1080px and
+the lower half of the band is that much tighter than the upper. Smaller gaps, smaller button
+padding, less letter-spacing, a shorter minimum for the search box. Measured, the bar now
+holds one row down to about 1010px, which covers every iPad in landscape.
+
+The panels hang off the bar, so how tall they may be is a question about the bar too, and
+`--barh` — the bar's own height — was the wrong answer to it. The bar is sticky: `--barh` is
+the room under it only once it is stuck to the top of the window. Opened from the cover, with
+the bar still standing halfway down the page, a panel was handed a whole screen of height it
+did not have. It ran off the bottom, and because the panels are absolutely positioned the
+page cannot scroll down to reach the rest — the panel's own scrollbar simply stopped short of
+its last row. `sizePanels()` measures the distance from the bottom edge of the bar, wherever
+it happens to be standing, to the bottom of the window and writes it as `--panelmax`; it runs
+on scroll, on resize and on `visualViewport` resize, and writes only when the number changes.
+`openPanel()` calls it, and first straightens the bar — a scroll to the top of the sticky
+element, nothing more — when there would be less than 420px to open into.
+
+Under 720px the search box and the mark filter stay in the open bar, for the reason above, and everything else — Study mode, Flash cards, العربية,
 Reset marks, Settings and the tally — goes behind a `⋯` that opens a sheet. That is 116px, two
 rows. `719px` is the measured boundary rather than a round number.
 
@@ -496,6 +517,8 @@ code is worth knowing —
    and run the deck to the end.
 7. Narrow the window under 720px: the bar should fall to two rows with a `⋯`, and everything
    behind it should still work. Widen it again and the bar should be one row, unchanged.
+8. At 1194px — an iPad in landscape — the bar should be one row, and Settings opened from the
+   top of the page should end above the bottom of the window and scroll to its last row.
 
 ### Deploy
 
@@ -542,7 +565,8 @@ changes, and a banner comment is not. Search for the name.
 | **flash cards** | `fcOpen()`, `fcPool()`, `fcDraw()`, `fcNext()`. `fcSel` holds the ticked fields; `fcPool()` takes a set of them. A deck built on start and dropped on close; it marks through `setLearned()`, never its own store. |
 | **holding the scroll still** | `keepStill()` and `topCard()`. Any toggle that changes a card's height goes through it. |
 | **the card menu** | The `⋯` on a card — not the one in the bar, below. Filing and unfiling, the in-card removal confirm, and the delegated click handler covering speak / Arabic / ✓ / study-mode reveal. |
-| **the bar on a phone** | `openMore()`, `.bar-extra`, `.morebtn`. The `⋯` in the toolbar, which exists only under 720px. Moves nothing: the controls are the same elements the wide bar shows in a row. |
+| **the bar on a phone** | `openMore()`, `.bar-extra`, `.morebtn`. The `⋯` in the toolbar, which exists only under 720px. Moves nothing: the controls are the same elements the wide bar shows in a row. Between 720 and 1400 the bar is set tighter instead, so a tablet keeps one row. |
+| **panel sizing** | `sizePanels()`, `--barh`, `--panelmax`. How much room a panel dropping out of the sticky bar actually has, measured rather than assumed. |
 | **data loading** | `norm`, `stem`, the ink palette, the `localStorage` accessors, `apply()` and `boot()`. |
 | **the storage seam** | `localStore` — the device-only half, including the overrides and tombstones that let a committed file be edited around. |
 | **the same seam, against an account** | `cloudStore` — `rowToWord`/`wordToRow`, the Supabase half, and the offline row mirror. |
