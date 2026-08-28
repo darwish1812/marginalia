@@ -583,8 +583,17 @@
      right edge as every other control instead of starting at the left margin. */
   .set .ctl{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; align-items:center;
             padding:6px 0}
-  /* the line a confirmation says its piece on, under the reason it belongs to */
+  /* The line a confirmation says its piece on, under the reason it belongs to. Empty, it
+     has to be taken out of the grid entirely: a childless <p> is still a grid item, and its
+     own bottom margin was claiming an 8px row under the two rows that own one — which is
+     why those two sat further apart than every other pair. */
   #settings .set > .note{grid-column:2/-1; margin:0 0 8px}
+  #settings .set > .note:empty{display:none}
+  /* The status line is a child of the grid too, so without this it lands in the title
+     column and says "Offline — showing the last copy saved on this device" down 152px of
+     column. It spans, or it is not there at all. */
+  #sync{grid-column:1/-1; margin:0 0 12px}
+  #sync:empty{display:none}
   .set.grave .set-t{color:var(--ink-3)}   /* red for the one there is no undo for */
   #settings input{background:var(--night-2); border:1px solid var(--ink-3); border-radius:7px;
     padding:7px 11px; color:var(--paper); font:14px/1.4 "Newsreader",Georgia,serif; width:104px}
@@ -1301,7 +1310,7 @@
                hundred and fifty words about castles, and wanted none of them. -->
           <div class="set grave">
             <p class="set-t">Empty this booklet</p>
-            <p class="set-d" id="emptydesc">Every word goes, and the starting question comes back. No undo — take a copy first.</p>
+            <p class="set-d" id="emptydesc">Every word goes, and the starting question comes back. No undo.</p>
             <div class="ctl" id="emptyrow"><button class="btn fld-del" id="emptybtn">Empty this booklet</button></div>
             <p class="note" id="emptymsg"></p>
           </div>

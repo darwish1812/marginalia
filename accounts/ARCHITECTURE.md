@@ -542,6 +542,13 @@ so a row grows downward while its right edge stays where every other right edge 
 bulk actions no longer need blocks of their own, and no longer start at the left margin while
 eight other controls sit on the right.
 
+**An empty cell is still a row.** Both bulk rows keep a `<p class="note">` for their
+confirmation to speak on, and a childless `<p>` is a grid item like any other: its own bottom
+margin claimed an 8px track under each of them, so those two rows sat 8px further apart than
+every other pair in the panel. `:empty` takes them out of the grid until they have something
+to say. The status line above the groups is a child of the grid too, and needs
+`grid-column:1/-1` or it reports being offline down 152px of title column.
+
 **The rows carry no hairline.** Three columns holding their line is structure enough; a rule
 every forty pixels through ten rows is a fence around every word. Only the groups keep one.
 
