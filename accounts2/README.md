@@ -219,6 +219,9 @@ fields you already had.
   cover, which meant the index of the whole booklet was gone on the first flick. It stands
   beside the book now — and it is the filter as well as the map: press a field to hold the
   book to it, press it again to let it out.
+- **The head is one row on a phone.** The search box and **View** share it; the tally moves to
+  **You**, since it is a reading rather than a control and a phone has no row to spare for one.
+  On a tablet and a laptop the tally stays in the head, where a row costs nothing.
 - **Nothing folds away on a phone.** There is no `⋯` sheet any more, because there is
   nothing left to hide in one: Study mode and العربية moved into **View**, Settings became a
   place of its own, and what is left above the book — the search box and that one button —

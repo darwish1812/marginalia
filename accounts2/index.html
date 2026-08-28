@@ -282,6 +282,12 @@
     white-space:nowrap; flex:none;
   }
   .tally b{color:var(--paper); font-weight:600}
+  .tally-you{
+    font-family:"Archivo",sans-serif; font-size:11.5px; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--dim); margin:0 0 4px;
+  }
+  .tally-you b{color:var(--paper); font-weight:600}
+  .tally-you:empty{display:none}
 
   /* ---------- the sidebar, folded ----------
      Only where there is a sidebar to fold: a tablet is already a rail and a phone is a bar
@@ -352,9 +358,20 @@
     /* the last card, and the bottom of a panel, clear the bar rather than sitting under it */
     body:not(.signed-out):not(.first-run){padding-bottom:74px}
     .chips{display:flex}
-    .head{padding:12px 16px; flex-wrap:wrap}
-    .search{flex:1 1 100%; font-size:16px}   /* under 16px, iOS zooms the page in on focus */
-    .lens{flex:1}
+    /* The inset has to be repeated here. The rule above sets padding-top on its own to
+       hold the head off the clock; a padding shorthand at this width resets it, and the
+       search box goes under the notch. Written long-hand so that cannot happen again. */
+    .head{padding:calc(12px + env(safe-area-inset-top,0px)) 16px 12px; flex-wrap:wrap}
+    /* The search box used to claim a whole line here — flex-basis 100% — which pushed
+       View and the tally onto a second row and made the head three bands deep before a
+       single word of the book. They share one row now: the box takes what is left after a
+       button that is only as wide as its own label. 16px because under that, iOS Safari
+       zooms the page in when the field takes focus and does not zoom back out. */
+    .search{flex:1 1 auto; min-width:0; font-size:16px}
+    .lens{flex:none; padding-left:11px; padding-right:10px}
+    /* The tally is a reading, not a control, and it was the other half of that second row.
+       It goes to You, where the rest of the booklet's numbers are. */
+    .head .tally{display:none}
     .slash{display:none}
     .pop{right:16px; left:16px; min-width:0}
   }
@@ -1379,6 +1396,11 @@
              inside the add-words panel before, which was a stranger place for it than this. -->
         <p class="note" id="sync"></p>
 
+        <!-- The tally stands in the head on a tablet and a laptop, where a row costs
+             nothing. On a phone it was half of a band the book wanted back, so it reads
+             here instead — the same number, in the room that holds the other numbers. -->
+        <p class="note tally-you" id="tally2"></p>
+
         <!-- Three kinds of thing sat in one flat list here, so a reader after the download
              had to know it lived under a gear next to a voice picker. They are grouped now
              by what they belong to: the rooms you can walk into, the booklet itself, and
@@ -1886,7 +1908,14 @@ function setField(v){
 /* progress */
 const tally = document.getElementById('tally');
 const KEY='vocab-booklet-progress';
-function paint(){ tally.innerHTML=`<b>${done.size}</b> / ${W.length} learned`; }
+function paint(){
+  const t = `<b>${done.size}</b> / ${W.length} learned`;
+  tally.innerHTML = t;
+  /* Said twice on purpose: the head carries it where there is room, You carries it always,
+     and a phone shows only the second. One writer, so they cannot drift apart. */
+  const t2 = document.getElementById('tally2');
+  if(t2) t2.innerHTML = t;
+}
 /* Both go through the store: on this device that is still localStorage, on an account it
    is a column on the word's own row, which is what finally makes a tick on the iPad
    show up on the laptop. */
