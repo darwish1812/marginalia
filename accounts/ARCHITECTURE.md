@@ -460,6 +460,60 @@ otherwise leave the filter showing a page it no longer describes. It marks the u
 `store.doneList()` and the in-memory `done` set: on a device that quietly refused to save,
 the store's word alone would rub out ticks the tally still counts.
 
+### 3.6b Running to the edges
+
+Added to an iPad's Home Screen the app owns the whole display, but it was stopping short of
+it: the strip holding the clock and the battery was not the booklet's navy, so it read as a
+page pasted onto the screen. Everything iOS needs was already in the markup —
+`apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style: black-translucent`,
+`theme-color` — except `viewport-fit=cover`, without which iOS insets the web view to the
+safe area and `black-translucent` never gets to mean anything.
+
+iOS always draws the clock and the battery; no web app can remove them, and only Safari's
+Fullscreen API can hide them outright, which does not apply to a Home Screen launch. What
+changed is that the background now runs underneath them.
+
+Covering the whole screen makes the whole screen ours to keep clear, and nothing in the repo
+used `env(safe-area-inset-*)` before. The insets are added to padding that already existed —
+the cover's top, `.wrap`'s gutters, `body`'s bottom, all four sides of the flash-card overlay,
+and the signed-out grid — so on anything without insets they resolve to `0px` and the layout
+is what it always was. The panel's is subtracted in the stylesheet rather than in
+`sizePanels()`, because a stylesheet can read `env()` and a script cannot.
+
+The sticky bar takes its inset only while it is stuck (`.bar-wrap.stuck`, set from the rect
+`sizePanels()` already holds). Padding it unconditionally would have put the same ~24px back
+above the toolbar in the middle of the page, which is the measurement the bar was cut down to
+save in the first place.
+
+**An installed Home Screen app caches the meta tags from when it was added**, so
+`viewport-fit` does not reach an existing icon: it has to be deleted and re-added.
+
+### 3.6c Settings, and the two actions that ask
+
+Settings held three kinds of thing in one flat list: three doors to other panels, a bulk
+action, and four preferences. A reader after the download had to know it lived under a gear
+beside a voice picker. They are grouped now — the rooms, then **The whole booklet**, then
+**This device only** — and that last line is the app's own, not a new one: words, marks and
+corrections follow the account, while pictures, voice and speed are per-device on purpose.
+`automerge` looks like a preference but persists on the account through `/me`, so it stays
+with the doors, under the one it changes.
+
+**Empty this booklet** moved here out of the account panel. It acts on the booklet, not on
+the account, and it now stands beside the other thing that acts on everything.
+
+**Reset marks moved here out of the toolbar, and it asks.** It wore the same pill as Study
+mode and fired on a single click — `done.clear()` and `store.clearDone()`, every tick gone
+from every device — which made the cheapest gesture in the app the one that threw away every
+decision in it. Removing a single word already asks twice; emptying the booklet makes you
+type the word. Now this asks too, and the confirmation names the count, because "reset marks"
+does not say what you are about to lose and "Reset 55 marks" does. The button is disabled
+when nothing is marked, and `openPanel()` calls `resetIdle()` and `emptyIdle()` whenever
+Settings opens, so neither confirmation is ever found half-open and the disabled state is
+recomputed against a count that moves while you read.
+
+Both live in `.bulk` blocks rather than `.set` rows: a `.set` puts its label at one end and
+its control at the other, and a row shaped like that has nowhere to grow a confirmation.
+
 ### 3.7 Auth gate
 
 One form, three modes (`in`, `up`, `reset`), sharing the email and password fields because

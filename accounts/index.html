@@ -1,5 +1,9 @@
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- viewport-fit=cover is what lets black-translucent mean anything: without it iOS
+     insets the web view to the safe area and the booklet stops in a band below the
+     clock. With it the page paints the whole screen and the status bar sits on our
+     own navy — which then makes every edge ours to keep clear. See the env() rules. -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Marginalia — a vocabulary booklet</title>
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -41,13 +45,18 @@
   html{-webkit-text-size-adjust:100%}
   body{
     margin:0; background:var(--night); color:var(--paper);
+    /* the last card clears the home indicator; 0 everywhere without one */
+    padding-bottom:env(safe-area-inset-bottom,0px);
     font-family:"Newsreader",Georgia,serif; font-size:17px; line-height:1.55;
     -webkit-font-smoothing:antialiased;
   }
   /* An author rule that sets display beats the browser's own [hidden] rule, so anything
      given display:flex here would ignore its hidden attribute. Said once, at the top. */
   [hidden]{display:none !important}
-  .wrap{max-width:1080px; margin:0 auto; padding:0 22px}
+  /* 22px unless the screen wants more of it — an iPhone held sideways puts the notch
+     in the left gutter. An iPad reports nothing here and keeps the 22. */
+  .wrap{max-width:1080px; margin:0 auto;
+        padding:0 max(22px, env(safe-area-inset-right,0px)) 0 max(22px, env(safe-area-inset-left,0px))}
   @media(min-width:1180px){ .wrap{max-width:1380px} }
   @media(min-width:1400px){ .wrap{max-width:1500px} }   /* wider gutter-to-gutter so three columns are not cramped */
   @media(min-width:1800px){ .wrap{max-width:1760px} }   /* room for a third column at full measure */
@@ -55,8 +64,11 @@
   /* ---------- cover ---------- */
   /* Air above the wordmark, but not a flat 74px at every width: on a phone that was 9% of
      the screen holding nothing, on top of a cover already taller than the viewport. */
-  .cover{padding:clamp(26px,4vw,44px) 0 54px; border-bottom:1px solid var(--rule);
-         position:relative; overflow:hidden}
+  /* The air above the wordmark is 26px at its narrowest, and the status bar is 24 — so on
+     a Home Screen iPad the eyebrow would sit in the clock's lap. The inset is added to the
+     air rather than replacing it: the top of the page should still breathe. */
+  .cover{padding:calc(clamp(26px,4vw,44px) + env(safe-area-inset-top,0px)) 0 54px;
+         border-bottom:1px solid var(--rule); position:relative; overflow:hidden}
   .eyebrow{
     font-family:"Archivo",system-ui,sans-serif; font-size:11px; font-weight:600;
     letter-spacing:.22em; text-transform:uppercase; color:var(--dim);
@@ -93,6 +105,10 @@
 
   /* ---------- toolbar ---------- */
   .bar-wrap{position:sticky; top:0; z-index:20; background:rgba(20,22,52,.93); backdrop-filter:blur(10px); border-bottom:1px solid var(--rule)}
+  /* Only while it is actually up there. Padded always, this would cost the same height in
+     the middle of the page — and the height of this bar is the thing that was measured
+     down to hold one row in the first place. sizePanels() sets the class. */
+  .bar-wrap.stuck{padding-top:env(safe-area-inset-top,0px)}
   .bar{display:flex; gap:12px; align-items:center; flex-wrap:wrap; padding:13px 0}
   .search{
     flex:1 1 210px; min-width:0; background:var(--night-2); border:1px solid var(--rule);
@@ -411,7 +427,10 @@
        lines stay beneath it as the answer before any script has run. */
     max-height:calc(100vh - var(--barh,96px) - 18px);
     max-height:calc(100dvh - var(--barh,96px) - 18px);
-    max-height:var(--panelmax, calc(100dvh - var(--barh,96px) - 18px));
+    /* sizePanels() measures the room under the bar; the inset is taken off here rather
+       than there, because a stylesheet can read env() and a script cannot. */
+    max-height:calc(var(--panelmax, calc(100dvh - var(--barh,96px) - 18px))
+                    - env(safe-area-inset-bottom,0px));
     overflow:auto; overscroll-behavior:contain;
   }
   .panel.on{display:block}
@@ -507,6 +526,9 @@
     body.signed-out #app{
       display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr);
       gap:clamp(36px,5vw,80px); align-items:center; min-height:100dvh;
+      /* 100dvh is now the whole screen, covered strips included, so the two panes centre
+         themselves inside the part of it that can actually be read */
+      padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px);
     }
     /* the rule between the panes is the one the cover already carried, stood on its end */
     body.signed-out .cover{
@@ -740,7 +762,13 @@
      wander off the top of the screen. */
   .fc{
     position:fixed; inset:0; z-index:60; background:var(--night);
-    display:flex; flex-direction:column; gap:18px; padding:18px 22px 22px;
+    display:flex; flex-direction:column; gap:18px;
+    /* fixed and inset:0, so this padding is the only thing holding Close off the clock and
+       the two answer buttons off the home indicator */
+    padding:calc(18px + env(safe-area-inset-top,0px))
+            max(22px, env(safe-area-inset-right,0px))
+            calc(22px + env(safe-area-inset-bottom,0px))
+            max(22px, env(safe-area-inset-left,0px));
     overscroll-behavior:contain;
   }
   .fc[hidden]{display:none}
@@ -3466,9 +3494,14 @@ const setBtn=document.getElementById('setbtn'), setPanel=document.getElementById
    sticky, so that distance shrinks and grows as the page scrolls, and it is the second
    number — never the first — that bounds a panel. */
 const barWrap=document.querySelector('.bar-wrap');
-let lastBarh='', lastMax='';
+let lastBarh='', lastMax='', lastStuck=null;
 function sizePanels(){
   const r = barWrap.getBoundingClientRect();
+  /* Stuck to the top of the window is the only state in which the bar is under the clock,
+     and the only one that should pay for it. Written on the change rather than every frame,
+     so the ResizeObserver watching this element sees one flip and settles. */
+  const stuck = r.top <= 0;
+  if(stuck !== lastStuck){ barWrap.classList.toggle('stuck', stuck); lastStuck = stuck; }
   const vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
   const barh = r.height+'px';
   const max = Math.max(200, Math.round(vh - r.bottom - 18))+'px';
