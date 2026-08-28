@@ -563,8 +563,12 @@
      the widest control in the panel — Keep a copy's two buttons — it held that width on a
      narrow screen too and squeezed every reason into a 76px ribbon. With a floor instead it
      shrinks to one button's worth and those two stack, which is the row that should give. */
-  #settings{display:grid; grid-template-columns:auto minmax(240px,1fr) minmax(180px,auto);
+  /* The columns only. `display` stays out of this rule: an id outranks .panel and .panel.on
+     both, so setting it here left the panel showing whether or not anybody had opened it.
+     It goes on the open state instead, where it beats .panel.on and nothing else. */
+  #settings{grid-template-columns:auto minmax(240px,1fr) minmax(180px,auto);
             column-gap:clamp(18px,2.4vw,30px)}
+  #settings.on{display:grid}
   .set-group,.set{display:contents}
   /* .set-t and .set-d are more specific than .panel p here on purpose. Unscoped they lose to
      it, and have been losing: a title asks for 12px, --paper and 5px beneath it and was
