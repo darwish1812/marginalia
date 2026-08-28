@@ -218,7 +218,8 @@ fields you already had.
 - **The ink index stays on screen.** The eight fields and their counts used to sit on the
   cover, which meant the index of the whole booklet was gone on the first flick. It stands
   beside the book now — and it is the filter as well as the map: press a field to hold the
-  book to it, press it again to let it out.
+  book to it, press it again to let it out. On a phone the strip sticks under the head
+  rather than travelling with the page, so it is there wherever you are in the booklet.
 - **The head is one row on a phone.** The search box and **View** share it; the tally moves to
   **You**, since it is a reading rather than a control and a phone has no row to spare for one.
   On a tablet and a laptop the tally stays in the head, where a row costs nothing.

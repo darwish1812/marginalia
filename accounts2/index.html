@@ -189,7 +189,11 @@
   .idxrow:hover .bar,.idxrow[aria-pressed="true"] .bar{opacity:1}
 
   /* the same list as a strip, for a screen with no room for a column */
-  .chips{display:none; gap:7px; overflow-x:auto; padding:10px 16px 12px; scrollbar-width:none}
+  .chips{
+    display:none; gap:7px; overflow-x:auto; padding:10px 16px 12px; scrollbar-width:none;
+    background:rgba(20,22,52,.93); backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--rule);
+  }
   .chips::-webkit-scrollbar{display:none}
   .chip{
     display:inline-flex; align-items:center; gap:7px; flex:none; cursor:pointer;
@@ -203,8 +207,11 @@
 
   /* ---------- the head above the book ---------- */
   .stage{min-width:0}
+  .headwrap{position:sticky; top:0; z-index:20}
+  /* relative, not static: the View popover hangs off this and used to be positioned by the
+     sticky that has just moved to the wrapper */
   .head{
-    position:sticky; top:0; z-index:20; display:flex; align-items:center; gap:10px;
+    position:relative; display:flex; align-items:center; gap:10px;
     padding:13px 22px; background:rgba(20,22,52,.93); backdrop-filter:blur(10px);
     border-bottom:1px solid var(--rule);
     padding-top:calc(13px + env(safe-area-inset-top,0px));
@@ -358,6 +365,7 @@
     /* the last card, and the bottom of a panel, clear the bar rather than sitting under it */
     body:not(.signed-out):not(.first-run){padding-bottom:74px}
     .chips{display:flex}
+    .head{border-bottom:0}
     /* The inset has to be repeated here. The rule above sets padding-top on its own to
        hold the head off the clock; a padding shorthand at this width resets it, and the
        search box goes under the notch. Written long-hand so that cannot happen again. */
@@ -378,6 +386,7 @@
 
   /* ---------- sections ---------- */
   .sec{padding:38px 0 6px; scroll-margin-top:86px}
+  @media(max-width:719px){ .sec{scroll-margin-top:126px} }   /* head and strip together */
   .views{padding:0 22px 40px; max-width:1500px}
   @media(max-width:719px){ .views{padding:0 16px 30px} }
   .sec-head{display:flex; align-items:baseline; gap:16px; border-bottom:2px solid var(--c); padding-bottom:11px; margin-bottom:26px}
@@ -1314,6 +1323,11 @@
     </nav>
 
     <div class="stage">
+      <!-- The head and the strip under it stick as one. Sticking them separately would
+           mean telling the strip how tall the head is, and that number moves — it carries
+           the status bar inset on a phone, and the search box grows when it wraps. A
+           wrapper has no number in it to get wrong. -->
+      <div class="headwrap">
       <div class="head" id="head">
         <input class="search" id="q" type="search" placeholder="Search a word, a meaning, an example…" aria-label="Search words">
         <span class="slash" aria-hidden="true">/</span>
@@ -1339,6 +1353,7 @@
         </div>
       </div>
       <div class="chips" id="inkchips"></div>
+      </div>
 
       <div class="views">
       <section class="panel" id="panel">
