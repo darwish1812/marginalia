@@ -553,13 +553,46 @@
   /* The add panel is opened from inside settings, so it needs a door back out —
      the bar button alone works but reads as a dead end once you are in here. */
   .back{margin:0 0 20px; padding:7px 13px; font-size:10.5px}
-  /* settings: a label and its control on one line, the reason underneath */
-  .set{display:flex; gap:16px; align-items:center; justify-content:space-between; flex-wrap:wrap;
-       margin-top:18px; padding-top:18px; border-top:1px solid var(--rule)}
-  .set:first-of-type{border-top:0; padding-top:0; margin-top:0}
-  .set-t{font-family:"Archivo",sans-serif; font-size:12px; font-weight:600; letter-spacing:.1em;
-         text-transform:uppercase; color:var(--paper); margin:0 0 5px}
-  .set-d{font-size:14px; color:var(--dim); margin:0; max-width:56ch; line-height:1.55}
+  /* ---------- settings: a label, its reason, its control ----------
+     The panel is the grid and the rows fall through it, so the three columns are the whole
+     panel's and not each row's. A row that sizes its own columns can only line up with
+     itself: laid out row by row, every reason began wherever its title happened to end, and
+     no two buttons shared an edge. Now every title starts on one line, every reason on a
+     second and every control ends on a third, whichever group it is in. */
+  /* The control column is minmax, not auto. As auto it never gave anything back: sized to
+     the widest control in the panel — Keep a copy's two buttons — it held that width on a
+     narrow screen too and squeezed every reason into a 76px ribbon. With a floor instead it
+     shrinks to one button's worth and those two stack, which is the row that should give. */
+  #settings{display:grid; grid-template-columns:auto minmax(240px,1fr) minmax(180px,auto);
+            column-gap:clamp(18px,2.4vw,30px)}
+  .set-group,.set{display:contents}
+  /* .set-t and .set-d are more specific than .panel p here on purpose. Unscoped they lose to
+     it, and have been losing: a title asks for 12px, --paper and 5px beneath it and was
+     rendering at 15px, dim, with 16px — the same grey as its own description, and three lines
+     of air where one was wanted. That override was a quarter of the panel's height. */
+  .panel .set-t{font-family:"Archivo",sans-serif; font-size:12px; font-weight:600; letter-spacing:.1em;
+         text-transform:uppercase; color:var(--paper); margin:0; padding:11px 0; line-height:1.45;
+         white-space:nowrap}
+  .panel .set-d{font-size:14px; color:var(--dim); margin:0; padding:11px 0; line-height:1.45}
+  /* the control cell. Everything a row can grow — a second button, a typed confirmation and
+     its two answers — happens in here, which is what lets the two bulk actions keep the same
+     right edge as every other control instead of starting at the left margin. */
+  .set .ctl{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; align-items:center;
+            padding:6px 0}
+  /* the line a confirmation says its piece on, under the reason it belongs to */
+  #settings .set > .note{grid-column:2/-1; margin:0 0 8px}
+  .set.grave .set-t{color:var(--ink-3)}   /* red for the one there is no undo for */
+  #settings input{background:var(--night-2); border:1px solid var(--ink-3); border-radius:7px;
+    padding:7px 11px; color:var(--paper); font:14px/1.4 "Newsreader",Georgia,serif; width:104px}
+  /* One column on a phone: the three cells stack the way they always did, and the control
+     goes back to the left because there is no second column for it to sit against. */
+  @media(max-width:719px){
+    #settings{grid-template-columns:minmax(0,1fr)}
+    .panel .set-t{padding:14px 0 0; white-space:normal}
+    .panel .set-d{padding:3px 0 0}
+    .set .ctl{justify-content:flex-start; padding:9px 0 0}
+    #settings .set > .note{grid-column:1/-1}
+  }
   body.nosound .set-sound{display:none}
   .step{margin-top:24px; padding-top:20px; border-top:1px solid var(--rule)}
   .step:first-of-type{border-top:0; padding-top:0; margin-top:0}
@@ -608,18 +641,14 @@
   #packgo{display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-top:22px}
 
   /* Settings holds three kinds of thing and used to run them together as one list. A
-     group is a run of rows that belong to the same owner, under a label saying who. */
-  .set-group + .set-group{margin-top:28px; padding-top:24px; border-top:1px solid var(--rule)}
-  .set-h{margin-bottom:15px}
-  /* The two that act on everything at once. Stacked rather than laid out as a .set row,
-     because each grows its confirmation where its button was and a line with the label on
-     one end and the control on the other has nowhere to put one. */
-  .bulk{margin-top:22px; padding-top:18px; border-top:1px solid var(--rule)}
-  /* red is for the one there is no undo for; resetting marks you can earn back */
-  .bulk.grave .set-t{color:var(--ink-3)}
-  .bulk input{background:var(--night-2); border:1px solid var(--ink-3); border-radius:7px;
-    padding:8px 11px; color:var(--paper); font:15px/1.4 "Newsreader",Georgia,serif; max-width:160px}
-  .bulk .row{margin-top:12px}
+     group is a run of rows that belong to the same owner, under a label saying who. The
+     group has no box of its own — it is display:contents like the rows — so the rule that
+     separates one from the next rides its heading. */
+  .set-h{grid-column:1/-1; margin-bottom:9px}
+  .set-group + .set-group .set-h{margin-top:18px; padding-top:16px; border-top:1px solid var(--rule)}
+  /* No hairline between the rows inside a group. Three columns holding their line is
+     structure enough, and a rule every forty pixels through ten rows is a fence around
+     every word. The groups keep theirs: those separate things that really are different. */
 
   /* ---------- the card menu ---------- */
   .more{
@@ -1202,42 +1231,38 @@
              had to know it lived under a gear next to a voice picker. They are grouped now
              by what they belong to: the rooms you can walk into, the booklet itself, and
              this one device. That last line is the app's own — words, marks and corrections
-             follow the account; pictures, voice and speed never leave the machine. -->
+             follow the account; pictures, voice and speed never leave the machine.
+
+             Each row is three cells and nothing else: the name, the reason, the control.
+             The panel holds the columns; see the grid on #settings. -->
         <div class="set-group">
+          <span class="set-h">Your words</span>
+
           <div class="set">
-            <div>
-              <p class="set-t">Add words</p>
-              <p class="set-d" id="addhint">Paste a list, take the prompt to Claude, bring the reply back.</p>
-            </div>
-            <button class="btn" id="addbtn" aria-pressed="false">+ Add words</button>
+            <p class="set-t">Add words</p>
+            <p class="set-d" id="addhint">Paste a list, take the prompt to Claude, bring the reply back.</p>
+            <div class="ctl"><button class="btn" id="addbtn" aria-pressed="false">+ Add words</button></div>
           </div>
 
           <!-- Hidden entirely unless enrichment is on. Whether a fetched reply lands in your
                booklet or waits to be read first is a question about your own words, so it is
                yours and not the administrator's. It sits under the door it changes. -->
           <div class="set" id="automerge-row" hidden>
-            <div>
-              <p class="set-t">Merging</p>
-              <p class="set-d">Enriched words can go straight into your booklet, or wait in the
-                box so you can read them first. There is no undo, so waiting is the default.</p>
-            </div>
-            <button class="btn" id="automerge" aria-pressed="false">Merge automatically</button>
+            <p class="set-t">Merging</p>
+            <p class="set-d">Enriched words can land in the booklet, or wait to be read first.</p>
+            <div class="ctl"><button class="btn" id="automerge" aria-pressed="false">Merge automatically</button></div>
           </div>
 
           <div class="set">
-            <div>
-              <p class="set-t">Account</p>
-              <p class="set-d" id="accthint">Your words live in your account, so they follow you between devices.</p>
-            </div>
-            <button class="btn" id="acctbtn" aria-pressed="false">Sign in</button>
+            <p class="set-t">Account</p>
+            <p class="set-d" id="accthint">Your words follow you between devices.</p>
+            <div class="ctl"><button class="btn" id="acctbtn" aria-pressed="false">Sign in</button></div>
           </div>
 
           <div class="set">
-            <div>
-              <p class="set-t">Fields</p>
-              <p class="set-d" id="fldhint">The inks down the side of the page. Rename them, recolour them, or make your own.</p>
-            </div>
-            <button class="btn" id="fldbtn" aria-pressed="false">Edit fields</button>
+            <p class="set-t">Fields</p>
+            <p class="set-d" id="fldhint">The inks down the side of the page. Rename, recolour, add your own.</p>
+            <div class="ctl"><button class="btn" id="fldbtn" aria-pressed="false">Edit fields</button></div>
           </div>
         </div>
 
@@ -1247,12 +1272,9 @@
           <!-- Not a step in adding words — it never was, really. Keeping a copy is something
                you do to the booklet, so it lives with the other things you do to the booklet. -->
           <div class="set">
-            <div>
-              <p class="set-t">Keep a copy</p>
-              <p class="set-d" id="copyhint">Your words save themselves as you add them. Take a
-                copy whenever you want one of your own.</p>
-            </div>
-            <div class="row" style="margin:0">
+            <p class="set-t">Keep a copy</p>
+            <p class="set-d" id="copyhint">Your words save themselves. Take a copy whenever you want one.</p>
+            <div class="ctl">
               <button class="btn" id="dl">Download words.json</button>
               <button class="btn" id="dlprog">Export progress</button>
             </div>
@@ -1261,24 +1283,22 @@
           <!-- Every tick at once. This stood in the toolbar wearing the same pill as Study
                mode and went off on a single click — cheaper than removing one word, which
                asks twice. It is beside the other thing that acts on everything now, and it
-               asks. -->
-          <div class="bulk">
+               asks: the confirmation replaces the button inside the control cell, so the row
+               keeps the same right edge as every other row while it is asking. -->
+          <div class="set">
             <p class="set-t">Reset marks</p>
-            <p class="set-d">Puts every card back to unlearned. The words stay exactly as they
-              are; only what you have marked goes.</p>
-            <div class="row" id="resetrow"><button class="btn" id="reset">Reset marks</button></div>
+            <p class="set-d">Every card back to unlearned. The words stay.</p>
+            <div class="ctl" id="resetrow"><button class="btn" id="reset">Reset marks</button></div>
             <p class="note" id="resetmsg"></p>
           </div>
 
           <!-- The only bulk action in the app. Removing words one at a time is right for
                a booklet you are tending; it is cruelty for someone who signed up, got a
                hundred and fifty words about castles, and wanted none of them. -->
-          <div class="bulk grave">
+          <div class="set grave">
             <p class="set-t">Empty this booklet</p>
-            <p class="set-d" id="emptydesc">Removes every word. There is no undo — take a copy
-              from <b>Keep a copy</b> above first if you want one. What is left is the booklet a
-              new account starts with, so you are asked the same question one is: what do you read.</p>
-            <div class="row" id="emptyrow"><button class="btn fld-del" id="emptybtn">Empty this booklet</button></div>
+            <p class="set-d" id="emptydesc">Every word goes, and the starting question comes back. No undo — take a copy first.</p>
+            <div class="ctl" id="emptyrow"><button class="btn fld-del" id="emptybtn">Empty this booklet</button></div>
             <p class="note" id="emptymsg"></p>
           </div>
         </div>
@@ -1287,29 +1307,21 @@
           <span class="set-h">This device only</span>
 
           <div class="set">
-            <div>
-              <p class="set-t">Pictures</p>
-              <p class="set-d">A few words carry a drawing, watermarked into the corner of the card.
-                Turning them off leaves the text exactly as it was.</p>
-            </div>
-            <button class="btn" id="pics" aria-pressed="true">Pictures on</button>
+            <p class="set-t">Pictures</p>
+            <p class="set-d">A few words carry a drawing, watermarked into the card.</p>
+            <div class="ctl"><button class="btn" id="pics" aria-pressed="true">Pictures on</button></div>
           </div>
 
           <div class="set set-sound">
-            <div>
-              <p class="set-t">Reading voice</p>
-              <p class="set-d">Which of your device's voices reads the cards. The list differs between
-                the iPad and a laptop, and rare words are occasionally mispronounced whichever you pick.</p>
-            </div>
-            <select class="btn" id="voice" aria-label="Reading voice"></select>
+            <p class="set-t">Reading voice</p>
+            <p class="set-d">Which of your device's voices reads the cards.</p>
+            <div class="ctl"><select class="btn" id="voice" aria-label="Reading voice"></select></div>
           </div>
 
           <div class="set set-sound">
-            <div>
-              <p class="set-t">Reading speed</p>
-              <p class="set-d">Slower is easier to shadow aloud when a word is new.</p>
-            </div>
-            <button class="btn" id="speed">Speed 0.9×</button>
+            <p class="set-t">Reading speed</p>
+            <p class="set-d">Slower is easier to shadow aloud when a word is new.</p>
+            <div class="ctl"><button class="btn" id="speed">Speed 0.9×</button></div>
           </div>
         </div>
       </section>

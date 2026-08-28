@@ -521,8 +521,34 @@ when nothing is marked, and `openPanel()` calls `resetIdle()` and `emptyIdle()` 
 Settings opens, so neither confirmation is ever found half-open and the disabled state is
 recomputed against a count that moves while you read.
 
-Both live in `.bulk` blocks rather than `.set` rows: a `.set` puts its label at one end and
-its control at the other, and a row shaped like that has nowhere to grow a confirmation.
+**The panel is one grid, three columns wide.** `#settings` carries
+`auto minmax(240px,1fr) minmax(180px,auto)`, and the groups and the rows are both
+`display:contents`, so every row's three cells — name, reason, control — fall through into
+the panel's own columns rather than into columns of their own. That is the whole of the
+alignment: laid out row by row, each reason began wherever its title happened to end and no
+two controls shared an edge; even a grid per group left three different title columns,
+because a group can only measure its own rows.
+
+Both columns that can flex carry a floor, and they need one each. The control column was
+`auto` first: sized to the widest control in the panel — Keep a copy's two buttons — it held
+that width on a narrow screen too, and since the `1fr` reason column had a min of `0` it
+absorbed every pixel of the shrinking and collapsed to 76px on an iPad held upright. With a
+floor on each, the control column is what gives, and those two buttons stack, which is the
+right row to sacrifice. Under 720px the grid drops to one column and the cells stack the way
+they always did.
+
+That is also what fixed the confirmations. They live in the control cell and wrap inside it,
+so a row grows downward while its right edge stays where every other right edge is — the two
+bulk actions no longer need blocks of their own, and no longer start at the left margin while
+eight other controls sit on the right.
+
+**The rows carry no hairline.** Three columns holding their line is structure enough; a rule
+every forty pixels through ten rows is a fence around every word. Only the groups keep one.
+
+**`.set-t` and `.set-d` are scoped to `.panel` on purpose.** Unscoped they lose to `.panel p`
+— and had been losing. A title asks for 12px, `--paper` and 5px beneath it, and was rendering
+at 15px, dim, with 16px: the same grey as its own description, and three lines of air where
+one was asked for. That single override was about a quarter of the panel's height.
 
 ### 3.7 Auth gate
 
