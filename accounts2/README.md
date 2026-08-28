@@ -192,8 +192,9 @@ the whole book.
 **You → The whole booklet** holds the three things that act on all of it at once —
 keeping a copy, resetting the marks, and emptying it. **Reset marks** puts every card back to
 unlearned and asks first, naming the number it is about to clear; the words are untouched.
-**Empty this booklet** clears every word at once. It asks you to type
-the word `empty`, because it cannot be undone. What is left is the same empty booklet a new
+**Empty this booklet** clears every word at once. It asks first, and names how many are
+about to go: the button reads **Empty 154 words** rather than **Empty it**, because a count
+is harder to press without meaning it. What is left is the same empty booklet a new
 account starts with, so you are asked the same question a new account is asked — **what do
 you read?** — and can stock it from any of the packs, or leave it empty and go on with the
 fields you already had.

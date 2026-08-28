@@ -290,6 +290,45 @@ test.describe('the destinations', () => {
   });
 });
 
+test.describe('emptying the booklet', () => {
+  /* It asked you to type the word "empty" until 2026-08-29 and now asks with two buttons,
+     the way Reset marks does. The count on the button is what replaced the typing, so it is
+     the part worth asserting: a confirmation that does not say what you are about to lose is
+     the thing the typed word was there to prevent. */
+  test('asks first, and says how many words are about to go', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await stock(page);
+    await page.locator('.dest[data-dest="you"]').click();
+    await page.locator('#emptybtn').click();
+    await expect(page.locator('#emptytype'), 'the typed step should be gone').toHaveCount(0);
+    await expect(page.locator('#emptygo')).toHaveText('Empty 154 words');
+    await expect(page.locator('#emptygo')).toBeEnabled();
+    await expect(page.locator('#emptymsg')).toContainText('cannot be undone');
+  });
+
+  test('cancelling leaves every word where it was', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await stock(page);
+    await page.locator('.dest[data-dest="you"]').click();
+    await page.locator('#emptybtn').click();
+    await page.locator('#emptyno').click();
+    await expect(page.locator('#emptybtn')).toBeVisible();      // back to rest
+    await page.locator('.dest[data-dest="book"]').click();
+    await expect(page.locator('.card')).toHaveCount(154);
+  });
+
+  test('confirming empties it, and asks what you read', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await stock(page);
+    await page.locator('.dest[data-dest="you"]').click();
+    await page.locator('#emptybtn').click();
+    await page.locator('#emptygo').click();
+    /* an emptied booklet is the state the first-run picker was written for */
+    await expect(page.locator('#firstrun')).toBeVisible();
+    await expect(page.locator('.card')).toHaveCount(0);
+  });
+});
+
 test.describe('the shell at each size', () => {
   /* Was: the search box claimed a whole line, so View and the tally sat on a second row
      and the head was three bands deep before a word of the book. */

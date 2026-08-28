@@ -519,9 +519,9 @@ the account, and it now stands beside the other thing that acts on everything.
 **Reset marks moved here out of the toolbar, and it asks.** It wore the same pill as Study
 mode and fired on a single click — `done.clear()` and `store.clearDone()`, every tick gone
 from every device — which made the cheapest gesture in the app the one that threw away every
-decision in it. Removing a single word already asks twice; emptying the booklet makes you
-type the word. Now this asks too, and the confirmation names the count, because "reset marks"
-does not say what you are about to lose and "Reset 55 marks" does. The button is disabled
+decision in it. Removing a single word already asks twice. Now this asks too, and the
+confirmation names the count, because "reset marks" does not say what you are about to lose
+and "Reset 55 marks" does. The button is disabled
 when nothing is marked, and `openPanel()` calls `resetIdle()` and `emptyIdle()` whenever
 Settings opens, so neither confirmation is ever found half-open and the disabled state is
 recomputed against a count that moves while you read.
@@ -709,7 +709,7 @@ changes, and a banner comment is not. Search for the name.
 | **signed in, signed out** | `enter()`, `setAcctState()`, `syncNote()`. |
 | **the sign-in gate** | The three-mode form, OAuth provider discovery, sign-out, `authText()`. |
 | **fields** | `renderFields()`, the inline editor, the ink palette and the eight-field cap. |
-| **emptying the booklet** | The one bulk action, behind a typed confirmation. |
+| **emptying the booklet** | The one bulk action, behind the same two-button confirmation Reset marks uses. It asked you to type the word `empty` until 2026-08-29; the count on the button does that work now. |
 | **add words** | `check`, `renderReport()`, `artToSrc()`, and the panel plumbing. |
 | **automatic or by hand** | `GATEWAY`, `setEnrichMode()`, `showQuota()`. Every failure path returns to the manual loop with the reason written where the reader is already looking. |
 | **a model on this machine** | `localTarget()` and `askLocal()`. An Edge Function cannot dial your desk, so a provider on localhost is unreachable through the gateway however it is configured; this page calls it directly instead — but only from localhost, only for an administrator, and only when the provider in use is itself local. No key is involved, because a local endpoint has nobody to present one to. |

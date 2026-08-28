@@ -3887,19 +3887,22 @@ document.getElementById('emptyrow').addEventListener('click', async e=>{
   const row=document.getElementById('emptyrow'), msg=document.getElementById('emptymsg');
 
   if(e.target.closest('#emptybtn')){
-    const inp=document.createElement('input');
-    inp.type='text'; inp.id='emptytype'; inp.placeholder='empty';
-    inp.setAttribute('aria-label','Type the word empty to confirm');
+    /* It asked you to type the word "empty" once. It asks the way Reset marks does now —
+       two buttons and a sentence — which is the pattern the rest of the panel already uses.
+       The count moves onto the button in its place: pressing something that says "Empty 154
+       words" is a harder thing to do without meaning it than pressing one that says "Empty
+       it", and it costs the reader nothing. */
+    const n=W.length;
     const go=document.createElement('button');
-    go.className='btn fld-del'; go.id='emptygo'; go.textContent='Empty it'; go.disabled=true;
+    go.className='btn fld-del'; go.id='emptygo';
+    go.textContent = n ? 'Empty '+n+(n===1?' word':' words') : 'Empty it';
     const no=document.createElement('button');
     no.className='btn'; no.id='emptyno'; no.textContent='Cancel';
-    inp.addEventListener('input',()=>{ go.disabled = inp.value.trim().toLowerCase()!=='empty'; });
     msg.className='note warn';
     msg.textContent = store.id==='cloud'
-      ? 'Type the word "empty" to confirm. Every word goes, on every device.'
-      : 'Type the word "empty" to confirm. Every word goes from this browser.';
-    row.textContent=''; row.append(inp, go, no); inp.focus();
+      ? 'Every word goes, on every device. This cannot be undone.'
+      : 'Every word goes from this browser. This cannot be undone.';
+    row.textContent=''; row.append(go, no); no.focus();
     return;
   }
 
