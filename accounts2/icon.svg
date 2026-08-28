@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="6" fill="#0B1021"/>
+  <!-- one strip per ink, the marginal marks the booklet files words under -->
+  <rect x="7"  y="6" width="3" height="12" rx="1" fill="#DDA735"/>
+  <rect x="12" y="6" width="3" height="17" rx="1" fill="#3AAFA9"/>
+  <rect x="17" y="6" width="3" height="20" rx="1" fill="#D64550"/>
+  <rect x="22" y="6" width="3" height="14" rx="1" fill="#8B5CF6"/>
+</svg>

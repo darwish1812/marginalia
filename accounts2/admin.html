@@ -1,0 +1,1105 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Marginalia — gateway</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="icon-32.png" sizes="32x32" type="image/png">
+
+<!-- A console, not a reading surface. It shares the booklet's palette so it is recognisably
+     the same product, and none of its stylesheet: no serif, no cards, no reveal. Dense rows
+     and plain controls, because everything here is read once and acted on.
+
+     Readers never download this file. It is not linked from the booklet and nothing in
+     index.html references it. Hiding it is cosmetic, though — every admin route re-checks
+     the caller server-side, so a forged answer here earns a visible panel and 403 on every
+     button in it. -->
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+  :root{
+    --night:#141634; --night-2:#1C1F45; --night-3:#242850;
+    --paper:#F1EFE9; --dim:rgba(241,239,233,.55); --dimmer:rgba(241,239,233,.34);
+    --rule:rgba(241,239,233,.14);
+    --ochre:#C9922F; --verd:#3F9A85; --ox:#C4485C; --steel:#4E8AD6;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--night); color:var(--paper);
+    font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:900px; margin:0 auto; padding:28px 22px 80px}
+  h1{font-size:19px; font-weight:600; letter-spacing:-.01em; margin:0}
+  h1 em{font-style:normal; color:var(--ochre)}
+  .sub{color:var(--dim); font-size:12.5px; margin-top:3px}
+  header{display:flex; align-items:flex-start; gap:16px; padding-bottom:18px; border-bottom:1px solid var(--rule)}
+
+  section{border-bottom:1px solid var(--rule); padding:20px 0}
+  section:last-of-type{border-bottom:0}
+  h2{font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase;
+     color:var(--dim); margin:0 0 14px}
+
+  .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px}
+  label{display:block; font-size:11.5px; color:var(--dim); margin-bottom:5px}
+  input,select,textarea{
+    width:100%; background:var(--night-2); border:1px solid var(--rule); border-radius:6px;
+    color:var(--paper); padding:8px 10px; font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  input:focus,select:focus,textarea:focus{outline:none; border-color:var(--ochre)}
+  /* derived, not typed: it should not look like somewhere to put an answer */
+  input[readonly]{color:var(--dim); background:var(--night); cursor:default}
+  input[readonly]:focus{border-color:var(--rule)}
+  textarea{font-size:12.5px; min-height:280px; resize:vertical; white-space:pre; overflow-wrap:normal; overflow-x:auto}
+  select{font-family:system-ui,sans-serif}
+  button{
+    font:600 11.5px/1 system-ui,sans-serif; letter-spacing:.08em; text-transform:uppercase;
+    background:transparent; color:var(--dim); border:1px solid var(--rule);
+    border-radius:6px; padding:9px 14px; cursor:pointer; white-space:nowrap;
+  }
+  button:hover:not(:disabled){color:var(--paper); border-color:rgba(241,239,233,.42)}
+  button:disabled{opacity:.4; cursor:default}
+  button.go{background:var(--paper); color:var(--night); border-color:var(--paper)}
+  button.go:hover:not(:disabled){background:#fff}
+  button.danger{color:var(--ox); border-color:rgba(196,72,92,.45)}
+
+  .stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:1px;
+         background:var(--rule); border:1px solid var(--rule); border-radius:8px; overflow:hidden}
+  .stat{background:var(--night-2); padding:12px 14px}
+  .stat .n{font-size:21px; font-weight:600; letter-spacing:-.01em}
+  .stat .l{font-size:11px; color:var(--dim); margin-top:2px}
+  .stat.warn .n{color:var(--ochre)}
+  .stat.bad .n{color:var(--ox)}
+  .stat.good .n{color:var(--verd)}
+
+  .bar{height:6px; border-radius:99px; background:var(--night-3); overflow:hidden; margin-top:10px}
+  .bar span{display:block; height:100%; background:var(--verd)}
+  .bar.warn span{background:var(--ochre)}
+  .bar.bad span{background:var(--ox)}
+
+  .msg{font-size:12.5px; margin-top:12px; line-height:1.55; white-space:pre-wrap}
+  .msg.ok{color:var(--verd)} .msg.bad{color:var(--ox)} .msg.warn{color:var(--ochre)}
+  .note{font-size:12px; color:var(--dim); line-height:1.55; margin:10px 0 0; max-width:70ch}
+  code{font-family:ui-monospace,Menlo,monospace; font-size:12px; color:var(--ochre)}
+
+  .out{background:var(--night-2); border:1px solid var(--rule); border-radius:8px;
+       padding:12px 14px; margin-top:12px; font:12px/1.6 ui-monospace,Menlo,monospace;
+       white-space:pre-wrap; word-break:break-word; max-height:340px; overflow:auto}
+  .out .ar{font-family:"Noto Naskh Arabic",system-ui,serif; font-size:16px; color:var(--verd)}
+
+  .gate{max-width:340px; margin:14vh auto; }
+  .gate h1{margin-bottom:6px}
+  .gate .fld{margin-top:12px}
+  [hidden]{display:none !important}
+  .dev{border:1px dashed var(--ochre); border-radius:8px; padding:14px; margin-top:14px}
+
+  .tablewrap{overflow-x:auto}
+  table.prov{width:100%; border-collapse:separate; border-spacing:1px; background:var(--rule);
+             border:1px solid var(--rule); border-radius:8px; overflow:hidden}
+  table.prov th{background:var(--night-3); text-align:left; font-size:10.5px; font-weight:700;
+                letter-spacing:.1em; text-transform:uppercase; color:var(--dim); padding:9px 12px;
+                white-space:nowrap}
+  table.prov td{background:var(--night-2); padding:10px 12px; vertical-align:middle; font-size:13px}
+  table.prov tr.using td{background:#1F2A4A}
+  table.prov td.mono{font:12px/1.45 ui-monospace,Menlo,monospace; color:var(--dim)}
+  table.prov td.acts{text-align:right; white-space:nowrap}
+  .pname{font-size:13px; display:flex; align-items:center; gap:8px}
+  .pend{font:11.5px/1.4 ui-monospace,Menlo,monospace; color:var(--dimmer); margin-top:3px;
+        max-width:330px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .radio{appearance:none; width:15px; height:15px; border-radius:99px; margin:0; padding:0;
+         border:1px solid rgba(241,239,233,.42); background:transparent; cursor:pointer;
+         display:inline-block; vertical-align:middle}
+  .radio:checked{border-color:var(--verd); box-shadow:inset 0 0 0 3.5px var(--verd)}
+  button.mini{font-size:10.5px; padding:6px 9px; letter-spacing:.06em}
+  .keyset{color:var(--verd); font:12px/1 ui-monospace,Menlo,monospace}
+  .keynone{color:var(--dimmer); font-size:11.5px}
+  .shape{font-size:11px; color:var(--dim); border:1px solid var(--rule); border-radius:99px;
+         padding:2px 8px; display:inline-block}
+  .editor{border:1px solid var(--ochre); border-radius:8px; padding:16px; margin-top:16px;
+          background:rgba(201,146,47,.045)}
+  .editor h3{font-size:11px; font-weight:700; letter-spacing:.12em; text-transform:uppercase;
+             color:var(--ochre); margin:0 0 14px}
+
+  .modelfield{display:flex; gap:8px; align-items:stretch}
+  .modelfield input{flex:1}
+  .modelfield button{padding:8px 12px}
+  .modelnote{font-size:11.5px; margin-top:6px; display:block; color:var(--dim)}
+  .modelnote.ok{color:var(--verd)} .modelnote.bad{color:var(--ochre)}
+
+  /* The list is drawn rather than left to a datalist, because the whole point is the two
+     groups and the labels — and a datalist can carry neither. */
+  .suggest{position:relative; margin-top:6px; background:var(--night-3);
+           border:1px solid rgba(241,239,233,.28); border-radius:6px; overflow:hidden;
+           max-height:242px; overflow-y:auto}
+  .suggest .r{padding:6px 10px; font:12.5px/1.35 ui-monospace,Menlo,monospace; color:var(--paper);
+              display:flex; align-items:center; gap:10px; cursor:pointer}
+  .suggest .r + .r{border-top:1px solid var(--rule)}
+  .suggest .r:hover, .suggest .r.on{background:#2B3160}
+  .suggest .nm{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .suggest .kind{margin-left:auto; flex:none; font-family:system-ui,sans-serif; font-size:10px;
+                 color:var(--dimmer); text-transform:uppercase; letter-spacing:.06em}
+  .suggest .r.muted .nm{color:var(--dimmer)}
+  .suggest .seam{display:flex; align-items:center; gap:9px; padding:7px 10px 6px;
+                 background:#1B1E44; border-top:1px solid rgba(241,239,233,.22);
+                 border-bottom:1px solid var(--rule)}
+  .suggest .seam span{font-family:system-ui,sans-serif; font-size:10px; letter-spacing:.08em;
+                      text-transform:uppercase; color:var(--dimmer); white-space:nowrap}
+  .suggest .seam i{flex:1; height:1px; background:var(--rule)}
+  .suggest .none{padding:8px 10px; font-size:11.5px; color:var(--dimmer)}
+</style>
+
+<div class="wrap">
+
+  <!-- signed out ------------------------------------------------------->
+  <!-- There is no separate administrator password. This signs in with the same Marginalia
+       account as the booklet, and on the same origin it shares the same stored session —
+       so if you are signed in over there, this page never asks at all.
+
+       Whatever the booklet offers, this offers, discovered the same way: an account created
+       through Google has no password to type, and a gate that only knew about passwords
+       would lock its own administrator out. -->
+  <section class="gate" id="gate" hidden style="border:0">
+    <h1>Margin<em>alia</em> · gateway</h1>
+    <p class="sub">The same account you use for the booklet. There is no separate password.</p>
+    <div id="oauth" style="margin-top:14px"></div>
+    <div id="or" hidden style="color:var(--dimmer); font-size:11px; text-align:center; margin:14px 0 0">or</div>
+    <div class="fld"><label for="email">Email</label><input id="email" type="email" autocomplete="email"></div>
+    <div class="fld"><label for="pw">Password</label><input id="pw" type="password" autocomplete="current-password"></div>
+    <div class="row" style="margin-top:14px"><button class="go" id="signin">Sign in</button></div>
+    <p class="msg" id="gatemsg"></p>
+    <p class="note" id="nopw" hidden>If you created your account with Google or another
+      provider, you have no password — use the button above.</p>
+  </section>
+
+  <!-- not an admin ------------------------------------------------------>
+  <section class="gate" id="denied" hidden style="border:0">
+    <h1>Not an administrator</h1>
+    <p class="note">This account is signed in but has not been granted access to the gateway.
+      Access is granted by hand, in the SQL editor — there is no button for it:</p>
+    <div class="out">insert into public.admins (user_id)
+select id from auth.users where email = 'you@example.com'
+on conflict do nothing;</div>
+    <div class="row" style="margin-top:14px"><button id="signout2">Sign out</button></div>
+  </section>
+
+  <!-- the console -------------------------------------------------------->
+  <div id="console" hidden>
+    <header>
+      <div>
+        <h1>Margin<em>alia</em> · gateway</h1>
+        <div class="sub" id="who"></div>
+      </div>
+    </header>
+
+    <!-- 1. status -->
+    <section>
+      <h2>This month</h2>
+      <div class="stats" id="stats"></div>
+      <div class="bar" id="budgetbar"><span style="width:0%"></span></div>
+      <p class="note" id="budgetnote"></p>
+    </section>
+
+    <!-- 2. providers -->
+    <section>
+      <h2>Providers</h2>
+      <div class="tablewrap">
+        <table class="prov">
+          <thead>
+            <tr><th style="width:34px">Use</th><th>Provider</th><th>Model</th><th>Key</th><th></th></tr>
+          </thead>
+          <tbody id="provrows"></tbody>
+        </table>
+      </div>
+      <div class="row" style="margin-top:12px"><button id="addprov">+ Add provider</button></div>
+      <p class="note">The filled dot is the one in use. Deleting a row deletes its key too.</p>
+
+      <div class="editor" id="editor" hidden>
+        <h3 id="editortitle">New provider</h3>
+        <div class="grid">
+          <div>
+            <label for="preset">Preset</label>
+            <select id="preset">
+              <option value="">Choose…</option>
+              <option value="anthropic">Anthropic</option>
+              <option value="openai">OpenAI</option>
+              <option value="groq">Groq</option>
+              <option value="deepseek">DeepSeek</option>
+              <option value="openrouter">OpenRouter</option>
+              <option value="lmstudio">LM Studio (local)</option>
+              <option value="custom">Custom…</option>
+            </select>
+          </div>
+          <div><label for="pname">Name</label>
+            <input id="pname" readonly tabindex="-1"></div>
+          <!-- The body shape is a property of the preset, not a decision: 'openai' covers
+               every provider here except Anthropic, and choosing wrongly only produces a
+               reply the page cannot read. Carried, not asked for. -->
+          <input type="hidden" id="adapter" value="openai">
+        </div>
+        <div style="margin-top:12px"><label for="endpoint">Endpoint</label><input id="endpoint"></div>
+        <div class="grid" style="margin-top:12px">
+          <div><label for="model">Model</label>
+            <div class="modelfield">
+              <input id="model" autocomplete="off">
+              <button id="fetchmodels">Fetch</button>
+            </div>
+            <div class="suggest" id="modellist" hidden></div>
+            <span class="modelnote" id="modelnote"></span>
+          </div>
+          <div id="keywrap"><label for="apikey">API key <span id="keyhas"></span></label>
+            <input id="apikey" type="password" placeholder="blank keeps the current key"></div>
+        </div>
+        <div class="row" style="margin-top:14px">
+          <button class="go" id="saveprov">Save provider</button>
+          <button id="cancelprov">Cancel</button>
+          <button class="danger" id="forgetkey">Forget key</button>
+        </div>
+        <p class="note" id="keynote">Written once, never read back — only its last four
+          characters are ever shown.</p>
+
+        <div class="dev" id="dev" hidden>
+          <b style="color:var(--ochre); font-size:12px">Local model, this machine only</b>
+          <p class="note" style="margin-top:6px">Called from this page, not through the
+            gateway. No reader can use this path.</p>
+          <div class="row" style="margin-top:10px"><button id="devtest">Test against local endpoint</button></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. request -->
+    <section>
+      <h2>Request</h2>
+      <div class="grid">
+        <div><label for="temp">Temperature <span style="color:var(--dimmer)">— blank means don't send one</span></label>
+          <input id="temp" type="number" step="0.1" min="0" max="2"></div>
+        <div><label for="tokens">Max tokens</label><input id="tokens" type="number" min="256" step="256"></div>
+        <div><label for="batch">Words per request</label><input id="batch" type="number" min="1" max="100"></div>
+      </div>
+      <p class="note">The same whichever provider is in use. If replies arrive cut off, raise
+        Max tokens or lower Words per request.</p>
+    </section>
+
+    <!-- 3. template -->
+    <section>
+      <h2>Template</h2>
+      <p class="note" style="margin-top:0"><code>{{WORDS}}</code> and <code>{{FIELDS}}</code>
+        are substituted. The booklet builds the same string for <b>Copy prompt</b>.</p>
+      <textarea id="template" spellcheck="false"></textarea>
+      <div class="row" style="margin-top:10px">
+        <button class="go" id="savetpl">Test &amp; save</button>
+      </div>
+      <p class="note">Saving sends one real word through first and shows the reply.</p>
+    </section>
+
+    <!-- 4. limits -->
+    <section>
+      <h2>Limits</h2>
+      <div class="grid">
+        <div><label for="peruser">Per reader, per month</label><input id="peruser" type="number" min="0"></div>
+        <div><label for="perrun">Per run</label><input id="perrun" type="number" min="1"></div>
+        <div><label for="budget">Whole booklet, per month</label><input id="budget" type="number" min="0"></div>
+      </div>
+      <p class="note">Both are checked on every request.</p>
+    </section>
+
+    <!-- actions -->
+    <section>
+      <h2>Enrichment</h2>
+      <div class="row">
+        <button class="go" id="save">Save settings</button>
+        <button id="test">Send one word</button>
+        <button id="toggle">Enable</button>
+        <button id="signout" style="margin-left:auto">Sign out</button>
+      </div>
+      <p class="msg" id="msg"></p>
+      <div class="out" id="out" hidden></div>
+      <p class="note" id="testnote"></p>
+
+    </section>
+  </div>
+</div>
+
+<script>
+/* Same project, same anon key as the booklet. This page holds no secret of its own: it can
+   see nothing a reader could not, except by asking the function, which checks. */
+const SUPABASE_URL      = 'https://pnsmrzlncqlbrkpamnyq.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_lH1l_wn_b45JvzFE7ZeIDg_4FQdjb-2';
+/* The gateway normally lives at the project URL. Served locally — `supabase functions
+   serve`, the one arrangement in which the function can reach a model on this machine — it
+   lives on this machine instead, so the base is overridable:
+
+     localStorage.fn = 'http://localhost:54321'     // and reload; delete it to go back
+
+   Only ever honoured when this page is itself on localhost. Requests to the gateway carry
+   the reader's access token, so a stored value that could redirect them on a deployed page
+   would be a way to hand that token to somebody else. */
+const FN_BASE = (['localhost','127.0.0.1'].includes(location.hostname) &&
+                 localStorage.getItem('fn')) || SUPABASE_URL;
+const FN = FN_BASE + '/functions/v1/enrich';
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* Only ever true when this page is served from a machine you are sitting at. A local model
+   is a build-time convenience, never a production path. */
+const DEV_DIRECT = ['localhost','127.0.0.1'].includes(location.hostname);
+
+/* One definition, used by the key column, the "still needed" line and the direct-call guard.
+   A provider on this machine has nobody to present a credential to, so a missing key there
+   is a fact about the endpoint rather than something left undone. */
+const isLocal = u => /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|\/|$)/i.test(String(u||'').trim());
+
+let EDITING = null;   /* a provider id, or 'new', or null when the editor is shut */
+
+const PRESETS = {
+  anthropic:  {adapter:'anthropic', endpoint:'https://api.anthropic.com/v1/messages',        model:'claude-sonnet-5'},
+  openai:     {adapter:'openai',    endpoint:'https://api.openai.com/v1/chat/completions',   model:'gpt-4o-mini'},
+  groq:       {adapter:'openai',    endpoint:'https://api.groq.com/openai/v1/chat/completions', model:'llama-3.3-70b-versatile'},
+  deepseek:   {adapter:'openai',    endpoint:'https://api.deepseek.com/chat/completions',    model:'deepseek-chat'},
+  openrouter: {adapter:'openai',    endpoint:'https://openrouter.ai/api/v1/chat/completions', model:''},
+  lmstudio:   {adapter:'openai',    endpoint:'http://localhost:11434/v1/chat/completions',  model:''}
+};
+
+const $ = id => document.getElementById(id);
+let STATE = null;
+
+function say(el, text, kind){ const e=$(el); e.className='msg'+(kind?' '+kind:''); e.textContent=text||''; }
+
+async function token(){
+  const {data:{session}} = await sb.auth.getSession();
+  return session ? session.access_token : null;
+}
+
+async function api(path, opts){
+  const t = await token();
+  if(!t) throw new Error('not signed in');
+  const r = await fetch(FN + path, Object.assign({}, opts, {
+    headers: Object.assign({'Authorization':'Bearer '+t, 'Content-Type':'application/json'}, (opts||{}).headers)
+  }));
+  let body = null;
+  try{ body = await r.json(); }catch(e){}
+  if(!r.ok){
+    const err = new Error((body && (body.message || body.error)) || ('HTTP '+r.status));
+    err.status = r.status; err.body = body;
+    throw err;
+  }
+  return body;
+}
+
+/* ---------- sign in ----------
+   A button for every provider the project actually has switched on, read from the project's
+   own settings exactly as the booklet reads them — so there are never dead buttons, and
+   never a missing one. An account made through Google has no password at all, and a gate
+   that only offered a password field would shut its own administrator out. */
+const PROVIDER_NAMES = {google:'Google', apple:'Apple', azure:'Microsoft', github:'GitHub',
+  facebook:'Facebook', twitter:'X', discord:'Discord', gitlab:'GitLab', notion:'Notion',
+  slack_oidc:'Slack', linkedin_oidc:'LinkedIn'};
+
+(async ()=>{
+  let on = [];
+  try{
+    const r = await fetch(SUPABASE_URL+'/auth/v1/settings', {headers:{apikey:SUPABASE_ANON_KEY}});
+    const j = await r.json();
+    on = Object.keys(PROVIDER_NAMES).filter(k => j.external && j.external[k]);
+  }catch(e){}
+  if(!on.length) return;
+  const box = $('oauth');
+  box.textContent = '';
+  on.forEach(k=>{
+    const b = document.createElement('button');
+    b.style.cssText = 'width:100%;margin-bottom:8px;padding:11px';
+    b.textContent = 'Continue with ' + PROVIDER_NAMES[k];
+    b.addEventListener('click', async ()=>{
+      b.disabled = true;
+      /* back to this page, not to the booklet */
+      const back = location.origin + location.pathname;
+      const {error} = await sb.auth.signInWithOAuth({provider:k, options:{redirectTo:back}});
+      if(error){ b.disabled=false; say('gatemsg', error.message, 'bad'); }
+    });
+    box.appendChild(b);
+  });
+  $('or').hidden = false;
+  $('nopw').hidden = false;
+})();
+
+$('signin').addEventListener('click', async ()=>{
+  const email=$('email').value.trim(), password=$('pw').value;
+  if(!email || !password) return say('gatemsg','Both fields, please.','bad');
+  say('gatemsg','One moment…');
+  const {error} = await sb.auth.signInWithPassword({email, password});
+  if(error){
+    /* the likeliest cause here is an account that has no password to be wrong about */
+    return say('gatemsg', /Invalid login credentials/i.test(error.message)
+      ? 'That did not match. If you created the account with Google, you have no password — use the button above.'
+      : error.message, 'bad');
+  }
+  boot();
+});
+$('pw').addEventListener('keydown', e=>{ if(e.key==='Enter') $('signin').click(); });
+$('signout').addEventListener('click', async ()=>{ await sb.auth.signOut(); location.reload(); });
+$('signout2').addEventListener('click', async ()=>{ await sb.auth.signOut(); location.reload(); });
+
+/* ---------- painting ---------- */
+function stat(n, l, cls){
+  return `<div class="stat ${cls||''}"><div class="n">${n}</div><div class="l">${l}</div></div>`;
+}
+
+function paint(d){
+  STATE = d;
+  const c = d.config, u = d.usage;
+  $('toggle').textContent = c.enabled ? 'Disable' : 'Enable';
+
+  const pct = u.budget ? Math.min(100, Math.round(u.words / u.budget * 100)) : 0;
+  $('stats').innerHTML =
+      stat(u.words, 'words enriched')
+    + stat(u.runs, 'runs')
+    + stat(u.failed, 'failed', u.failed ? 'bad' : '')
+    + stat(u.readers, 'readers')
+    + stat(pct+'%', 'of ceiling', pct>90?'bad':pct>70?'warn':'good');
+  const bar = $('budgetbar');
+  bar.className = 'bar'+(pct>90?' bad':pct>70?' warn':'');
+  bar.firstElementChild.style.width = pct+'%';
+  $('budgetnote').textContent = `${u.words} of ${u.budget} this month. Resets ${u.resets}.`;
+
+  const prov = (d.providers||[]).find(p=>p.id===c.provider_id) || null;
+  paintProviders(d);
+
+  /* left blank on purpose when unset: newer models refuse a request that carries a
+     temperature at all, so "no value" has to survive a round trip through this form */
+  $('temp').value     = (c.temperature ?? '') === '' ? '' : c.temperature;
+  $('tokens').value   = c.max_tokens ?? 4000;
+  $('batch').value    = c.batch_size ?? 20;
+  $('peruser').value  = c.monthly_per_user;
+  $('perrun').value   = c.max_per_run;
+  $('budget').value   = c.app_budget;
+  $('template').value = c.template || '';
+
+  /* What is missing, named before anything is pressed. A button that can only fail should
+     say so on its face rather than waiting to be clicked and answering with a status code. */
+  const missing = [];
+  if(!prov) missing.push('a provider');
+  else{
+    if(!(d.keys||[]).some(k=>k.provider_id===prov.id) && !isLocal(prov.endpoint))
+      missing.push('a key');
+    if(!prov.model) missing.push('a model');
+  }
+  if(!c.template || !c.template.trim()) missing.push('a template');
+  $('test').disabled = missing.length > 0;
+
+  /* A status line, not advice: what is missing, or when it last worked. */
+  $('testnote').textContent = missing.length
+    ? 'Still needed: ' + missing.join(', ')
+    : c.tested_at
+      ? 'Last tested ' + new Date(c.tested_at).toLocaleString()
+      : 'Not tested yet';
+
+}
+
+/* ---------- the providers table ----------
+   A provider is a row now, not the single set of boxes it used to be. The reason is the key:
+   editing one provider into another left the secret attached to a row id that never changed,
+   so a key issued for one endpoint quietly became the key for the next one. Identity per
+   provider is what makes switching safe, and it is what lets Delete and Forget key exist. */
+function paintProviders(d){
+  const c = d.config;
+  const rows = (d.providers||[]).map(p=>{
+    const hasKey = (d.keys||[]).some(k=>k.provider_id===p.id);
+    const inUse  = c.provider_id === p.id;
+    const local  = isLocal(p.endpoint);
+    return '<tr'+(inUse?' class="using"':'')+'>'
+      + '<td><input class="radio" type="radio" name="use" data-use="'+p.id+'"'+(inUse?' checked':'')+'></td>'
+      + '<td><div class="pname">'+esc(p.name||'provider')
+        + ' <span class="shape">'+esc(p.adapter||'openai')+'</span></div>'
+        + '<div class="pend">'+esc(p.endpoint||'')+'</div></td>'
+      + '<td class="mono" style="color:'+(p.model?'var(--paper)':'var(--dimmer)')+'">'
+        + esc(p.model||'no model set')+'</td>'
+      + '<td>'+(hasKey
+          ? '<span class="keyset">•••• '+esc(p.key_last4||'????')+'</span>'
+          : '<span class="keynone">'+(local?'none needed':'none set')+'</span>')+'</td>'
+      + '<td class="acts"><button class="mini" data-edit="'+p.id+'">Edit</button> '
+        + '<button class="mini danger" data-del="'+p.id+'">Delete</button></td>'
+      + '</tr>';
+  });
+  $('provrows').innerHTML = rows.join('') ||
+    '<tr><td colspan="5" style="color:var(--dim); font-size:12.5px">'
+    + 'No providers yet. Add one to begin.</td></tr>';
+}
+
+/* Which preset a saved provider came from is not stored, and does not need to be: the
+   endpoint and the body shape identify it. Recovering it means the dropdown opens showing
+   what is being edited rather than "Choose…", which read like nothing was selected yet. */
+function presetKeyFor(prov){
+  if(!prov) return '';
+  const norm = u => String(u||'').trim().toLowerCase().replace(/\/+$/,'');
+  const e = norm(prov.endpoint);
+  return Object.keys(PRESETS).find(k =>
+    norm(PRESETS[k].endpoint) === e && PRESETS[k].adapter === (prov.adapter||'openai')) || 'custom';
+}
+
+const presetLabel = v => {
+  const o = Array.from($('preset').options).find(o => o.value === v);
+  return o ? o.textContent.replace(/…$/,'') : '';
+};
+const hostOf = u => { try{ return new URL(u).hostname; }catch(_){ return ''; } };
+
+/* The name is a label for a row, derived from the two fields that already say what the
+   provider is. Typing it by hand only creates a third thing that can disagree with them. */
+function syncName(){
+  const v = $('preset').value;
+  $('pname').value = (v && PRESETS[v]) ? presetLabel(v) : (hostOf($('endpoint').value) || 'custom');
+}
+
+/* Only ever useful against a model on this machine. On a remote provider the button cannot
+   do anything except refuse, so it is not offered. */
+function syncDevBox(){
+  $('dev').hidden = !(DEV_DIRECT && isLocal($('endpoint').value));
+}
+
+/* ---------- the model list ----------
+   A model name is only meaningful to the provider serving it, and typing one from memory is
+   how claude-sonnet-5 ended up on a local endpoint. Every provider here can be asked what it
+   serves, so it is asked.
+
+   The catalogue is not filtered. Two groups: what could answer a prompt, then everything
+   else, each keeping the provider's own order. A model sorts down only when its id plainly
+   announces itself as something else — anything unrecognised sorts UP, so a family the rule
+   has never heard of is treated as usable rather than buried. A wrong label is visible and
+   one click away; a wrong filter would be neither. */
+let MODELS = [];   /* [{id, kind}] for the provider being edited */
+
+const KINDS = [
+  [/embedding|embed(?![a-z])/i, 'embedding'],
+  [/whisper|transcribe|\btts\b|audio|speech|voice/i, 'audio'],
+  [/realtime/i,                 'realtime'],
+  [/dall-?e|image|vision-gen/i, 'image'],
+  [/moderation|guard/i,         'moderation'],
+  [/rerank/i,                   'rerank'],
+];
+const kindOf = id => (KINDS.find(([re]) => re.test(String(id)))||[])[1] || '';
+
+/* The catalogue sits where the verb was. Every endpoint carried here ends in one — chat,
+   completions, messages — so those are dropped and `models` put in their place, which leaves
+   whatever prefix the provider uses untouched:
+
+     /v1/chat/completions          -> /v1/models
+     /v1/messages                  -> /v1/models
+     /openai/v1/chat/completions   -> /openai/v1/models
+     /chat/completions             -> /models
+
+   Cutting a fixed number of segments instead gets DeepSeek or LM Studio wrong, and a wrong
+   guess is not always refused: /v1/chat/models comes back 200 with an empty list. */
+const VERB = /^(chat|completions|messages|responses|generate|invoke)$/i;
+function modelsUrl(endpoint){
+  const u = new URL(endpoint);
+  const parts = u.pathname.split('/').filter(Boolean);
+  let popped = 0;
+  while(parts.length && VERB.test(parts[parts.length-1])){ parts.pop(); popped++; }
+  if(!popped) parts.pop();          /* an endpoint naming something else: drop just the tail */
+  u.pathname = '/' + parts.concat('models').join('/');
+  u.search = '';
+  return u.toString();
+}
+
+/* `all` is the press of Fetch: the question then is "what is there", not "what matches the
+   name already in the box" — which would narrow the catalogue to the one line you can already
+   see. Typing afterwards filters as usual. */
+function paintModels(all){
+  const box = $('modellist'), typed = all ? '' : $('model').value.trim().toLowerCase();
+  if(!MODELS.length){ box.hidden = true; return; }
+  const hit = MODELS.filter(m => !typed || m.id.toLowerCase().includes(typed));
+  if(!hit.length){
+    box.innerHTML = '<div class="none">Nothing in the list matches. What you have typed is '
+                  + 'still what will be saved.</div>';
+    box.hidden = false; return;
+  }
+  const usable = hit.filter(m => !m.kind), other = hit.filter(m => m.kind);
+  const row = m => '<div class="r'+(m.kind?' muted':'')+'" data-pick="'+esc(m.id)+'">'
+    + '<span class="nm">'+esc(m.id)+'</span>'
+    + (m.kind ? '<span class="kind">'+esc(m.kind)+'</span>' : '') + '</div>';
+  box.innerHTML = usable.map(row).join('')
+    + (other.length ? '<div class="seam"><i></i><span>not chat models</span><i></i></div>' : '')
+    + other.map(row).join('');
+  box.hidden = false;
+}
+
+/* Local providers are asked straight from here — no credential exists to withhold. Remote
+   ones are asked through the function, which is the only thing holding the key. */
+async function loadModels(){
+  const endpoint = $('endpoint').value.trim();
+  const btn = $('fetchmodels');
+  if(!endpoint) return say('modelnote','','');
+  let url; try{ url = modelsUrl(endpoint); }
+  catch(e){ return say('modelnote','That endpoint is not a URL yet.','bad'); }
+
+  btn.disabled = true; btn.textContent = '…';
+  say('modelnote','');
+  try{
+    let ids;
+    if(isLocal(endpoint)){
+      const r = await fetch(url);
+      if(!r.ok) throw new Error('it answered ' + r.status);
+      const j = await r.json();
+      ids = (j.data || j.models || []).map(m => m.id || m.name).filter(Boolean);
+    } else {
+      const body = {endpoint, adapter: $('adapter').value};
+      if(EDITING !== 'new') body.id = EDITING;
+      const k = $('apikey').value.trim(); if(k) body.api_key = k;
+      const j = await api('/admin/provider/models', {method:'POST', body: JSON.stringify(body)});
+      ids = j.models || [];
+    }
+    MODELS = ids.map(id => ({id, kind: kindOf(id)}));
+    if(!MODELS.length) throw new Error('it answered with an empty list');
+    const usable = MODELS.filter(m => !m.kind).length;
+    say('modelnote', MODELS.length + ' models, ' + usable + ' usable.', 'ok');
+    paintModels(true);
+  }catch(e){
+    MODELS = []; $('modellist').hidden = true;
+    say('modelnote','No list — type the name.','bad');
+  }finally{
+    btn.disabled = false;
+    btn.textContent = MODELS.length ? MODELS.length + ' found' : 'Fetch';
+    syncFetchButton();
+  }
+}
+
+/* A remote provider will not list anything for a caller with no credential, so the button
+   says why rather than offering a press that can only be refused. */
+function syncFetchButton(){
+  const btn = $('fetchmodels'), endpoint = $('endpoint').value.trim();
+  const local = isLocal(endpoint);
+  const hasKey = !!$('apikey').value.trim()
+    || (EDITING !== 'new' && (STATE.keys||[]).some(k => k.provider_id === EDITING));
+  const ok = !!endpoint && (local || hasKey);
+  btn.disabled = !ok;
+  btn.title = ok ? '' : (endpoint ? 'a key is needed before the list can be asked for'
+                                  : 'an endpoint is needed first');
+}
+
+/* A key field on a provider that cannot use one is furniture. It goes, and so does the
+   paragraph explaining a key this row will never hold, and Forget key, which could only ever
+   have been disabled here. All of it returns the moment the endpoint stops being local. */
+function syncKeyField(){
+  const local = isLocal($('endpoint').value);
+  $('keywrap').hidden = local;
+  $('keynote').hidden = local;
+  $('forgetkey').hidden = local;
+}
+
+$('fetchmodels').addEventListener('click', loadModels);
+$('model').addEventListener('input', ()=>paintModels());
+$('model').addEventListener('focus', ()=>paintModels());
+$('modellist').addEventListener('mousedown', e => {
+  const r = e.target.closest('[data-pick]'); if(!r) return;
+  e.preventDefault();
+  $('model').value = r.dataset.pick;
+  $('modellist').hidden = true;
+});
+$('model').addEventListener('blur', ()=> setTimeout(()=>{ $('modellist').hidden = true; }, 120));
+$('model').addEventListener('keydown', e => { if(e.key === 'Escape') $('modellist').hidden = true; });
+$('apikey').addEventListener('input', syncFetchButton);
+
+function openEditor(prov){
+  EDITING = prov ? prov.id : 'new';
+  $('editortitle').textContent = prov ? 'Editing — ' + (prov.name||'provider') : 'New provider';
+  $('preset').value   = presetKeyFor(prov);
+  $('adapter').value  = prov ? (prov.adapter||'openai') : 'openai';
+  $('endpoint').value = prov ? (prov.endpoint||'') : '';
+  $('model').value    = prov ? (prov.model||'') : '';
+  $('apikey').value   = '';
+  /* A saved provider keeps the name it was saved with. Deriving it here instead would let
+     merely opening a row rename it, since two presets can share an endpoint and nothing in
+     the row says which one it came from. The name follows the preset when the preset is
+     chosen, which is the moment the choice is actually made. */
+  $('pname').value = prov ? (prov.name||'') : '';
+  if(!$('pname').value) syncName();
+
+  const hasKey = !!prov && (STATE.keys||[]).some(k=>k.provider_id===prov.id);
+  const local  = isLocal(prov ? prov.endpoint : '');
+  $('keyhas').textContent = hasKey ? '— set, ending ' + (prov.key_last4 || '????')
+                                   : (local ? '— none needed' : '— none set');
+  $('keyhas').style.color = hasKey ? 'var(--verd)' : (local ? 'var(--dim)' : 'var(--ox)');
+  $('forgetkey').disabled = !hasKey;
+  /* the catalogue belongs to the provider being edited, so it does not survive the switch */
+  MODELS = []; $('modellist').hidden = true;
+  $('fetchmodels').textContent = 'Fetch';
+  say('modelnote','');
+  syncKeyField();
+  syncFetchButton();
+  syncDevBox();
+  $('editor').hidden = false;
+  $('endpoint').focus();
+}
+
+function shutEditor(){ EDITING = null; $('editor').hidden = true; $('apikey').value = ''; }
+
+$('provrows').addEventListener('click', async e=>{
+  const t = e.target.closest('button, input'); if(!t) return;
+  const byId = id => (STATE.providers||[]).find(p=>p.id===Number(id));
+
+  if(t.dataset.edit) return openEditor(byId(t.dataset.edit));
+
+  /* One field, chosen deliberately, with nothing else on the page waiting to be saved
+     alongside it — so it is written on the click, the way Enable and Disable already are. */
+  if(t.dataset.use){
+    const id = Number(t.dataset.use);
+    say('msg','Choosing…');
+    try{
+      await api('/admin/config', {method:'POST', body: JSON.stringify({config:{provider_id:id}})});
+      await refresh();
+      say('msg','Enrichment now uses ' + ((byId(id)||{}).name || 'that provider') + '.','ok');
+    }catch(err){ await refresh(); say('msg','Could not change that — '+err.message,'bad'); }
+    return;
+  }
+
+  if(t.dataset.del){
+    const id = Number(t.dataset.del), prov = byId(id) || {};
+    const inUse = STATE.config.provider_id === id;
+    if(!confirm('Delete ' + (prov.name || 'this provider')
+              + '? Its API key is deleted with it and cannot be recovered.'
+              + (inUse ? '\n\nIt is the one in use, so enrichment will be switched off '
+                       + 'until you choose another.' : ''))) return;
+    say('msg','Deleting…');
+    try{
+      await api('/admin/provider/delete', {method:'POST', body: JSON.stringify({id})});
+      if(EDITING === id) shutEditor();
+      await refresh();
+      say('msg', inUse ? 'Deleted. Nothing is selected, so enrichment is off.'
+                       : 'Deleted, key and all.', inUse ? 'warn' : 'ok');
+    }catch(err){
+      say('msg', err.status === 404
+        ? 'Needs the new function deployed: supabase functions deploy enrich'
+        : 'Could not delete that — '+err.message, 'bad');
+    }
+  }
+});
+
+$('addprov').addEventListener('click', ()=>{ openEditor(null); say('msg',''); });
+$('cancelprov').addEventListener('click', ()=>{ shutEditor(); say('msg',''); });
+
+$('saveprov').addEventListener('click', async ()=>{
+  const prov = {
+    name: $('pname').value.trim() || 'provider',
+    adapter: $('adapter').value,
+    endpoint: $('endpoint').value.trim(),
+    model: $('model').value.trim()
+  };
+  if(!prov.endpoint) return say('msg','A provider needs an endpoint.','bad');
+  if(EDITING !== 'new') prov.id = EDITING;
+  const k = $('apikey').value.trim(); if(k) prov.api_key = k;
+
+  say('msg','Saving the provider…');
+  try{
+    await api('/admin/config', {method:'POST', body: JSON.stringify({provider: prov})});
+    shutEditor();
+    await refresh();
+    say('msg','Saved.','ok');
+  }catch(e){ say('msg','Could not save — '+e.message,'bad'); }
+});
+
+$('forgetkey').addEventListener('click', async ()=>{
+  if(EDITING === 'new' || EDITING === null) return;
+  if(!confirm('Forget this key? The provider stays; the key is gone and cannot be recovered.')) return;
+  const keep = EDITING;
+  say('msg','Forgetting…');
+  try{
+    await api('/admin/provider/forget-key', {method:'POST', body: JSON.stringify({id: keep})});
+    await refresh();
+    openEditor((STATE.providers||[]).find(p=>p.id===keep));
+    say('msg','That key is gone.','ok');
+  }catch(e){ say('msg','Could not forget it — '+e.message,'bad'); }
+});
+
+$('preset').addEventListener('change', ()=>{
+  const p = PRESETS[$('preset').value];
+  if(p){
+    $('adapter').value = p.adapter;
+    $('endpoint').value = p.endpoint;
+    /* Replaced, not filled-in-if-empty. A model name means nothing to a provider that has
+       never heard of it, so carrying one across a preset change is how claude-sonnet-5 ends
+       up sitting on a local endpoint — the exact confusion one row per provider was meant
+       to end. An empty default (OpenRouter) correctly clears the box: name one. */
+    $('model').value = p.model || '';
+  } else {
+    $('adapter').value = 'openai';
+  }
+  syncName();
+  syncDevBox();
+  syncKeyField();
+  syncFetchButton();
+});
+
+/* Typing an endpoint is the other way a provider gets identified, so the name and the
+   local-model box follow it too. */
+$('endpoint').addEventListener('input', ()=>{
+  if($('preset').value && $('preset').value !== 'custom' &&
+     presetKeyFor({endpoint:$('endpoint').value, adapter:$('adapter').value}) === 'custom')
+    $('preset').value = 'custom';
+  syncName();
+  syncDevBox();
+  syncKeyField();
+  syncFetchButton();
+});
+
+
+/* The provider is no longer part of this. Saving settings used to write the provider row
+   too, which is how one press could change an endpoint while leaving its key in place. The
+   provider editor owns that record; this owns the task. */
+function configFromForm(){
+  const t = $('temp').value.trim();
+  return {
+    /* null, not 0 — an empty box means "say nothing about temperature", and Number('')
+       is 0, which is a perfectly valid temperature and not at all what was meant */
+    temperature: t === '' ? null : Number(t),
+    max_tokens: Number($('tokens').value),
+    batch_size: Number($('batch').value),
+    monthly_per_user: Number($('peruser').value),
+    max_per_run: Number($('perrun').value),
+    app_budget: Number($('budget').value)
+  };
+}
+
+async function save(extra){
+  const body = Object.assign({config: configFromForm()}, extra||{});
+  const r = await api('/admin/config', {method:'POST', body: JSON.stringify(body)});
+  await refresh();
+  return r;
+}
+
+$('save').addEventListener('click', async ()=>{
+  say('msg','Saving…');
+  try{ await save(); say('msg','Saved.','ok'); }
+  catch(e){ say('msg','Could not save — '+e.message,'bad'); }
+});
+
+$('toggle').addEventListener('click', async ()=>{
+  const want = !(STATE && STATE.config.enabled);
+  if(want && !(STATE && STATE.config.tested_at)){
+    return say('msg','Send one word through first.','warn');
+  }
+  say('msg', want ? 'Enabling…' : 'Disabling…');
+  try{
+    await api('/admin/config', {method:'POST', body: JSON.stringify({config:{enabled:want}})});
+    await refresh();
+    say('msg', want ? 'Enrichment is on.' : 'Enrichment is off.', 'ok');
+  }catch(e){ say('msg','Could not change that — '+e.message,'bad'); }
+});
+
+/* The same substitution the function performs, so a prompt tried here and a prompt sent to
+   a reader are the same string. If these two ever diverge the test stops being a test. */
+function assemblePrompt(template, words, fields){
+  return String(template||'')
+    .replaceAll('{{WORDS}}',  words.map(w => '- ' + w).join('\n'))
+    .replaceAll('{{FIELDS}}', fields.map(f => f.id + ' = ' + f.name + ': ' + f.note).join('\n'))
+    .replaceAll('{{COUNT}}',  String(words.length));
+}
+
+/* Speaking to a model directly, in whichever of the two shapes it expects. Extracted so the
+   template test and the local-endpoint button cannot drift into testing different things. */
+async function callDirect({endpoint, adapter, model, prompt, temperature, maxTokens}){
+  const body = {model, messages:[{role:'user', content: prompt}], max_tokens: maxTokens};
+  if(temperature !== null && temperature !== '' && temperature !== undefined)
+    body.temperature = Number(temperature);
+  const headers = adapter === 'anthropic'
+    ? {'Content-Type':'application/json', 'anthropic-version':'2023-06-01'}
+    : {'Content-Type':'application/json'};
+
+  let res;
+  try{ res = await fetch(endpoint, {method:'POST', headers, body: JSON.stringify(body)}); }
+  catch(e){ throw new Error('could not reach ' + endpoint); }
+
+  const raw = await res.text();
+  if(!res.ok){
+    let said = ''; try{ said = JSON.parse(raw)?.error?.message || ''; }catch(_){}
+    throw Object.assign(new Error('it answered ' + res.status + (said ? ' — ' + said : '')),
+                        {body:{detail: raw.slice(0,1200)}});
+  }
+  let j; try{ j = JSON.parse(raw); }
+  catch(e){ throw Object.assign(new Error('that was not JSON at all'), {body:{detail: raw.slice(0,1200)}}); }
+
+  const text = adapter === 'anthropic'
+    ? (Array.isArray(j?.content) ? j.content : [])
+        .filter(b => b && (b.type === 'text' || typeof b.text === 'string'))
+        .map(b => b.text ?? '').join('')
+    : (j?.choices?.[0]?.message?.content
+       ?? j?.choices?.[0]?.message?.reasoning_content
+       ?? j?.choices?.[0]?.text
+       ?? '');
+
+  const why = j?.stop_reason ?? j?.choices?.[0]?.finish_reason;
+  if(why === 'length' || why === 'max_tokens')
+    throw Object.assign(new Error('ran out of room — raise Max tokens'),
+                        {body:{detail: String(text||'').slice(0,1200)}});
+  if(!text){
+    const said = (j && (j.error?.message ?? (typeof j.error === 'string' ? j.error : ''))) || '';
+    throw Object.assign(new Error(said ? 'it complained: ' + said : 'it answered with no text'),
+                        {body:{detail: JSON.stringify(j).slice(0,1200)}});
+  }
+  return {text};
+}
+
+/* ---------- the test ----------
+   One real word, the whole path: adapter, model, parse. What comes back is shown rather
+   than summarised, because the failure that matters is not an error — it is a plausible
+   answer with the Arabic quietly missing.
+
+   Two routes to the same model. Normally the function calls it, which is the path a reader
+   takes and therefore the one worth proving. A provider on this machine has no such path —
+   the function runs in the cloud and cannot dial your desk — so the template would be
+   untestable through it. There the browser calls the model itself, with the identical
+   prompt, and says so rather than letting a direct call pass for the real one. */
+function localTarget(){
+  if(!DEV_DIRECT || !STATE) return null;
+  const prov = (STATE.providers||[]).find(p => p.id === STATE.config.provider_id);
+  return (prov && isLocal(prov.endpoint)) ? prov : null;
+}
+
+async function runTest(word){
+  const out = $('out');
+  out.hidden = false; out.textContent = 'Asking the model…';
+  const fields = [{id:1, name:'The Feudal World', note:'Castles, guilds, gutters and archaic speech.'}];
+  const direct = localTarget();
+  let r;
+  if(direct){
+    const c = STATE.config;
+    r = await callDirect({
+      endpoint: direct.endpoint, adapter: direct.adapter || 'openai', model: direct.model,
+      prompt: assemblePrompt($('template').value || c.template, [word || 'fealty'], fields),
+      temperature: c.temperature, maxTokens: c.max_tokens ?? 4000
+    });
+    r.direct = true;
+  } else {
+    r = await api('/run', {method:'POST', body: JSON.stringify({items:[word || 'fealty'], fields})});
+  }
+  /* the model would not take something it was sent; better said than silently obeyed */
+  if(r.dropped && r.dropped.length)
+    say('msg','That model will not accept '+r.dropped.join(' or ')
+             +' — it was dropped and the request went through without it. Clear the box so it is not sent again.','warn');
+  let arr = null, why = '';
+  try{
+    const txt = String(r.text||'').trim().replace(/^```(json)?|```$/g,'').trim();
+    const p = JSON.parse(txt);
+    arr = Array.isArray(p) ? p : (Array.isArray(p.words) ? p.words : null);
+    if(!arr) why = 'the reply parsed but was not an array of words';
+  }catch(e){ why = 'the reply was not valid JSON'; }
+
+  if(!arr){
+    out.textContent = why + '\n\n' + String(r.text||'').slice(0,1200);
+    throw new Error(why);
+  }
+
+  const w = arr[0] || {};
+  const miss = [];
+  if(!w.d || String(w.d).length < 15) miss.push('definition');
+  if(!w.e || String(w.e).indexOf('*') === -1) miss.push('example with the word marked');
+  /* Rule 7 of the template asks for a clarifier after an em dash where the bare gloss would
+     be ambiguous, and a clarifier is written in English. Testing the whole string for Latin
+     letters therefore fails every reply that did as it was told; only the gloss in front of
+     the dash has to be Arabic. It also has to be Arabic rather than merely not-Latin, which
+     a digit or a row of asterisks would otherwise satisfy. */
+  const gloss = String(w.a||'').split('—')[0];
+  if(!w.a || !/[\u0600-\u06FF]/.test(gloss) || /[A-Za-z]/.test(gloss)) miss.push('Arabic gloss');
+  out.innerHTML =
+      'word        ' + esc(w.w) + '\n'
+    + 'field       ' + (w.f == null ? '(unfiled)' : esc(String(w.f))) + '\n'
+    + 'part        ' + esc(w.p||'') + '\n'
+    + 'definition  ' + esc(w.d||'') + '\n'
+    + 'example     ' + esc(w.e||'') + '\n'
+    + 'arabic      <span class="ar">' + esc(w.a||'') + '</span>\n'
+    + 'caution     ' + esc(w.n==null?'(none)':String(w.n)) + '\n'
+    + 'drawing     ' + (w.s ? String(w.s).length + ' characters' : '(none)');
+  return {ok: miss.length===0, miss, direct: !!r.direct};
+}
+const esc = s => String(s).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+
+$('test').addEventListener('click', async ()=>{
+  say('msg','Sending one word…');
+  try{
+    const r = await runTest();
+    if(r.ok){
+      /* A direct call proves the template and the model. It does not prove the path a reader
+         takes, which is the whole meaning of tested_at — so it does not set it, and the
+         gateway stays unenabled rather than vouching for something never tried. */
+      if(r.direct){
+        say('msg','Complete — called from this page, so it does not count as tested.','ok');
+      }else{
+        await api('/admin/config', {method:'POST', body: JSON.stringify({tested:true})});
+        await refresh();
+        say('msg','Complete. Readers can be offered automatic merging now.','ok');
+      }
+    }else{
+      say('msg','It answered, but without: '+r.miss.join(', ')+'. Read the reply below before enabling.','warn');
+    }
+  }catch(e){
+    say('msg', e.status===502 ? 'The model refused or could not be reached — '+e.message
+             : 'Test failed — '+e.message, 'bad');
+    if(e.body && e.body.detail){ $('out').hidden=false; $('out').textContent = e.body.detail; }
+  }
+});
+
+/* ---------- template ---------- */
+$('savetpl').addEventListener('click', async ()=>{
+  const tpl = $('template').value;
+  if(tpl.indexOf('{{WORDS}}') === -1)
+    return say('msg','That template never asks for the words — {{WORDS}} is missing.','bad');
+  say('msg','Saving the template, then testing it…');
+  try{
+    await api('/admin/config', {method:'POST', body: JSON.stringify({config:{template: tpl}})});
+    const r = await runTest();
+    await refresh();
+    if(r.ok) say('msg','Saved, and it answers completely.'
+                    + (r.direct ? ' Called from this page.' : ''),'ok');
+    else say('msg','Saved — but the reply came back without: '+r.miss.join(', ')
+                 +'. Edit it and test again.','warn');
+  }catch(e){
+    say('msg','Saved, but the test failed — '+e.message,'bad');
+    if(e.body && e.body.detail){ $('out').hidden=false; $('out').textContent = e.body.detail; }
+  }
+});
+
+/* ---------- dev direct ---------- */
+$('devtest').addEventListener('click', async ()=>{
+  const endpoint = $('endpoint').value.trim();
+  if(!isLocal(endpoint))
+    return say('msg','That endpoint is not local.','bad');
+  say('msg','Calling the local endpoint directly…');
+  const out = $('out'); out.hidden=false; out.textContent='…';
+
+  /* The provider being edited, not the one in use: this button exists to try a provider
+     before committing to it. The prompt is assembled exactly as the function assembles it. */
+  const t = $('temp').value.trim();
+  try{
+    const r = await callDirect({
+      endpoint, adapter: $('adapter').value, model: $('model').value.trim(),
+      prompt: assemblePrompt($('template').value, ['fealty'],
+                [{id:1, name:'The Feudal World', note:'Castles and archaic speech.'}]),
+      temperature: t === '' ? null : Number(t),
+      maxTokens: Number($('tokens').value) || 4000
+    });
+    out.textContent = String(r.text).slice(0,2000);
+    say('msg','Raw reply. Nothing saved, no quota used.','ok');
+  }catch(e){
+    out.textContent = (e.body && e.body.detail) ? e.body.detail : '';
+    say('msg','That did not work — '+e.message,'bad');
+  }
+});
+
+/* ---------- boot ---------- */
+async function refresh(){ paint(await api('/admin/config')); }
+
+async function boot(){
+  const {data:{session}} = await sb.auth.getSession();
+  if(!session){ $('gate').hidden=false; $('console').hidden=true; $('denied').hidden=true; return; }
+  $('who').textContent = session.user.email;
+  try{
+    const d = await api('/admin/config');
+    $('gate').hidden=true; $('denied').hidden=true; $('console').hidden=false;
+    paint(d);
+  }catch(e){
+    if(e.status===403){ $('gate').hidden=true; $('console').hidden=true; $('denied').hidden=false; return; }
+    $('gate').hidden=true; $('denied').hidden=true; $('console').hidden=false;
+    say('msg','Could not read the configuration — '+e.message
+             +(e.status===404?'  Is the function deployed?':''),'bad');
+  }
+}
+boot();
+</script>

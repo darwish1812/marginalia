@@ -1,0 +1,1355 @@
+{
+ "schema": 1,
+ "updated": "2026-08-17",
+ "fields": [
+  {
+   "id": 1,
+   "name": "The Feudal World",
+   "ink": "#C9922F",
+   "note": "Castles, guilds, gutters and archaic speech — the register of historical fiction and fantasy.",
+   "sort": 1
+  },
+  {
+   "id": 2,
+   "name": "Faith & Philosophy",
+   "ink": "#3F9A85",
+   "note": "How thinkers argue about scripture: literal or symbolic, human-shaped or beyond shape entirely.",
+   "sort": 2
+  },
+  {
+   "id": 3,
+   "name": "Power & Conflict",
+   "ink": "#C4485C",
+   "note": "What rulers do, what subjects endure, and what happens when either pushes too far.",
+   "sort": 3
+  },
+  {
+   "id": 4,
+   "name": "Rhetoric & Deception",
+   "ink": "#8C6FD4",
+   "note": "The vocabulary of political argument — most of these appear in news analysis and opinion writing.",
+   "sort": 4
+  },
+  {
+   "id": 5,
+   "name": "Character & Temperament",
+   "ink": "#4E8AD6",
+   "note": "Words that judge a person. Nearly all carry approval or contempt, so they are rarely neutral.",
+   "sort": 5
+  },
+  {
+   "id": 6,
+   "name": "Mind & Abstraction",
+   "ink": "#C77FB0",
+   "note": "Formal, essay-register words. These lift academic and professional writing more than any other group here.",
+   "sort": 6
+  },
+  {
+   "id": 7,
+   "name": "Body, Vice & Survival",
+   "ink": "#6E9E4E",
+   "note": "The physical and the disreputable. A few are blunt — the notes tell you when to be careful.",
+   "sort": 7
+  },
+  {
+   "id": 8,
+   "name": "Hardship & Social Order",
+   "ink": "#6E7899",
+   "note": "Poverty, policing, and the language of who holds power over whom. This is the register of journalism and social science — and it is the field your list has grown into most.",
+   "sort": 8
+  }
+ ],
+ "corrections": [
+  {
+   "wrong": "brazon",
+   "right": "brazen",
+   "hint": "rhymes with <i>raisin</i>"
+  },
+  {
+   "wrong": "implusaible",
+   "right": "implausible",
+   "hint": "im-PLAW-zi-bull"
+  },
+  {
+   "wrong": "languishion",
+   "right": "languishing",
+   "hint": "from the verb <i>languish</i>"
+  },
+  {
+   "wrong": "inquistions",
+   "right": "inquisitions",
+   "hint": "in-kwi-ZISH-uns"
+  },
+  {
+   "wrong": "erie",
+   "right": "eerie",
+   "hint": "two e's. <i>Erie</i> is a lake"
+  },
+  {
+   "wrong": "ultimatums",
+   "right": "ultimatum"
+  }
+ ],
+ "words": [
+  {
+   "w": "tarry",
+   "f": 1,
+   "p": "verb",
+   "d": "To linger, or to stay longer than intended.",
+   "e": "Do not *tarry* — the enemy draws closer with every hour.",
+   "a": "يتمهّل، يتلكّأ، يتأخّر"
+  },
+  {
+   "w": "fealty",
+   "f": 1,
+   "p": "noun",
+   "d": "A sworn oath of loyalty, especially from a vassal to a lord.",
+   "e": "The knight knelt and pledged *fealty* to the new king.",
+   "a": "وَلاء مُقسَم عليه — عهد التابع لسيّده"
+  },
+  {
+   "w": "betroth",
+   "f": 1,
+   "p": "verb",
+   "d": "To formally promise someone in marriage.",
+   "e": "The duke *betrothed* his daughter to the prince when she was still a child.",
+   "a": "يَخطِب رسميًّا — يعقد الخِطبة"
+  },
+  {
+   "w": "holdfast",
+   "f": 1,
+   "i": "img/holdfast.svg",
+   "p": "noun",
+   "d": "A fortified stronghold or keep. (In modern use it can also mean a clamp.)",
+   "e": "The soldiers retreated to the *holdfast* on the hill and prepared to defend it.",
+   "a": "حِصن مُنيع، مَعقِل"
+  },
+  {
+   "w": "ordain",
+   "f": 1,
+   "p": "verb",
+   "d": "To appoint someone as a priest — or, more broadly, to decree something by authority.",
+   "e": "The king *ordained* that no merchant could trade without a royal permit.",
+   "a": "يُرسِم كاهنًا؛ أو يأمر بمرسوم"
+  },
+  {
+   "w": "smallfolk",
+   "f": 1,
+   "p": "noun",
+   "d": "Common people, peasants. Heavily used in fantasy writing.",
+   "e": "The war meant nothing to the *smallfolk* — they suffered whoever won.",
+   "a": "عامّة الناس، البسطاء (في أدب الفانتازيا)"
+  },
+  {
+   "w": "tanners",
+   "f": 1,
+   "p": "noun",
+   "d": "People who turn animal hides into leather. Their workshops were notoriously foul-smelling.",
+   "e": "The *tanners'* district reeked so badly that no noble would ride through it.",
+   "a": "الدبّاغون — صانعو الجلود"
+  },
+  {
+   "w": "latrines",
+   "f": 1,
+   "p": "noun",
+   "d": "Communal pit toilets, especially in camps and barracks.",
+   "e": "The soldiers dug *latrines* at the edge of the camp before nightfall.",
+   "a": "مَراحيض جماعية (خاصة في المعسكرات)"
+  },
+  {
+   "w": "tavern",
+   "f": 1,
+   "i": "img/tavern.svg",
+   "p": "noun",
+   "d": "An inn where people drink, eat and sometimes sleep.",
+   "e": "They found a warm *tavern* near the gate and ordered ale and bread.",
+   "a": "حانة، نُزُل يُقدَّم فيه الشراب والمبيت"
+  },
+  {
+   "w": "alms",
+   "f": 1,
+   "p": "noun",
+   "d": "Charity — money or food given to the poor. Always plural; never 'an alm'.",
+   "e": "The monks distributed *alms* to beggars outside the abbey every morning.",
+   "a": "صَدَقة تُعطى للفقراء"
+  },
+  {
+   "w": "coffers",
+   "f": 1,
+   "i": "img/coffers.svg",
+   "p": "noun",
+   "d": "Treasure chests — and by extension, a government's or company's financial reserves.",
+   "e": "The war emptied the kingdom's *coffers*, and the crown had to raise taxes.",
+   "a": "صناديق المال — خزينة الدولة أو المؤسسة"
+  },
+  {
+   "w": "porridge",
+   "f": 1,
+   "i": "img/porridge.svg",
+   "p": "noun",
+   "d": "A thick hot cereal made by boiling grain, usually oats, in water or milk.",
+   "e": "The prisoners received nothing but thin *porridge* and stale bread.",
+   "a": "عصيدة، حساء حبوب مطبوخ"
+  },
+  {
+   "w": "apothecary",
+   "f": 1,
+   "i": "img/apothecary.svg",
+   "p": "noun",
+   "d": "An old term for a pharmacist — someone who prepared and sold medicines.",
+   "e": "She visited the *apothecary* for a tincture to ease her headaches.",
+   "a": "صيدلاني (بالمعنى القديم)، عطّار"
+  },
+  {
+   "w": "concubine",
+   "f": 1,
+   "p": "noun",
+   "d": "A woman living with a man in a marriage-like relationship but without a wife's legal standing.",
+   "e": "The emperor's *concubine* wielded more influence at court than the empress herself.",
+   "a": "مَحظيّة — شريكة بلا مقام الزوجة"
+  },
+  {
+   "w": "eunuch",
+   "f": 1,
+   "p": "noun",
+   "d": "A castrated man, historically employed as a palace guard or court official.",
+   "e": "The *eunuch* served as the queen's most trusted advisor for thirty years.",
+   "a": "خَصيّ — رجل مخصيّ كان يخدم في القصور"
+  },
+  {
+   "w": "seamstress",
+   "f": 1,
+   "i": "img/seamstress.svg",
+   "p": "noun",
+   "d": "A woman who sews clothes for a living.",
+   "e": "The *seamstress* worked by candlelight to finish the gown before the feast.",
+   "a": "خيّاطة"
+  },
+  {
+   "w": "gelded",
+   "f": 1,
+   "p": "verb",
+   "d": "Castrated — normally said of horses.",
+   "e": "They *gelded* the stallion to make him calmer for riding.",
+   "a": "مخصيّ (يُقال عن الخيل عادةً)",
+   "n": "Applied to a man it is a severe insult, so keep it to animals."
+  },
+  {
+   "w": "jade",
+   "f": 1,
+   "i": "img/jade.svg",
+   "p": "noun",
+   "d": "A green gemstone — but in older writing, a worn-out horse or a disreputable woman.",
+   "e": "The merchant tried to sell me that old *jade* of a horse for twice its worth.",
+   "a": "حجر اليَشْم؛ وقديمًا: فرس هزيلة"
+  },
+  {
+   "w": "loom",
+   "f": 1,
+   "p": "noun / verb",
+   "d": "A machine for weaving cloth. As a verb: to appear large and threatening.",
+   "e": "Dark clouds *loomed* over the mountains, promising a violent storm.",
+   "a": "نَوْل النسيج؛ وكفعل: يلوح مُهدِّدًا في الأفق"
+  },
+  {
+   "w": "endow",
+   "f": 1,
+   "p": "verb",
+   "d": "To fund something permanently with a gift of money or property.",
+   "e": "The wealthy merchant *endowed* the building that would become the town's first library.",
+   "a": "يُوقِف مالًا أو عقارًا لدعم مؤسسة"
+  },
+  {
+   "w": "mercantilism",
+   "f": 1,
+   "p": "noun",
+   "d": "The 16th–18th-century theory that national wealth comes from maximising exports, hoarding gold and controlling colonial trade.",
+   "e": "Under *mercantilism*, the colonies existed solely to enrich the mother country.",
+   "a": "المذهب التجاري — نظرية ثروة الأمم بالتصدير وتكديس الذهب"
+  },
+  {
+   "w": "mayhaps",
+   "f": 1,
+   "p": "adverb",
+   "d": "An archaic word for 'perhaps'.",
+   "e": "*Mayhaps* the king will grant us an audience, if we arrive before noon.",
+   "a": "رُبَّما (لفظ قديم/أدبي)",
+   "n": "Nobody says this in modern speech. Use it only in historical or fantasy writing."
+  },
+  {
+   "w": "consort",
+   "f": 1,
+   "p": "noun / verb",
+   "d": "A monarch's spouse. As a verb, to associate with someone — usually disapprovingly.",
+   "e": "You should not *consort* with known criminals.",
+   "a": "قرين المَلِك أو المَلِكة؛ وكفعل: يُخالِط (بمعنى سلبي)"
+  },
+  {
+   "w": "sanctuary",
+   "f": 1,
+   "p": "noun",
+   "d": "A place of refuge and safety; also the holiest part of a temple or church.",
+   "e": "The fugitive sought *sanctuary* in the cathedral, where the guards could not follow.",
+   "a": "مَلاذ آمن، حَرَم؛ وقُدس المعبد"
+  },
+  {
+   "w": "boon",
+   "f": 1,
+   "p": "noun",
+   "d": "A benefit or blessing; also a favour granted by someone powerful.",
+   "e": "The general's victory was a *boon* to the whole kingdom.",
+   "a": "نِعمة، مِنّة، فائدة تُمنَح"
+  },
+  {
+   "w": "homage",
+   "f": 1,
+   "p": "noun",
+   "d": "Public respect or tribute. Originally the ceremony in which a vassal knelt and acknowledged his lord.",
+   "e": "The film pays *homage* to the westerns its director grew up watching.",
+   "a": "تكريم وإجلال؛ وأصلًا: مراسم بيعة التابع لسيّده"
+  },
+  {
+   "w": "endowment",
+   "f": 1,
+   "p": "noun",
+   "d": "A permanent fund of money or property given to support an institution. Also, a natural gift a person is born with.",
+   "e": "The university lives off the interest from its *endowment* rather than spending the capital.",
+   "a": "وَقْف — مال دائم يُنفَق ريعُه على مؤسسة",
+   "n": "The noun of 'endow' (entry above): you endow a college, and the money you gave becomes its endowment."
+  },
+  {
+   "w": "literalism",
+   "f": 2,
+   "p": "noun",
+   "d": "Reading a text in its exact, word-for-word sense, refusing symbolic readings.",
+   "e": "His *literalism* led him to reject any figurative reading of the scriptures.",
+   "a": "الأخذ بالظاهر — التفسير الحرفي للنص"
+  },
+  {
+   "w": "rational theology",
+   "f": 2,
+   "p": "phrase",
+   "d": "The attempt to understand God through reason and argument rather than faith alone.",
+   "e": "*Rational theology* asks whether the existence of God can be proven by argument.",
+   "a": "اللاهوت العقلي، علم الكلام العقلي"
+  },
+  {
+   "w": "anthropomorphism",
+   "f": 2,
+   "p": "noun",
+   "d": "Attributing human form, emotions or body parts to God, animals or objects.",
+   "e": "Describing God as having hands or feeling anger is a form of *anthropomorphism*.",
+   "a": "التجسيم — نسبة صفات البشر وأعضائهم إلى الله"
+  },
+  {
+   "w": "interpreting anthropomorphic descriptions",
+   "f": 2,
+   "p": "phrase",
+   "d": "Working out what to do with passages that describe God in human terms.",
+   "e": "Scholars spent centuries *interpreting anthropomorphic* verses — did God literally sit on a throne?",
+   "a": "تأويل الصفات الخبرية/آيات التجسيم"
+  },
+  {
+   "w": "allegorical understanding",
+   "f": 2,
+   "p": "phrase",
+   "d": "Reading a text as a symbolic story carrying a deeper hidden meaning.",
+   "e": "An *allegorical understanding* of the flood sees it as spiritual renewal, not literal water.",
+   "a": "الفهم الرمزي أو التأويلي للنص"
+  },
+  {
+   "w": "transcendence",
+   "f": 2,
+   "p": "noun",
+   "d": "Existence beyond ordinary experience and the physical world.",
+   "e": "Mystics seek *transcendence* — an experience that lifts them above everyday reality.",
+   "a": "التعالي، السموّ فوق العالم المحسوس"
+  },
+  {
+   "w": "divine transcendence",
+   "f": 2,
+   "p": "phrase",
+   "d": "The doctrine that God is wholly beyond the world and beyond human comprehension.",
+   "e": "*Divine transcendence* means God cannot be fully grasped by the human mind.",
+   "a": "تَنزيه الذات الإلهية — كون الله فوق الإدراك البشري"
+  },
+  {
+   "w": "metaphorically interpreting",
+   "f": 2,
+   "p": "phrase",
+   "d": "Treating a description as figurative rather than literal.",
+   "e": "Rather than believing God has a literal hand, most theologians are *metaphorically interpreting* such passages.",
+   "a": "التأويل المجازي بدل الحرفي"
+  },
+  {
+   "w": "polytheism",
+   "f": 2,
+   "p": "noun",
+   "d": "Belief in, or worship of, many gods.",
+   "e": "Ancient Greece practised *polytheism*, with gods for war, love and the sea.",
+   "a": "الشِّرك، تعدُّد الآلهة"
+  },
+  {
+   "w": "desecration",
+   "f": 2,
+   "p": "noun",
+   "d": "Treating something sacred with violent disrespect.",
+   "e": "The vandalism of the temple was condemned as an act of *desecration*.",
+   "a": "تدنيس المُقدَّس، انتهاك حُرمته"
+  },
+  {
+   "w": "self-flagellate",
+   "f": 2,
+   "p": "verb",
+   "d": "Literally, to whip oneself as penance. Usually figurative: to punish yourself with excessive guilt.",
+   "e": "There's no point *self-flagellating* over a mistake you can't undo.",
+   "a": "يجلد ذاته — حرفيًّا كفارةً، ومجازًا: يُفرِط في لوم نفسه"
+  },
+  {
+   "w": "incense",
+   "f": 2,
+   "i": "img/incense.svg",
+   "p": "noun / verb",
+   "d": "Fragrant smoke burned in worship. As a verb (stress the second syllable): to enrage.",
+   "e": "His arrogance *incensed* everyone in the room.",
+   "a": "بَخُور؛ وكفعل (بنبرة أخرى): يُثير الغضب الشديد",
+   "n": "Two different stresses: IN-cense the smoke, in-CENSE the anger."
+  },
+  {
+   "w": "inquisitions",
+   "f": 2,
+   "p": "noun",
+   "d": "Harsh official investigations into belief — historically, church tribunals prosecuting heresy.",
+   "e": "The *inquisitions* terrorised the countryside — anyone could be accused.",
+   "a": "محاكم التفتيش؛ تحقيقات قمعية في المعتقد"
+  },
+  {
+   "w": "omen",
+   "f": 2,
+   "p": "noun",
+   "d": "A sign believed to predict the future, usually something bad.",
+   "e": "The villagers took the dead ravens as an *omen* of war.",
+   "a": "فَأْل أو نَذير — علامة تُنذر بالمستقبل"
+  },
+  {
+   "w": "temperance",
+   "f": 2,
+   "p": "noun",
+   "d": "Moderation and self-restraint, especially about alcohol.",
+   "e": "The monk lived a life of *temperance* — no excess of any kind.",
+   "a": "الاعتدال وضبط النفس، خاصة عن الخمر"
+  },
+  {
+   "w": "ordained (decreed)",
+   "f": 2,
+   "p": "verb",
+   "d": "Established by higher authority, as if by fate or divine will.",
+   "e": "He believed the outcome had been *ordained* long before either army marched.",
+   "a": "مُقدَّر، مقضيّ به من سلطة أعلى"
+  },
+  {
+   "w": "seditious",
+   "f": 3,
+   "p": "adjective",
+   "d": "Inciting rebellion against the authority of a state or ruler.",
+   "e": "The pamphlets bore *seditious* markings and were burned by the city guard.",
+   "a": "تحريضي على العصيان، مُثير للفتنة"
+  },
+  {
+   "w": "dire",
+   "f": 3,
+   "p": "adjective",
+   "d": "Extremely serious, urgent or dreadful.",
+   "e": "The city faced *dire* consequences if the dam was not repaired before the rains.",
+   "a": "خطير للغاية، وخيم، مُفزِع"
+  },
+  {
+   "w": "whims",
+   "f": 3,
+   "p": "noun",
+   "d": "Sudden impulsive desires or changes of mind.",
+   "e": "The tyrant ruled by his *whims* — no one could predict what he'd command next.",
+   "a": "أهواء ونزوات متقلبة"
+  },
+  {
+   "w": "desertion",
+   "f": 3,
+   "p": "noun",
+   "d": "Abandoning a duty, a post, or military service.",
+   "e": "*Desertion* during wartime was punishable by death.",
+   "a": "الفرار من الخدمة أو التخلّي عن الواجب"
+  },
+  {
+   "w": "ride out",
+   "f": 3,
+   "p": "verb",
+   "d": "To endure something difficult and survive it. Past participle: ridden out.",
+   "e": "The village had *ridden out* worse storms than this one.",
+   "a": "يصمد في وجه شدّة حتى تمرّ"
+  },
+  {
+   "w": "thwarted",
+   "f": 3,
+   "p": "verb",
+   "d": "Blocked or frustrated — prevented from succeeding.",
+   "e": "Her plans were *thwarted* by an unexpected betrayal within her own council.",
+   "a": "أُحبِط، أُفشِل، حِيل دونه"
+  },
+  {
+   "w": "trample",
+   "f": 3,
+   "p": "verb",
+   "d": "To crush underfoot; figuratively, to treat something with contempt.",
+   "e": "The cavalry *trampled* everything in its path as it charged through the village.",
+   "a": "يَدوس بالأقدام؛ ومجازًا: يستهين ويسحق"
+  },
+  {
+   "w": "retaliate",
+   "f": 3,
+   "p": "verb",
+   "d": "To strike back; to return an attack or injury.",
+   "e": "If we *retaliate* now, it will only escalate the conflict further.",
+   "a": "يَرُدّ الصاع، ينتقم، يثأر"
+  },
+  {
+   "w": "transgression",
+   "f": 3,
+   "p": "noun",
+   "d": "A violation of a law, a moral code, or a boundary.",
+   "e": "He was exiled for his *transgressions* against the crown.",
+   "a": "تجاوُز، مخالفة للقانون أو الأخلاق"
+  },
+  {
+   "w": "tumult",
+   "f": 3,
+   "p": "noun",
+   "d": "Noisy confusion, disorder and upheaval.",
+   "e": "The announcement sent the crowd into *tumult* — shouting and shoving broke out at once.",
+   "a": "هَرْج ومَرْج، صخب واضطراب"
+  },
+  {
+   "w": "accede",
+   "f": 3,
+   "p": "verb",
+   "d": "To agree to a demand, usually reluctantly. Also, to take up high office.",
+   "e": "Under pressure, the council finally *acceded* to the rebels' demands.",
+   "a": "يَذعن ويوافق (على مضض)؛ أو يتولّى منصبًا"
+  },
+  {
+   "w": "blowback",
+   "f": 3,
+   "p": "noun",
+   "d": "Unintended negative consequences of a political or covert action.",
+   "e": "The sanctions produced serious *blowback* — public opinion turned against the government.",
+   "a": "ارتداد عكسي — عواقب غير مقصودة لفعل سياسي"
+  },
+  {
+   "w": "taint",
+   "f": 3,
+   "p": "noun / verb",
+   "d": "A trace of contamination, corruption or disgrace.",
+   "e": "The scandal left a *taint* on his reputation that never fully faded.",
+   "a": "شائبة، وَصمة تلوّث السمعة"
+  },
+  {
+   "w": "apparatus",
+   "f": 3,
+   "p": "noun",
+   "d": "Equipment for a purpose — or a large organisational machine, as in 'the state apparatus'.",
+   "e": "The entire state *apparatus* was mobilised to respond to the crisis.",
+   "a": "جهاز — معدّات؛ أو الجهاز التنظيمي للدولة"
+  },
+  {
+   "w": "spurned",
+   "f": 3,
+   "p": "verb",
+   "d": "Rejected with contempt or disdain.",
+   "e": "She *spurned* his proposal and left the room without another word.",
+   "a": "رَفَض باحتقار، نَبَذ"
+  },
+  {
+   "w": "lapdog",
+   "f": 3,
+   "p": "noun",
+   "d": "A small pet dog — figuratively, someone who obeys a powerful person without question.",
+   "e": "The minister was the president's *lapdog*; he never challenged a single decision.",
+   "a": "كلب حِجْر — تابع ذليل ينفّذ دون اعتراض"
+  },
+  {
+   "w": "unruly",
+   "f": 3,
+   "p": "adjective",
+   "d": "Disorderly and difficult to control.",
+   "e": "The *unruly* crowd pushed past the barricades and flooded into the square.",
+   "a": "جامح، عصيّ على السيطرة"
+  },
+  {
+   "w": "confinement",
+   "f": 3,
+   "p": "noun",
+   "d": "Imprisonment, or restriction to a limited space.",
+   "e": "The prisoner spent six months in solitary *confinement*.",
+   "a": "حبس، حجز، تقييد في مكان"
+  },
+  {
+   "w": "languishing",
+   "f": 3,
+   "p": "verb",
+   "d": "Weakening or suffering through a long, hopeless wait.",
+   "e": "The prisoners of war were *languishing* in military detention, forgotten by the outside world.",
+   "a": "يَذوي ويُعاني في انتظار طويل بلا أمل",
+   "n": "Note the spelling: languish → languishing, not 'languishion'."
+  },
+  {
+   "w": "stipulation",
+   "f": 3,
+   "p": "noun",
+   "d": "A specific condition attached to an agreement — the thing you insist on before you say yes.",
+   "e": "She accepted the job with one *stipulation*: she would never work weekends.",
+   "a": "شَرْط مُحدَّد في اتفاق"
+  },
+  {
+   "w": "purge",
+   "f": 3,
+   "p": "verb / noun",
+   "d": "To violently remove unwanted people from a party, army or country. Also, more mildly, to cleanse something of impurities.",
+   "e": "The new leader *purged* the party of everyone who had opposed his rise.",
+   "a": "تطهير — إقصاء عنيف للمعارضين"
+  },
+  {
+   "w": "incendiary rhetoric",
+   "f": 4,
+   "p": "phrase",
+   "d": "Language deliberately designed to provoke anger or violence.",
+   "e": "The politician's *incendiary rhetoric* stirred up hatred against immigrants.",
+   "a": "خطاب تحريضي يُشعِل الغضب"
+  },
+  {
+   "w": "brazen",
+   "f": 4,
+   "p": "adjective",
+   "d": "Bold and shameless — done openly with no attempt to hide it.",
+   "e": "His *brazen* bigotry shocked even those who had tolerated his earlier remarks.",
+   "a": "وَقِح، صَفيق، مكشوف بلا خجل",
+   "n": "Spelled brazen, not 'brazon'."
+  },
+  {
+   "w": "bigotry",
+   "f": 4,
+   "p": "noun",
+   "d": "Stubborn, hostile intolerance toward people of another group.",
+   "e": "Her *bigotry* showed in every remark she made about the new neighbours.",
+   "a": "تعصُّب أعمى وكراهية للمختلف"
+  },
+  {
+   "w": "flagrant",
+   "f": 4,
+   "p": "adjective",
+   "d": "Outrageously obvious — impossible to miss and impossible to excuse.",
+   "e": "The report was full of *flagrant* lies that anyone could disprove in a single search.",
+   "a": "صارخ، فاضح، لا يمكن إنكاره"
+  },
+  {
+   "w": "espouse",
+   "f": 4,
+   "p": "verb",
+   "d": "To publicly adopt and promote a belief or cause.",
+   "e": "The leader *espoused* genocidal comments that drew international condemnation.",
+   "a": "يتبنّى علنًا ويناصر (فكرة أو موقفًا)"
+  },
+  {
+   "w": "genocidal rhetoric",
+   "f": 4,
+   "p": "phrase",
+   "d": "Language that promotes or incites the destruction of an entire group.",
+   "e": "The broadcast was laced with *genocidal rhetoric* aimed at the minority population.",
+   "a": "خطاب إبادي يدعو لإفناء جماعة"
+  },
+  {
+   "w": "conflating",
+   "f": 4,
+   "p": "verb",
+   "d": "Wrongly merging two distinct things into one.",
+   "e": "You're *conflating* criticism of the policy with hatred of the country — they aren't the same.",
+   "a": "يَخلِط بين أمرين مختلفين ويجعلهما واحدًا"
+  },
+  {
+   "w": "egregious",
+   "f": 4,
+   "p": "adjective",
+   "d": "Shockingly bad; outstandingly terrible.",
+   "e": "The witness told *egregious* lies under oath and was later charged with perjury.",
+   "a": "شنيع، فادح، سيّئ بشكل صارخ"
+  },
+  {
+   "w": "brazenly boast",
+   "f": 4,
+   "p": "phrase",
+   "d": "To brag openly and without shame.",
+   "e": "He *brazenly boasted* about breaking the rules, as if daring anyone to stop him.",
+   "a": "يتباهى بوقاحة ودون حياء"
+  },
+  {
+   "w": "corroborated",
+   "f": 4,
+   "p": "verb",
+   "d": "Confirmed by additional independent evidence.",
+   "e": "Her testimony was *corroborated* by three separate witnesses.",
+   "a": "مُدعَّم ومؤكَّد بأدلة إضافية"
+  },
+  {
+   "w": "implausible",
+   "f": 4,
+   "p": "adjective",
+   "d": "Hard to believe; not convincing.",
+   "e": "His excuse was so *implausible* that even his allies rolled their eyes.",
+   "a": "غير معقول، يصعب تصديقه",
+   "n": "Spelled implausible — from 'plausible', meaning believable."
+  },
+  {
+   "w": "alluded",
+   "f": 4,
+   "p": "verb",
+   "d": "Referred to something indirectly, without naming it.",
+   "e": "She *alluded* to problems in the company without ever naming who was responsible.",
+   "a": "لَمَّح وأشار إشارة غير مباشرة"
+  },
+  {
+   "w": "transpire",
+   "f": 4,
+   "p": "verb",
+   "d": "To happen — or, in formal use, to become known.",
+   "e": "No one knows exactly what *transpired* behind those closed doors.",
+   "a": "يَحدُث؛ أو (بالمعنى الرسمي) يتكشّف ويُعلَم"
+  },
+  {
+   "w": "duplicitous",
+   "f": 4,
+   "p": "adjective",
+   "d": "Deliberately deceptive; two-faced.",
+   "e": "His *duplicitous* nature meant you could never trust what he said behind closed doors.",
+   "a": "مُخادِع ذو وجهين"
+  },
+  {
+   "w": "round the mulberry bush",
+   "f": 4,
+   "p": "idiom",
+   "d": "Going in circles without ever reaching the point. From the nursery rhyme.",
+   "e": "We've been going round the *mulberry bush* on this for an hour — let's decide.",
+   "a": "يدور في حلقة مفرغة دون الوصول للُبّ الموضوع"
+  },
+  {
+   "w": "callously",
+   "f": 5,
+   "p": "adverb",
+   "d": "Cruelly and without feeling; indifferent to others' suffering.",
+   "e": "He *callously* ignored the injured man lying in the road.",
+   "a": "بقسوة وبلا مبالاة بمعاناة الآخرين"
+  },
+  {
+   "w": "coveted",
+   "f": 5,
+   "p": "verb / adjective",
+   "d": "Deeply desired — often something that belongs to someone else.",
+   "e": "She *coveted* her neighbour's garden and spent years trying to outdo it.",
+   "a": "مطموع فيه — يشتهيه بشدّة، خاصة ما يملكه غيره"
+  },
+  {
+   "w": "insolent",
+   "f": 5,
+   "p": "adjective",
+   "d": "Boldly rude and disrespectful, especially to a superior.",
+   "e": "The servant gave an *insolent* reply and was dismissed on the spot.",
+   "a": "وَقِح، سليط اللسان مع من هو أعلى منه"
+  },
+  {
+   "w": "lowly",
+   "f": 5,
+   "p": "adjective",
+   "d": "Humble; low in rank or importance.",
+   "e": "He rose from *lowly* origins to become the most powerful man in the city.",
+   "a": "وضيع المنزلة، متواضع الأصل"
+  },
+  {
+   "w": "sycophantic",
+   "f": 5,
+   "p": "adjective",
+   "d": "Flattering the powerful excessively in order to gain something.",
+   "e": "He surrounded himself with *sycophantic* friends who agreed with everything he said.",
+   "a": "مُتملِّق مُنافِق يتزلّف لأصحاب النفوذ"
+  },
+  {
+   "w": "somber",
+   "f": 5,
+   "p": "adjective",
+   "d": "Dark, grave or gloomy in mood. (British spelling: sombre.)",
+   "e": "The funeral was a *somber* affair, with few words spoken.",
+   "a": "كئيب، قاتم، جادّ حزين"
+  },
+  {
+   "w": "tenacity",
+   "f": 5,
+   "p": "noun",
+   "d": "Persistent determination; refusing to give up.",
+   "e": "Her *tenacity* kept her going through years of failure before she finally succeeded.",
+   "a": "إصرار وعناد لا يستسلم"
+  },
+  {
+   "w": "laze",
+   "f": 5,
+   "p": "verb",
+   "d": "To relax idly; to do nothing productive.",
+   "e": "He spent the whole summer *lazing* by the river instead of working the fields.",
+   "a": "يتكاسل ويقضي وقته بلا عمل"
+  },
+  {
+   "w": "reveling in mediocrity",
+   "f": 5,
+   "p": "phrase",
+   "d": "Taking pleasure in being merely average; being content with low standards.",
+   "e": "The team was *reveling in mediocrity*, celebrating small wins while their rivals dominated.",
+   "a": "يتلذّذ بالرداءة ويرضى بالمستوى المتوسط"
+  },
+  {
+   "w": "browbeaten",
+   "f": 5,
+   "p": "verb",
+   "d": "Bullied into submission by relentless pressure.",
+   "e": "She was *browbeaten* by her manager into accepting unpaid overtime.",
+   "a": "مُرغَم بالضغط والترهيب المتواصل"
+  },
+  {
+   "w": "whinge",
+   "f": 5,
+   "p": "verb",
+   "d": "To whine and complain persistently. British and Australian; rhymes with 'hinge'.",
+   "e": "Stop *whingeing* about the weather and just bring an umbrella.",
+   "a": "يتذمّر ويتشكّى بإلحاح (بريطاني)"
+  },
+  {
+   "w": "resent the imposition",
+   "f": 5,
+   "p": "phrase",
+   "d": "To feel quiet anger at an unwelcome burden placed on you.",
+   "e": "She *resents the imposition* of having to host her in-laws every holiday.",
+   "a": "يستاء من العبء المفروض عليه"
+  },
+  {
+   "w": "magnanimity",
+   "f": 5,
+   "p": "noun",
+   "d": "Generosity and nobility of spirit, especially toward a defeated rival.",
+   "e": "The queen showed *magnanimity* by pardoning the rebels rather than executing them.",
+   "a": "شهامة وكرم نفس، خاصة تجاه الخصم"
+  },
+  {
+   "w": "glamorous",
+   "f": 5,
+   "p": "adjective",
+   "d": "Attractively exciting; full of charm and polish.",
+   "e": "The *glamorous* lifestyle of film stars hid years of grueling work.",
+   "a": "برّاق، ساحر المظهر، مُبهِر"
+  },
+  {
+   "w": "cultivating",
+   "f": 5,
+   "p": "verb",
+   "d": "Preparing land for crops — or patiently developing a skill or relationship over time.",
+   "e": "She spent years *cultivating* relationships with influential people in the industry.",
+   "a": "يزرع ويرعى؛ ومجازًا: يبني مهارة أو علاقة بصبر"
+  },
+  {
+   "w": "anguish",
+   "f": 5,
+   "p": "noun",
+   "d": "Severe mental or physical suffering. Stronger than sadness — it implies torment.",
+   "e": "She waited in *anguish* for news of the missing children.",
+   "a": "كَرْب شديد، عذاب نفسي مبرّح"
+  },
+  {
+   "w": "pessimism",
+   "f": 5,
+   "p": "noun",
+   "d": "The habit of expecting the worst outcome. Opposite of optimism.",
+   "e": "Years of failed negotiations bred a deep *pessimism* about any lasting peace.",
+   "a": "تشاؤم — توقُّع الأسوأ دائمًا"
+  },
+  {
+   "w": "persevere",
+   "f": 5,
+   "p": "verb",
+   "d": "To keep going despite difficulty or repeated failure.",
+   "e": "He *persevered* through three rejections before the paper was finally accepted.",
+   "a": "يُثابِر ويواصل رغم الصعاب",
+   "n": "Persevere is the action; tenacity (above) is the quality that makes you do it."
+  },
+  {
+   "w": "insatiable",
+   "f": 5,
+   "p": "adjective",
+   "d": "Impossible to satisfy — a hunger, curiosity or demand that never fills up.",
+   "e": "The city had an *insatiable* appetite for water that the river simply could not meet.",
+   "a": "نَهِم لا يُشبَع، لا يرتوي"
+  },
+  {
+   "w": "rigorous",
+   "f": 6,
+   "p": "adjective",
+   "d": "Extremely thorough, careful and demanding.",
+   "e": "The experiment required *rigorous* methodology — every variable had to be controlled.",
+   "a": "صارم دقيق، مُحكَم المنهج"
+  },
+  {
+   "w": "rational",
+   "f": 6,
+   "p": "adjective",
+   "d": "Based on reason and logic rather than emotion.",
+   "e": "She made a *rational* decision to sell the house, even though it broke her heart.",
+   "a": "عقلاني، قائم على المنطق لا العاطفة"
+  },
+  {
+   "w": "intrinsic",
+   "f": 6,
+   "p": "adjective",
+   "d": "Belonging to something by its very nature; built in, not added.",
+   "e": "Curiosity is an *intrinsic* part of being human.",
+   "a": "جوهري، أصيل في طبيعة الشيء"
+  },
+  {
+   "w": "exert",
+   "f": 6,
+   "p": "verb",
+   "d": "To apply force, effort or influence.",
+   "e": "She had to *exert* all her strength to push the door open against the wind.",
+   "a": "يبذل جهدًا، يُمارِس قوة أو نفوذًا"
+  },
+  {
+   "w": "oblivion",
+   "f": 6,
+   "p": "noun",
+   "d": "Being completely forgotten; or total destruction and nothingness.",
+   "e": "The empire crumbled into *oblivion*, and within a century no one remembered its name.",
+   "a": "النسيان التام، العدم والزوال"
+  },
+  {
+   "w": "presentiment",
+   "f": 6,
+   "p": "noun",
+   "d": "A feeling that something — usually bad — is about to happen.",
+   "e": "She couldn't shake the *presentiment* that something terrible awaited them.",
+   "a": "هاجس، إحساس مسبق بشرّ قادم"
+  },
+  {
+   "w": "sought",
+   "f": 6,
+   "p": "verb",
+   "d": "The past tense of 'seek': looked for, or tried to obtain.",
+   "e": "He *sought* answers in old books that no one else had opened in decades.",
+   "a": "سَعى إلى، طلب (الماضي من seek)"
+  },
+  {
+   "w": "uncannily",
+   "f": 6,
+   "p": "adverb",
+   "d": "In a way so strange or exact that it feels supernatural.",
+   "e": "The prediction proved *uncannily* accurate — every detail came true.",
+   "a": "بشكل غريب مُريب يكاد يكون خارقًا"
+  },
+  {
+   "w": "compartmentalized",
+   "f": 6,
+   "p": "verb",
+   "d": "Kept different parts of life or knowledge strictly separate.",
+   "e": "He *compartmentalized* work and family so completely that his colleagues knew nothing about his children.",
+   "a": "يفصل جوانب حياته فصلًا تامًّا في حجرات مستقلة"
+  },
+  {
+   "w": "speculative",
+   "f": 6,
+   "p": "adjective",
+   "d": "Based on guesswork or theory rather than firm evidence.",
+   "e": "His claims about the company's future were highly *speculative*.",
+   "a": "تخميني، قائم على الظنّ لا الدليل"
+  },
+  {
+   "w": "quintessential",
+   "f": 6,
+   "p": "adjective",
+   "d": "The purest, most perfect example of a type — the one you'd point to if you had to explain the whole category.",
+   "e": "That corner café is the *quintessential example* of what the neighbourhood used to be.",
+   "a": "المثال الأمثل، النموذج الخالص للشيء"
+  },
+  {
+   "w": "inherent",
+   "f": 6,
+   "p": "adjective",
+   "d": "Existing as a permanent, inseparable part of something.",
+   "e": "There is an *inherent* risk in any surgery, however routine it seems.",
+   "a": "متأصّل، ملازم لا ينفصل عن الشيء",
+   "n": "Nearly identical to 'intrinsic'. Inherent leans toward risks and problems that come with a thing; intrinsic leans toward value and nature."
+  },
+  {
+   "w": "juxtaposed",
+   "f": 6,
+   "p": "verb",
+   "d": "Placed side by side so the contrast between two things becomes obvious.",
+   "e": "The photographer *juxtaposed* the palace and the slum on facing pages.",
+   "a": "موضوع جنبًا إلى جنب لإبراز التباين"
+  },
+  {
+   "w": "lucid",
+   "f": 6,
+   "p": "adjective",
+   "d": "Clear and easy to follow. Of a person: mentally clear, not confused.",
+   "e": "Her explanation was so *lucid* that even the beginners followed it.",
+   "a": "واضح جليّ سهل الفهم؛ وللشخص: صافي الذهن"
+  },
+  {
+   "w": "meticulous",
+   "f": 6,
+   "p": "adjective",
+   "d": "Extremely careful about small details.",
+   "e": "The forger was *meticulous*, matching even the age of the paper.",
+   "a": "دقيق مُدقِّق في أصغر التفاصيل"
+  },
+  {
+   "w": "mitigate",
+   "f": 6,
+   "p": "verb",
+   "d": "To make something bad less severe. It reduces harm; it does not remove it.",
+   "e": "Planting trees will not stop the flooding, but it may *mitigate* the damage.",
+   "a": "يُخفِّف من حدّة الضرر (دون أن يمنعه)"
+  },
+  {
+   "w": "nascent",
+   "f": 6,
+   "p": "adjective",
+   "d": "Just beginning to exist and not yet developed. Pronounced NAY-sent.",
+   "e": "The *nascent* industry employed only a few hundred people at the time.",
+   "a": "ناشئ، في بداية تكوّنه"
+  },
+  {
+   "w": "nuance",
+   "f": 6,
+   "p": "noun",
+   "d": "A subtle shade of meaning or difference that a rough summary would lose.",
+   "e": "His argument ignored every *nuance* and treated the issue as purely black and white.",
+   "a": "فارق دقيق في المعنى، ظِلال المعنى"
+  },
+  {
+   "w": "paradox",
+   "f": 6,
+   "p": "noun",
+   "d": "A statement or situation that contradicts itself and yet may still be true.",
+   "e": "It is a *paradox* that the more choices we have, the harder it becomes to choose.",
+   "a": "مفارقة — قول يناقض نفسه وقد يكون صحيحًا"
+  },
+  {
+   "w": "malleable",
+   "f": 6,
+   "p": "adjective",
+   "d": "Able to be hammered into shape. Of a person: easily influenced.",
+   "e": "Young recruits are *malleable*, which is exactly why the training begins so early.",
+   "a": "طَيِّع قابل للتشكيل؛ وللشخص: سهل التأثّر"
+  },
+  {
+   "w": "eerie",
+   "f": 6,
+   "p": "adjective",
+   "d": "Strange in a way that frightens you — quietly wrong rather than openly threatening.",
+   "e": "The abandoned streets had an *eerie* silence about them.",
+   "a": "مُخيف بغرابة، يبعث على القشعريرة",
+   "n": "Spelled eerie, with two e's at the front. 'Erie' is a lake in North America."
+  },
+  {
+   "w": "rodent",
+   "f": 7,
+   "i": "img/rodent.svg",
+   "p": "noun",
+   "d": "A small gnawing mammal — rats, mice, squirrels.",
+   "e": "The barn was overrun with *rodents* that chewed through the grain sacks.",
+   "a": "قارِض — كالفأر والجرذ والسنجاب"
+  },
+  {
+   "w": "radish",
+   "f": 7,
+   "i": "img/radish.svg",
+   "p": "noun",
+   "d": "A small, round, peppery root vegetable, usually red-skinned and white inside.",
+   "e": "She pulled a handful of *radishes* from the garden and rinsed them for the salad.",
+   "a": "فِجْل"
+  },
+  {
+   "w": "blister",
+   "f": 7,
+   "p": "noun / verb",
+   "d": "A painful bubble of fluid on the skin, caused by friction or burning.",
+   "e": "Her new boots gave her *blisters* on both heels.",
+   "a": "بَثْرة ماء في الجلد من الاحتكاك أو الحرق"
+  },
+  {
+   "w": "appendage",
+   "f": 7,
+   "p": "noun",
+   "d": "A limb or part extending from a main body — or anything treated as a minor attachment to something larger.",
+   "e": "The small office felt like an *appendage of* headquarters: overlooked and underfunded.",
+   "a": "طَرَف أو زائدة؛ ومجازًا: تابع ملحق بشيء أكبر"
+  },
+  {
+   "w": "vile curvature",
+   "f": 7,
+   "p": "phrase",
+   "d": "A repulsive bend or distortion — 'vile' supplies the disgust, 'curvature' the shape.",
+   "e": "The inspector condemned the *vile curvature* of the cheaply built walls.",
+   "a": "انحناء مقيت مشوَّه"
+  },
+  {
+   "w": "ravish",
+   "f": 7,
+   "p": "verb",
+   "d": "To seize and carry off by force; also, to fill someone with intense delight.",
+   "e": "The audience was *ravished* by the beauty of the performance.",
+   "a": "يَخطَف بالقوة؛ وأيضًا: يأخذ باللُّبّ من شدة الجمال",
+   "n": "It also means to rape. Because of that, most writers now avoid it entirely — recognise it, don't use it."
+  },
+  {
+   "w": "debauched",
+   "f": 7,
+   "p": "verb / adjective",
+   "d": "Corrupted by excessive indulgence in drink and sensual pleasure.",
+   "e": "The nobleman *debauched* himself upon wine and women until his fortune was gone.",
+   "a": "منغمس في الفجور والمجون"
+  },
+  {
+   "w": "venereal",
+   "f": 7,
+   "p": "adjective",
+   "d": "Relating to sexually transmitted disease. From Venus, goddess of love.",
+   "e": "The soldiers returned from the port city riddled with *venereal* disease.",
+   "a": "تناسلي — متعلق بالأمراض المنقولة جنسيًّا",
+   "n": "Medically dated — today you'd say STI. Common in historical writing."
+  },
+  {
+   "w": "aphrodisiac",
+   "f": 7,
+   "p": "noun",
+   "d": "A food or substance believed to arouse sexual desire.",
+   "e": "Oysters have long been considered an *aphrodisiac*, though the science is thin.",
+   "a": "مُنشِّط للشهوة الجنسية"
+  },
+  {
+   "w": "accomplice",
+   "f": 7,
+   "p": "noun",
+   "d": "A person who helps someone else commit a crime.",
+   "e": "The driver was arrested as an *accomplice* to the robbery.",
+   "a": "شريك في الجريمة"
+  },
+  {
+   "w": "scavenge",
+   "f": 7,
+   "p": "verb",
+   "d": "To search through waste and ruins for something usable, especially food.",
+   "e": "After the siege, the survivors were forced to *scavenge for food* in the rubble.",
+   "a": "ينبش في المخلَّفات بحثًا عن طعام أو نافع"
+  },
+  {
+   "w": "amassing",
+   "f": 7,
+   "p": "verb",
+   "d": "Gathering in large numbers or quantities.",
+   "e": "Refugees were *amassing* at the border, seeking food and safety.",
+   "a": "يتجمّع أو يتكدّس بأعداد كبيرة"
+  },
+  {
+   "w": "alibi",
+   "f": 7,
+   "p": "noun",
+   "d": "Evidence that you were somewhere else when a crime happened. Loosely, any convenient excuse.",
+   "e": "His *alibi* collapsed when the restaurant's cameras showed he had left at nine.",
+   "a": "دفع بالغيبة — إثبات وجوده في مكان آخر وقت الجريمة"
+  },
+  {
+   "w": "apartheid",
+   "f": 8,
+   "p": "noun",
+   "d": "A system of enforced racial segregation — specifically South Africa's state policy from 1948 to 1994. Pronounced a-PART-hate.",
+   "e": "Under *apartheid*, where a person could live, work and travel was decided by race.",
+   "a": "الفصل العنصري (نظام جنوب أفريقيا ١٩٤٨–١٩٩٤)"
+  },
+  {
+   "w": "incarcerated",
+   "f": 8,
+   "p": "verb",
+   "d": "Imprisoned. The formal word used in law, journalism and policy writing.",
+   "e": "He was *incarcerated* for eleven years before the conviction was finally overturned.",
+   "a": "مسجون، مُودَع في السجن"
+  },
+  {
+   "w": "welfare",
+   "f": 8,
+   "p": "noun",
+   "d": "A person's health and wellbeing — and also the government payments that support people who cannot support themselves.",
+   "e": "The charity was founded for the *welfare* of children orphaned by the war.",
+   "a": "رفاه وسلامة؛ وأيضًا: إعانات الدولة للفقراء"
+  },
+  {
+   "w": "delinquency",
+   "f": 8,
+   "p": "noun",
+   "d": "Minor criminal behaviour, especially by young people. Also, failure to meet an obligation such as a payment.",
+   "e": "Rising youth *delinquency* was blamed on the closure of the city's schools.",
+   "a": "جُنوح — انحراف سلوكي خاصة عند الأحداث"
+  },
+  {
+   "w": "nuisance",
+   "f": 8,
+   "p": "noun",
+   "d": "Something persistently annoying. In law, an activity that unreasonably interferes with neighbours.",
+   "e": "The barking became such a *nuisance* that the neighbours filed a formal complaint.",
+   "a": "إزعاج مستمر، مصدر ضيق (وفي القانون: ضرر بالجيران)"
+  },
+  {
+   "w": "infestation",
+   "f": 8,
+   "p": "noun",
+   "d": "An overwhelming presence of pests — insects, rats, weeds.",
+   "e": "The building had a rat *infestation* that the landlord refused to address.",
+   "a": "تفشٍّ واجتياح للآفات كالفئران والحشرات",
+   "n": "Applied to people it is dehumanising language and a recognised marker of hate speech. Note where you see it used that way."
+  },
+  {
+   "w": "chores",
+   "f": 8,
+   "p": "noun",
+   "d": "Routine, unglamorous household tasks that must be repeated.",
+   "e": "The children divided the *chores*: one swept the yard, the other fetched water.",
+   "a": "أعمال منزلية روتينية متكررة"
+  },
+  {
+   "w": "famine",
+   "f": 8,
+   "p": "noun",
+   "d": "Extreme and widespread scarcity of food across a whole region.",
+   "e": "The *famine* killed more people than the war that had caused it.",
+   "a": "مَجاعة"
+  },
+  {
+   "w": "meager",
+   "f": 8,
+   "p": "adjective",
+   "d": "Small and clearly inadequate in quantity. (British spelling: meagre.)",
+   "e": "They survived on a *meager* ration of rice and lentils.",
+   "a": "ضئيل هزيل لا يكفي"
+  },
+  {
+   "w": "destitute",
+   "f": 8,
+   "p": "adjective",
+   "d": "Extremely poor — lacking even the basic means to live.",
+   "e": "The fire left forty families *destitute*, with nothing but the clothes they were wearing.",
+   "a": "معدَم، فقير لا يملك قوت يومه"
+  },
+  {
+   "w": "emaciated",
+   "f": 8,
+   "p": "adjective",
+   "d": "Abnormally thin and weak from starvation or long illness.",
+   "e": "The rescued animals were *emaciated*, their ribs visible through their coats.",
+   "a": "هزيل مُنهَك من الجوع أو المرض"
+  },
+  {
+   "w": "malnourished",
+   "f": 8,
+   "p": "adjective",
+   "d": "Suffering from a lack of food or of the right nutrients.",
+   "e": "One in five children in the camp was severely *malnourished*.",
+   "a": "يعاني سوء التغذية",
+   "n": "Malnourished is about diet; emaciated is about the visible body. Someone can be malnourished without looking it."
+  },
+  {
+   "w": "lethargic",
+   "f": 8,
+   "p": "adjective",
+   "d": "Sluggish and drained of energy.",
+   "e": "Weeks of poor food left the workers *lethargic* and unable to concentrate.",
+   "a": "خامل فاتر، منعدم الطاقة"
+  },
+  {
+   "w": "populace",
+   "f": 8,
+   "p": "noun",
+   "d": "The general population of a place, considered as a whole.",
+   "e": "The announcement was met with anger from the *populace*.",
+   "a": "عامّة السكان، الجمهور",
+   "n": "Populace = the people. Populous = having many people. Different words."
+  },
+  {
+   "w": "affluent",
+   "f": 8,
+   "p": "adjective",
+   "d": "Wealthy; comfortably well off.",
+   "e": "She grew up in an *affluent family* that never worried about the cost of anything.",
+   "a": "ثريّ، ميسور الحال"
+  },
+  {
+   "w": "indigenous",
+   "f": 8,
+   "p": "adjective",
+   "d": "Originating naturally in a place. Of people: the original inhabitants of a land, predating settlers.",
+   "e": "*Indigenous* communities had farmed the valley for centuries before the survey arrived.",
+   "a": "أصلي، من السكان الأصليين للأرض",
+   "n": "Capitalised as 'Indigenous' when referring to peoples, in most modern style guides."
+  },
+  {
+   "w": "pacify",
+   "f": 8,
+   "p": "verb",
+   "d": "To calm someone down. Of a territory: to subdue it and end resistance.",
+   "e": "The general claimed to have *pacified* the province, though the raids never truly stopped.",
+   "a": "يُهدِّئ ويُسكِّن؛ وللإقليم: يُخضِعه بالقوة",
+   "n": "The military sense is a euphemism — 'pacified' can describe an occupation. Worth noticing who is using it."
+  },
+  {
+   "w": "docile",
+   "f": 8,
+   "p": "adjective",
+   "d": "Quiet, obedient and easy to control.",
+   "e": "The regime preferred a *docile* press that printed whatever it was given.",
+   "a": "وَديع مُطيع سهل الانقياد"
+  },
+  {
+   "w": "cadence",
+   "f": 4,
+   "p": "noun",
+   "d": "The rhythmic flow of a sequence of sounds or words in speech and writing.",
+   "e": "The senator delivered her speech in a measured, persuasive *cadence* that captivated the entire audience.",
+   "a": "إِيقَاع"
+  },
+  {
+   "w": "severe",
+   "f": 5,
+   "p": "adjective",
+   "d": "Strict, stern, or harsh in attitude, appearance, or judgment.",
+   "e": "The headmaster gave the misbehaving students a *severe* look that instantly silenced the room.",
+   "a": "صَارِم",
+   "n": "Can also describe hardship, pain, or weather, but here categorized by personal temperament."
+  },
+  {
+   "w": "ultimatum",
+   "f": 3,
+   "p": "noun",
+   "d": "A final demand or statement of terms whose rejection will lead to direct retaliation or a breakdown in relations.",
+   "e": "The military commander issued a final *ultimatum* demanding immediate surrender before artillery shelling commenced.",
+   "a": "إنْذَار أِخِير"
+  },
+  {
+   "w": "dissemination",
+   "f": 6,
+   "p": "noun",
+   "d": "The act of spreading news, information, or knowledge widely to an audience.",
+   "e": "Academic journals play a vital role in the rapid *dissemination* of groundbreaking scientific research globally.",
+   "a": "نَشْر — مَعْلُومَات أوْ مَعْرِفَة"
+  }
+ ]
+}
