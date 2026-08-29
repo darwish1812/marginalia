@@ -584,6 +584,23 @@ the cheapest thing it can stop being is interesting to the compositor. The safe-
 is now the padding rather than an addition to it: it is already the height of the home
 indicator, and Apple's own bars sit their labels directly on top of it.
 
+**And the page under it is never shorter than the screen.** `.views` carries
+`min-height:100dvh` on a phone and bottom padding taller than the bar. You is the one
+destination whose content does not fill a phone, and it was the one the bar was reported
+jumping on — a page that cannot scroll is where WebKit's habit of laying a fixed element out
+against the document rather than the viewport has room to show. The padding is a plain fault
+of its own besides: the page ended 30px below its last card while a 60px bar stood over it,
+so the last card could only be read by scrolling it underneath.
+
+None of this is a diagnosis. The bar measures flush to the viewport bottom in Chromium on
+every destination, with no ancestor making a containing block for it, so what is written
+above is the two most likely WebKit causes removed rather than a fault found. If it still
+moves, the answer is to stop using `position:fixed` on a phone at all: give `.shell` the
+viewport height and let `.views` be the scroller, so the bar is a grid row that cannot move.
+That changes which element scrolls, which `keepStill()`, the splash observer and every
+`window.scrollTo` in `openPanel()` are all written against — worth doing only against a fault
+that has been reproduced.
+
 ### 3.6d You, where the panel is narrow
 
 Below 1024px the same rows become what a phone settings screen is. This is one media query

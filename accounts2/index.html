@@ -420,7 +420,22 @@
   .sec{padding:38px 0 6px; scroll-margin-top:86px}
   @media(max-width:719px){ .sec{scroll-margin-top:126px} }   /* head and strip together */
   .views{padding:0 22px 40px; max-width:1500px}
-  @media(max-width:719px){ .views{padding:0 16px 30px} }
+  /* Two things a phone needs from this that a laptop does not.
+
+     The bar down there is position:fixed and stands over the page, so the page has to end
+     above it — 30px did not, and the last card was reachable only by scrolling it under the
+     bar and reading around it.
+
+     And the page is never shorter than the screen. You is the one destination whose content
+     does not fill a phone, and it is the one the bar was reported jumping on: a page that
+     cannot scroll is where WebKit's habit of laying a fixed element out against the document
+     rather than the viewport has room to show. Making every destination at least a screen
+     tall costs nothing anywhere and takes that away.
+
+     border-box, so the padding is inside the min-height rather than added to it. */
+  @media(max-width:719px){
+    .views{padding:0 16px calc(80px + env(safe-area-inset-bottom,0px)); min-height:100dvh}
+  }
   .sec-head{display:flex; align-items:baseline; gap:16px; border-bottom:2px solid var(--c); padding-bottom:11px; margin-bottom:26px}
   .sec-head h2{
     font-family:"Fraunces",Georgia,serif; font-weight:500; font-size:clamp(25px,4.4vw,38px);

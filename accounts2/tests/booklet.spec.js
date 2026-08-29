@@ -580,6 +580,26 @@ test.describe('You, where the panel is narrow', () => {
     expect(Number(await count.textContent()), 'the count and the rows disagree').toBe(rows);
   });
 
+  /* Was: the page ended 30px below its last card while a fixed bar 60px tall stood over it,
+     so the last card could only be read by scrolling it underneath the bar. And You, whose
+     content does not fill a phone, left the page shorter than the screen — the one
+     destination the bar was reported jumping on. */
+  test('no destination is shorter than the screen, and none ends under the bar', async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await stock(page);
+    for (const dest of ['book', 'add', 'you']) {
+      await page.locator(`.dest[data-dest="${dest}"]`).click();
+      const m = await page.evaluate(() => ({
+        doc: document.documentElement.scrollHeight,
+        vh: window.innerHeight,
+        pad: parseInt(getComputedStyle(document.querySelector('.views')).paddingBottom, 10),
+        bar: Math.round(document.querySelector('.nav').getBoundingClientRect().height),
+      }));
+      expect(m.doc, `${dest} is shorter than the screen`).toBeGreaterThanOrEqual(m.vh);
+      expect(m.pad, `${dest} ends under the bar`).toBeGreaterThan(m.bar);
+    }
+  });
+
   /* Was: the bar sat a finger's width off the bottom of an iPhone, and moved further up on
      the destinations whose page is short enough not to scroll. It is position:fixed, so its
      place cannot depend on how much content is above it — this pins that on both a long
