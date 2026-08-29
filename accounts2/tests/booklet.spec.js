@@ -428,8 +428,13 @@ test.describe('You, where the panel is narrow', () => {
     expect(box.height, 'the panel has grown back into a wall').toBeLessThan(750);
   });
 
-  /* Was: every answer lived inside a button you had to press to read it. */
+  /* Was: every answer lived inside a button you had to press to read it.
+     withVoice, because the two rows that carry the most interesting answers are the two the
+     booklet correctly removes on a machine that cannot speak — and a test runner is one. It
+     passed on a laptop and failed on CI, which is the worst way round and the second time
+     this suite has learnt it. */
   test('says which voice and what speed without being pressed', async ({ page }) => {
+    await withVoice(page);
     await page.setViewportSize(PHONE);
     await stock(page);
     await page.locator('.dest[data-dest="you"]').click();
@@ -437,6 +442,27 @@ test.describe('You, where the panel is narrow', () => {
     await expect(page.locator('#pics')).toHaveText('On');
     await expect(page.locator('#speed')).toHaveText(/^[0-9.]+×$/);
     await expect(page.locator('#voice')).toBeVisible();
+    await expect(page.locator('.set-group').nth(1).locator('.set-n')).toHaveText('3');
+  });
+
+  /* The mirror. A device with no voice loses those two rows, and the count on the fold has
+     to lose them too — a heading that promises three rows and opens on one is a worse fault
+     than the missing rows, because it looks like something is broken. */
+  test('a device with no voice says so in the count, not just the rows', async ({ page }) => {
+    await page.addInitScript(() => {
+      try {
+        Object.defineProperty(window.speechSynthesis, 'getVoices',
+          { value: () => [], configurable: true });
+      } catch { /* the assertions below will say so plainly */ }
+    });
+    await page.setViewportSize(PHONE);
+    await stock(page);
+    await page.locator('.dest[data-dest="you"]').click();
+    await page.locator('.set-group').nth(1).locator('.set-h').click();
+    await expect(page.locator('#voice')).toBeHidden();
+    await expect(page.locator('#pics')).toBeVisible();
+    await expect(page.locator('#speed'), 'speed is not the voice, and stays').toBeVisible();
+    await expect(page.locator('.set-group').nth(1).locator('.set-n')).toHaveText('2');
   });
 
   /* The sentence under each label is hidden on a phone but not deleted: a reader who cannot

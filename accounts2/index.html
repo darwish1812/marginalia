@@ -1976,6 +1976,12 @@ function pickVoice(){
        || en.find(v=>/^en-US/i.test(v.lang))
        || en[0];
   fillVoices(en);
+  /* And put the row back. It only ever knew how to take itself away: Chrome answers the
+     first getVoices() with an empty list and delivers the real one through onvoiceschanged
+     a moment later, so the row hid itself during page load and stayed hidden for the life
+     of the page. refreshVoices() has been dutifully refilling a <select> nobody could see —
+     which is the other half of "I downloaded a voice and it never appeared". */
+  showVoiceRow(true);
 }
 
 /* Desktop voices carry the vendor and locale in the name — "Microsoft Zira -
@@ -5351,6 +5357,7 @@ function foldSync(){
          right while the panel is still shut and has no boxes to measure. */
       const rows = [...g.querySelectorAll('.set')].filter(r=>
         !r.hasAttribute('hidden') &&
+        r.style.display !== 'none' &&          /* showVoiceRow() hides its row inline */
         !(phone && r.classList.contains('set-acct')) &&
         !(quiet && r.classList.contains('set-sound')));
       n.textContent = rows.length;
