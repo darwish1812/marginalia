@@ -574,32 +574,35 @@ to say. The status line above the groups is a child of the grid too, and needs
 every forty pixels through ten rows is a fence around every word. Only the groups keep one —
 and below 1024px, where there are no columns to hold the line, the rows do get one.
 
-**The bar on a phone is opaque and carries no backdrop-filter.** At `rgba(20,22,52,.97)`
-the blur was doing nothing anybody could see, and on WebKit a `backdrop-filter` promotes a
-`position:fixed` element into its own composited layer — which is a standing invitation for
-it to be positioned against the scrolling content rather than the viewport. It was reported
-drifting up the screen on the destinations whose page is too short to scroll, which is the
-shape that bug takes. The bar's placement cannot depend on how much content is above it, so
-the cheapest thing it can stop being is interesting to the compositor. The safe-area inset
-is now the padding rather than an addition to it: it is already the height of the home
-indicator, and Apple's own bars sit their labels directly on top of it.
+**The page under the bar is never shorter than the screen,** and that is what fixed the bar
+drifting up an iPhone. `.views` carries `min-height:100dvh` on a phone. **You** is the one
+destination whose content does not fill 844px, and it was the one the bar jumped on, while
+Add — 83px taller, and so scrollable — was not. On a page that cannot scroll, WebKit lays a
+`position:fixed` element out against the document rather than the viewport, and does not
+re-lay it out until something scrolls: which is why the bar stayed up after walking back to
+the book. Every destination is at least a screen tall now, and the fault has gone.
 
-**And the page under it is never shorter than the screen.** `.views` carries
-`min-height:100dvh` on a phone and bottom padding taller than the bar. You is the one
-destination whose content does not fill a phone, and it was the one the bar was reported
-jumping on — a page that cannot scroll is where WebKit's habit of laying a fixed element out
-against the document rather than the viewport has room to show. The padding is a plain fault
-of its own besides: the page ended 30px below its last card while a 60px bar stood over it,
-so the last card could only be read by scrolling it underneath.
+It measured perfectly in Chromium throughout — flush to the viewport bottom on every
+destination, with no ancestor making a containing block for it — so it was found by
+correlation rather than by measurement: the one destination that could not scroll was the one
+that misbehaved.
 
-None of this is a diagnosis. The bar measures flush to the viewport bottom in Chromium on
-every destination, with no ancestor making a containing block for it, so what is written
-above is the two most likely WebKit causes removed rather than a fault found. If it still
-moves, the answer is to stop using `position:fixed` on a phone at all: give `.shell` the
-viewport height and let `.views` be the scroller, so the bar is a grid row that cannot move.
-That changes which element scrolls, which `keepStill()`, the splash observer and every
-`window.scrollTo` in `openPanel()` are all written against — worth doing only against a fault
-that has been reproduced.
+**The bar is also opaque and carries no backdrop-filter,** which was the *first* guess and
+was wrong: it shipped a deploy earlier and the bar went on moving. It stays removed on its
+own merits — at `rgba(20,22,52,.97)` the blur was doing nothing anybody could see, and a
+`backdrop-filter` promotes a fixed element into its own composited layer for no gain. The
+safe-area inset is the bar's padding rather than an addition to it: it is already the height
+of the home indicator, and Apple's own bars sit their labels directly on top of it.
+
+**`.views` also ends above the bar** — a plain fault found while looking for the other one.
+The page ended 30px below its last card while a 60px bar stood over it, so the last card in
+the book could only be read by scrolling it underneath.
+
+If a fixed bar ever misbehaves here again, the answer is to stop using `position:fixed` on a
+phone at all: give `.shell` the viewport height and let `.views` be the scroller, so the bar
+is a grid row that cannot move. That changes which element scrolls, which `keepStill()`, the
+splash observer and every `window.scrollTo` in `openPanel()` are all written against — worth
+doing only against a fault that has been reproduced.
 
 ### 3.6d You, where the panel is narrow
 
