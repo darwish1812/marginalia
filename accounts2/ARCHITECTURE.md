@@ -574,6 +574,16 @@ to say. The status line above the groups is a child of the grid too, and needs
 every forty pixels through ten rows is a fence around every word. Only the groups keep one —
 and below 1024px, where there are no columns to hold the line, the rows do get one.
 
+**The bar on a phone is opaque and carries no backdrop-filter.** At `rgba(20,22,52,.97)`
+the blur was doing nothing anybody could see, and on WebKit a `backdrop-filter` promotes a
+`position:fixed` element into its own composited layer — which is a standing invitation for
+it to be positioned against the scrolling content rather than the viewport. It was reported
+drifting up the screen on the destinations whose page is too short to scroll, which is the
+shape that bug takes. The bar's placement cannot depend on how much content is above it, so
+the cheapest thing it can stop being is interesting to the compositor. The safe-area inset
+is now the padding rather than an addition to it: it is already the height of the home
+indicator, and Apple's own bars sit their labels directly on top of it.
+
 ### 3.6d You, where the panel is narrow
 
 Below 1024px the same rows become what a phone settings screen is. This is one media query

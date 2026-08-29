@@ -580,6 +580,22 @@ test.describe('You, where the panel is narrow', () => {
     expect(Number(await count.textContent()), 'the count and the rows disagree').toBe(rows);
   });
 
+  /* Was: the bar sat a finger's width off the bottom of an iPhone, and moved further up on
+     the destinations whose page is short enough not to scroll. It is position:fixed, so its
+     place cannot depend on how much content is above it — this pins that on both a long
+     destination and a short one, since it was the difference between the two that showed. */
+  test('the bar is on the bottom edge, whatever destination is open', async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await stock(page);
+    const bottom = () => page.locator('.nav').evaluate(
+      el => Math.round(window.innerHeight - el.getBoundingClientRect().bottom));
+    expect(await bottom(), 'the bar floats above the bottom on the book').toBe(0);
+    for (const dest of ['add', 'you']) {
+      await page.locator(`.dest[data-dest="${dest}"]`).click();
+      expect(await bottom(), `the bar moved on ${dest}`).toBe(0);
+    }
+  });
+
   /* Was: the card sat under the iPhone's clock. openPanel() hides the head, and the head is
      the only thing carrying the status bar inset, so a panel has to ask for it.
      env(safe-area-inset-top) is 0 in a desktop Chromium and cannot be emulated, so what is

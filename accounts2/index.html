@@ -372,8 +372,16 @@
     .nav{
       position:fixed; top:auto; bottom:0; left:0; right:0; height:auto; z-index:30;
       flex-direction:row; border-right:0; border-top:1px solid var(--rule);
-      background:rgba(20,22,52,.97); backdrop-filter:blur(10px); overflow:visible;
-      padding:6px 4px calc(4px + env(safe-area-inset-bottom,0px));
+      /* Opaque, and no backdrop-filter. At .97 the blur was doing nothing anybody could
+         see, and on WebKit a backdrop-filter promotes a position:fixed element into its own
+         composited layer, which is a standing invitation for it to be positioned against
+         the scrolling content instead of the viewport. The bar reported drifting up the
+         screen on the short destinations, so the cheapest thing it can stop being is
+         interesting to the compositor. */
+      background:var(--night); overflow:visible;
+      /* The inset is the padding rather than an addition to it: it is already the height of
+         the home indicator, and Apple's own bars sit their labels directly on top of it. */
+      padding:6px 4px max(6px, env(safe-area-inset-bottom,0px));
     }
     .brand,.idxwrap{display:none}
     .dests{flex-direction:row; flex:1; gap:0; padding:0}
