@@ -189,8 +189,9 @@ to Unfiled, and the button says how many before you press it. Eight fields at mo
 ink can only belong to one of them, because the ink index down the side is the index of
 the whole book.
 
-**You → The whole booklet** holds the three things that act on all of it at once —
-keeping a copy, resetting the marks, and emptying it. **Reset marks** puts every card back to
+**You → Starting over** holds the two things there is no way back from — resetting the marks
+and emptying the booklet — behind a fold that is shut when the panel opens. Keeping a copy
+sits with your words, because that is what it copies. **Reset marks** puts every card back to
 unlearned and asks first, naming the number it is about to clear; the words are untouched.
 **Empty this booklet** clears every word at once. It asks first, and names how many are
 about to go: the button reads **Empty 154 words** rather than **Empty it**, because a count
@@ -274,7 +275,14 @@ bump it by hand when you publish or every fault will claim to come from the same
   rather than travelling with the page, so it is there wherever you are in the booklet.
 - **The head is one row on a phone.** The search box and **View** share it; the tally moves to
   **You**, since it is a reading rather than a control and a phone has no row to spare for one.
-  On a tablet and a laptop the tally stays in the head, where a row costs nothing.
+  On a laptop the tally stays in the head, where a row costs nothing.
+- **You is a settings screen on anything narrow.** It opens on a card — who you are, whether
+  it is saving, and how far along you are — then three groups of one-line rows that fold. Each
+  row says its answer on the right rather than hiding it inside a button you have to press to
+  read: **Pictures · On**, **Reading voice · Samantha**, **Reading speed · 0.9×**. Tapping the
+  line opens it, and **Sign out** is behind the card. Below 1024px, so an iPad held upright
+  gets it too — the panel there is 435px wide, narrower than a phone. On a laptop it stays
+  three columns with every reason spelled out.
 - **Nothing folds away on a phone.** There is no `⋯` sheet any more, because there is
   nothing left to hide in one: Study mode and العربية moved into **View**, Settings became a
   place of its own, and what is left above the book — the search box and that one button —

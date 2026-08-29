@@ -727,7 +727,9 @@
   #settings{grid-template-columns:auto minmax(240px,1fr) minmax(180px,auto);
             column-gap:clamp(18px,2.4vw,30px)}
   #settings.on{display:grid}
-  .set-group,.set{display:contents}
+  /* .set-b is the part a fold can hide. On a desk it has to disappear from the box
+     tree entirely or the rows stop being items of the panel's own grid. */
+  .set-group,.set-b,.set{display:contents}
   /* .set-t and .set-d are more specific than .panel p here on purpose. Unscoped they lose to
      it, and have been losing: a title asks for 12px, --paper and 5px beneath it and was
      rendering at 15px, dim, with 16px — the same grey as its own description, and three lines
@@ -755,15 +757,6 @@
   .set.grave .set-t{color:var(--ink-3)}   /* red for the one there is no undo for */
   #settings input{background:var(--night-2); border:1px solid var(--ink-3); border-radius:7px;
     padding:7px 11px; color:var(--paper); font:14px/1.4 "Newsreader",Georgia,serif; width:104px}
-  /* One column on a phone: the three cells stack the way they always did, and the control
-     goes back to the left because there is no second column for it to sit against. */
-  @media(max-width:719px){
-    #settings{grid-template-columns:minmax(0,1fr)}
-    .panel .set-t{padding:14px 0 0; white-space:normal}
-    .panel .set-d{padding:3px 0 0}
-    .set .ctl{justify-content:flex-start; padding:9px 0 0}
-    #settings .set > .note{grid-column:1/-1}
-  }
   body.nosound .set-sound{display:none}
   .step{margin-top:24px; padding-top:20px; border-top:1px solid var(--rule)}
   .step:first-of-type{border-top:0; padding-top:0; margin-top:0}
@@ -815,11 +808,153 @@
      group is a run of rows that belong to the same owner, under a label saying who. The
      group has no box of its own — it is display:contents like the rows — so the rule that
      separates one from the next rides its heading. */
-  .set-h{grid-column:1/-1; margin-bottom:9px}
+  /* A <button>, because on a phone it folds its group. On a desk it folds nothing, so
+     it gives back every scrap a button brings with it and is taken out of the tab
+     order in script — a control that does nothing should not be stopped at. */
+  .set-h{grid-column:1/-1; margin-bottom:9px;
+         background:none; border:0; padding:0; width:100%; text-align:left; cursor:default}
+  .set-n{display:none}      /* the fold's tally: there are no folds up here */
+  .youcard{display:none}    /* nor a card: the head has the tally, Account has the rest */
   .set-group + .set-group .set-h{margin-top:18px; padding-top:16px; border-top:1px solid var(--rule)}
   /* No hairline between the rows inside a group. Three columns holding their line is
      structure enough, and a rule every forty pixels through ten rows is a fence around
-     every word. The groups keep theirs: those separate things that really are different. */
+     every word. The groups keep theirs: those separate things that really are different.
+     A phone has no columns to hold the line, so down there the rows do get a hairline. */
+
+  /* ---------- You, where the panel is narrow ----------
+     Above this width the panel is three columns — name, reason, control — and every rule
+     below leaves it alone. Below it the same rows become what a phone settings screen is:
+     a card saying whose booklet this is, then groups of one-line rows that fold.
+
+     1023, and not the 719 the rest of the shell turns on, because this panel does not get
+     the whole screen. An iPad held upright is 834px wide and leaves it 435 once the rail
+     and the field index have taken theirs — narrower than the phone this layout is named
+     after. Three columns with floors of 240 and 180 cannot fit in that, and had not been
+     fitting: the panel overflowed by 132px and put a horizontal scrollbar under the whole
+     app, on the device most likely to be held upright while reading.
+
+     It stacked into one column before, which is not the same thing. Three cells stacked
+     ten times is thirty elements and 1,371px of panel, none of it denser or lighter than
+     any other part, and the answers — which voice, what speed, whether pictures are on —
+     were all inside buttons you had to press to read.
+
+     The reasons are not thrown away with the second line. Every one is still in the page,
+     and every control points at its own with aria-describedby, so a reader who cannot see
+     the row still hears "Slower is easier to shadow aloud when a word is new" on a line
+     that only draws the words "Reading speed".
+
+     This block sits after the desktop rules on purpose. A media query adds no specificity,
+     so the old phone block — written sixty lines above .set-h — would have lost every
+     argument with it and lost them silently. */
+  @media(max-width:1023px){
+    /* The panel gives up its own frame here. It is a box in the same ink as the rows
+       inside it, so a card drawn on top of it read as a card inside a card and neither
+       looked like either — and the 24px it was holding is 13% of the width of a phone. */
+    #settings.on{display:block; background:none; border:0; padding:0; border-radius:0}
+    #tally2{display:none}           /* the card carries the number down here */
+
+    /* ── the card ── */
+    .youcard{
+      display:block; width:100%; text-align:left; cursor:pointer; color:var(--paper);
+      font-family:"Newsreader",Georgia,serif;
+      background:var(--night-2); border:1px solid var(--rule); border-radius:14px;
+      padding:16px 16px 14px; margin:0 0 2px;
+    }
+    .youcard:focus-visible{outline:2px solid var(--ink-1); outline-offset:2px}
+    .you-top{display:flex; align-items:flex-start; gap:12px}
+    .you-txt{flex:1; min-width:0}
+    .you-who{display:block; font-size:15px; line-height:1.3;
+             overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+    .you-sub{display:block; margin-top:4px; font-family:"Archivo",sans-serif; font-size:10.5px;
+             font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-2)}
+    .youcard.out .you-sub{color:var(--dim)}     /* not signed in is a fact, not a fault */
+    .youcard.warn .you-sub{color:var(--ink-3)}  /* a save that did not land is a fault */
+    .you-chev{
+      flex:none; width:7px; height:7px; margin-top:5px;
+      border-right:1.5px solid rgba(241,239,233,.36);
+      border-bottom:1.5px solid rgba(241,239,233,.36);
+      transform:rotate(-45deg);
+    }
+    .you-meter{display:block; margin-top:14px}
+    .you-fig{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:7px}
+    .you-big{font-size:24px; line-height:1; font-variant-numeric:tabular-nums}
+    .you-big i{font-style:normal; color:var(--dim)}
+    .you-cap{font-family:"Archivo",sans-serif; font-size:9.5px; font-weight:600;
+             letter-spacing:.15em; text-transform:uppercase; color:var(--dim)}
+    .you-bar{display:block; height:3px; border-radius:2px; overflow:hidden;
+             background:rgba(241,239,233,.13)}
+    .you-bar i{display:block; height:100%; background:var(--ink-1); border-radius:2px;
+               transition:width .3s ease}
+
+    /* ── the groups, which fold ── */
+    .set-group{display:block}
+    .set-b{display:block; border-radius:12px; overflow:hidden}
+    .set-group.shut .set-b{display:none}
+    .set-h{
+      display:flex; align-items:center; gap:10px; width:100%;
+      margin:0; padding:20px 2px 9px; cursor:pointer; border-top:0;
+    }
+    .set-group + .set-group .set-h{margin-top:0; padding-top:20px; border-top:0}
+    .set-h:focus-visible{outline:2px solid var(--ink-1); outline-offset:2px}
+    .set-n{display:block; margin-left:auto; font-size:10px; letter-spacing:.06em;
+           color:var(--ink-0)}
+    .set-h::after{
+      content:""; flex:none; width:7px; height:7px; margin-bottom:-3px;
+      border-right:1.5px solid rgba(241,239,233,.36);
+      border-bottom:1.5px solid rgba(241,239,233,.36);
+      transform:rotate(-135deg);
+    }
+    .set-group.shut .set-h::after{transform:rotate(45deg); margin-bottom:3px}
+
+    /* ── a row is one line ── */
+    .set{
+      position:relative; display:flex; align-items:center; flex-wrap:wrap; gap:10px;
+      padding:13px 14px; background:var(--night-2);
+    }
+    .set + .set{box-shadow:inset 0 1px 0 var(--rule)}
+    .set-acct{display:none}         /* the card has already said who you are */
+    .panel .set-t{flex:1 1 auto; min-width:0; padding:0; white-space:normal; line-height:1.25}
+    .panel .set-d{display:none}     /* still in the page, still read aloud — see relabel() */
+    .set .ctl{flex:none; justify-content:flex-end; padding:0; gap:8px}
+    #settings .set > .note{flex-basis:100%; margin:3px 0 0}
+
+    /* The control stops wearing a pill. On a line already headed PICTURES, an outlined
+       button reading "Pictures on" says the word twice and tells you nothing a plain "On"
+       does not — so it says the answer, at the right-hand end, where a phone puts answers.
+       The long name is still what a desk shows; one control, two lengths, see relabel(). */
+    .set .ctl > .btn{
+      border:0; background:none; padding:0; border-radius:0; text-transform:none;
+      font-size:12.5px; font-weight:500; letter-spacing:.04em; color:var(--dim);
+    }
+    .set .ctl > .btn[aria-pressed="true"]{background:none; color:var(--paper)}
+    .set .ctl > select.btn{max-width:158px; text-align:right}
+    .set.grave .ctl > .btn{color:var(--ink-3)}
+    .set .ctl > .btn:disabled{opacity:.4}
+
+    /* A door has no answer to show, so it shows the chevron. The tap target is the whole
+       row, which a stylesheet cannot arrange on its own: the click is forwarded in script,
+       behind this same width. */
+    .set-door .ctl > .btn{position:relative; width:14px; height:18px; font-size:0; color:transparent}
+    .set-door .ctl > .btn::after{
+      content:""; position:absolute; top:5px; right:2px; width:7px; height:7px;
+      border-right:1.5px solid rgba(241,239,233,.36);
+      border-bottom:1.5px solid rgba(241,239,233,.36);
+      transform:rotate(-45deg);
+    }
+
+    /* The one row with two controls, and the only one whose controls take a line of their
+       own rather than crushing the name into a ribbon. */
+    .set-wide .ctl{flex-basis:100%; justify-content:flex-start; padding-top:2px}
+    .set-wide .ctl > .btn,
+    #resetgo,#resetno,#emptygo,#emptyno{
+      border:1px solid var(--rule); padding:8px 13px; border-radius:7px;
+      text-transform:uppercase; font-size:11px; letter-spacing:.11em;
+    }
+    /* While a bulk action is asking, its two answers wear the pill again and take the line
+       below: a confirmation that looks like a value is not a confirmation. */
+    .set-ask.asking .ctl{flex-basis:100%; justify-content:flex-start; padding-top:6px}
+    #resetgo,#emptygo{color:var(--ink-3); border-color:rgba(196,72,92,.45)}
+  }
 
   /* ---------- the card menu ---------- */
   .more{
@@ -1455,18 +1590,45 @@
              here instead — the same number, in the room that holds the other numbers. -->
         <p class="note tally-you" id="tally2"></p>
 
+        <!-- A phone opens a tab called "You" expecting to be told whose screen this is. It
+             was being told 0 / 166 in the smallest type on the page, floating above a list
+             the number had nothing to do with. The card is that answer — the account, the
+             sync state and the progress in one object — and because the card is the account
+             it is also the way into it, which is where Sign out lives. It is drawn only
+             below 719px; on a desk the head carries the tally and the Account row carries
+             the rest. -->
+        <button class="youcard" id="youcard" type="button">
+          <span class="you-top">
+            <span class="you-txt">
+              <span class="you-who" id="youwho">On this device</span>
+              <span class="you-sub" id="yousub">Words stay in this browser</span>
+            </span>
+            <span class="you-chev"></span>
+          </span>
+          <span class="you-meter">
+            <span class="you-fig">
+              <span class="you-big" id="youbig">0<i> / 0</i></span>
+              <span class="you-cap">Learned</span>
+            </span>
+            <span class="you-bar"><i id="youbar"></i></span>
+          </span>
+        </button>
+
         <!-- Three kinds of thing sat in one flat list here, so a reader after the download
              had to know it lived under a gear next to a voice picker. They are grouped now
-             by what they belong to: the rooms you can walk into, the booklet itself, and
-             this one device. That last line is the app's own — words, marks and corrections
-             follow the account; pictures, voice and speed never leave the machine.
+             by what they belong to: the rooms you can walk into, this one device, and the
+             two things there is no way back from. Words, marks and corrections follow the
+             account; pictures, voice and speed never leave the machine.
 
              Each row is three cells and nothing else: the name, the reason, the control.
-             The panel holds the columns; see the grid on #settings. -->
+             The panel holds the columns; see the grid on #settings. On a phone the same
+             three cells become one line — see the media query, which is where the whole of
+             the phone layout lives. -->
         <div class="set-group">
-          <span class="set-h">Your words</span>
+          <button class="set-h" type="button">Your words<span class="set-n"></span></button>
+          <div class="set-b">
 
-          <div class="set">
+          <div class="set set-door">
             <p class="set-t">Add words</p>
             <p class="set-d" id="addhint">Paste a list, take the prompt to Claude, bring the reply back.</p>
             <div class="ctl"><button class="btn" id="addbtn" aria-pressed="false">+ Add words</button></div>
@@ -1478,66 +1640,52 @@
           <div class="set" id="automerge-row" hidden>
             <p class="set-t">Merging</p>
             <p class="set-d">Enriched words can land in the booklet, or wait to be read first.</p>
-            <div class="ctl"><button class="btn" id="automerge" aria-pressed="false">Merge automatically</button></div>
+            <div class="ctl"><button class="btn" id="automerge" aria-pressed="false"
+                                     data-long="Merge automatically" data-short="Wait to read">Merge automatically</button></div>
           </div>
 
-          <div class="set">
+          <!-- Kept for the desk, where there is a column for it. A phone reads the same fact
+               off the card at the top of the panel and hides this row, because a booklet
+               should not say who you are twice on a screen that small. -->
+          <div class="set set-door set-acct">
             <p class="set-t">Account</p>
             <p class="set-d" id="accthint">Your words follow you between devices.</p>
             <div class="ctl"><button class="btn" id="acctbtn" aria-pressed="false">Sign in</button></div>
           </div>
 
-          <div class="set">
+          <div class="set set-door">
             <p class="set-t">Fields</p>
             <p class="set-d" id="fldhint">The inks down the side of the page. Rename, recolour, add your own.</p>
             <div class="ctl"><button class="btn" id="fldbtn" aria-pressed="false">Edit fields</button></div>
           </div>
-        </div>
-
-        <div class="set-group">
-          <span class="set-h">The whole booklet</span>
 
           <!-- Not a step in adding words — it never was, really. Keeping a copy is something
-               you do to the booklet, so it lives with the other things you do to the booklet. -->
-          <div class="set">
+               you do to your own words, so it sits with them rather than under a heading
+               about the booklet as an object. Two buttons, so on a phone this is the one row
+               whose controls take a line of their own. -->
+          <div class="set set-wide">
             <p class="set-t">Keep a copy</p>
             <p class="set-d" id="copyhint">Your words save themselves. Take a copy whenever you want one.</p>
             <div class="ctl">
-              <button class="btn" id="dl">Download words.json</button>
-              <button class="btn" id="dlprog">Export progress</button>
+              <button class="btn" id="dl"
+                      data-long="Download words.json" data-short="Words.json">Download words.json</button>
+              <button class="btn" id="dlprog"
+                      data-long="Export progress" data-short="Progress">Export progress</button>
             </div>
           </div>
 
-          <!-- Every tick at once. This stood in the toolbar wearing the same pill as Study
-               mode and went off on a single click — cheaper than removing one word, which
-               asks twice. It is beside the other thing that acts on everything now, and it
-               asks: the confirmation replaces the button inside the control cell, so the row
-               keeps the same right edge as every other row while it is asking. -->
-          <div class="set">
-            <p class="set-t">Reset marks</p>
-            <p class="set-d">Every card back to unlearned. The words stay.</p>
-            <div class="ctl" id="resetrow"><button class="btn" id="reset">Reset marks</button></div>
-            <p class="note" id="resetmsg"></p>
-          </div>
-
-          <!-- The only bulk action in the app. Removing words one at a time is right for
-               a booklet you are tending; it is cruelty for someone who signed up, got a
-               hundred and fifty words about castles, and wanted none of them. -->
-          <div class="set grave">
-            <p class="set-t">Empty this booklet</p>
-            <p class="set-d" id="emptydesc">Every word goes, and the starting question comes back. No undo.</p>
-            <div class="ctl" id="emptyrow"><button class="btn fld-del" id="emptybtn">Empty this booklet</button></div>
-            <p class="note" id="emptymsg"></p>
           </div>
         </div>
 
         <div class="set-group">
-          <span class="set-h">This device only</span>
+          <button class="set-h" type="button">This device only<span class="set-n"></span></button>
+          <div class="set-b">
 
           <div class="set">
             <p class="set-t">Pictures</p>
             <p class="set-d">A few words carry a drawing, watermarked into the card.</p>
-            <div class="ctl"><button class="btn" id="pics" aria-pressed="true">Pictures on</button></div>
+            <div class="ctl"><button class="btn" id="pics" aria-pressed="true"
+                                     data-long="Pictures on" data-short="On">Pictures on</button></div>
           </div>
 
           <div class="set set-sound">
@@ -1549,7 +1697,45 @@
           <div class="set set-sound">
             <p class="set-t">Reading speed</p>
             <p class="set-d">Slower is easier to shadow aloud when a word is new.</p>
-            <div class="ctl"><button class="btn" id="speed">Speed 0.9×</button></div>
+            <div class="ctl"><button class="btn" id="speed"
+                                     data-long="Speed 0.9×" data-short="0.9×">Speed 0.9×</button></div>
+          </div>
+
+          </div>
+        </div>
+
+        <!-- The two there is no way back from, together and last, behind a fold that is shut
+             when the panel opens. They were spread through a list called "the whole booklet"
+             beside Keep a copy, which is a friendly thing to do to your words and sat one
+             row above the least friendly. -->
+        <div class="set-group">
+          <button class="set-h" type="button">Starting over<span class="set-n"></span></button>
+          <div class="set-b">
+
+          <!-- Every tick at once. This stood in the toolbar wearing the same pill as Study
+               mode and went off on a single click — cheaper than removing one word, which
+               asks twice. It asks now: the confirmation replaces the button inside the
+               control cell, so the row keeps the same right edge as every other row while
+               it is asking. -->
+          <div class="set set-ask">
+            <p class="set-t">Reset marks</p>
+            <p class="set-d">Every card back to unlearned. The words stay.</p>
+            <div class="ctl" id="resetrow"><button class="btn" id="reset"
+                 data-long="Reset marks" data-short="Reset…">Reset marks</button></div>
+            <p class="note" id="resetmsg"></p>
+          </div>
+
+          <!-- The only bulk action in the app. Removing words one at a time is right for
+               a booklet you are tending; it is cruelty for someone who signed up, got a
+               hundred and fifty words about castles, and wanted none of them. -->
+          <div class="set set-ask grave">
+            <p class="set-t">Empty this booklet</p>
+            <p class="set-d" id="emptydesc">Every word goes, and the starting question comes back. No undo.</p>
+            <div class="ctl" id="emptyrow"><button class="btn fld-del" id="emptybtn"
+                 data-long="Empty this booklet" data-short="Empty…">Empty this booklet</button></div>
+            <p class="note" id="emptymsg"></p>
+          </div>
+
           </div>
         </div>
       </section>
@@ -2046,6 +2232,7 @@ function paint(){
      and a phone shows only the second. One writer, so they cannot drift apart. */
   const t2 = document.getElementById('tally2');
   if(t2) t2.innerHTML = t;
+  youCard();
 }
 /* Both go through the store: on this device that is still localStorage, on an account it
    is a column on the word's own row, which is what finally makes a tick on the iPad
@@ -2348,10 +2535,10 @@ arBtn.addEventListener('click',()=>{
 const RATES=[0.6,0.75,0.9,1], RKEY='vocab-rate';
 const spBtn=document.getElementById('speed');
 try{ const r=parseFloat(localStorage.getItem(RKEY)); if(RATES.includes(r)) rate=r; }catch(e){}
-spBtn.textContent = 'Speed '+rate+'×';
+ctlLabel(spBtn, 'Speed '+rate+'×', rate+'×');
 spBtn.addEventListener('click',()=>{
   rate = RATES[(RATES.indexOf(rate)+1)%RATES.length];
-  spBtn.textContent = 'Speed '+rate+'×';
+  ctlLabel(spBtn, 'Speed '+rate+'×', rate+'×');
   try{ localStorage.setItem(RKEY, String(rate)); }catch(e){}
   if(TTS) speechSynthesis.cancel();
   if(current){ current.classList.remove('speaking'); current=null; }
@@ -2801,7 +2988,11 @@ function resetIdle(){
   const row=document.getElementById('resetrow'), msg=document.getElementById('resetmsg');
   row.textContent='';
   const b=document.createElement('button');
-  b.className='btn'; b.id='reset'; b.textContent='Reset marks';
+  b.className='btn'; b.id='reset';
+  /* "Reset marks · Reset" says the word twice. The ellipsis is the older and better
+     answer: it does not name the action again, it says this one stops to ask. */
+  ctlLabel(b, 'Reset marks', 'Reset…');
+  row.closest('.set').classList.remove('asking');
   /* nothing learned is nothing to reset, and a live button that does nothing is a lie */
   b.disabled = done.size===0;
   row.appendChild(b);
@@ -2819,6 +3010,10 @@ document.getElementById('resetrow').addEventListener('click', e=>{
     const no=document.createElement('button');
     no.className='btn'; no.id='resetno'; no.textContent='Cancel';
     row.textContent=''; row.append(go,no);
+    /* On a phone the row is one line and the control is a word at the right-hand end. Two
+       pills and a sentence do not belong on that line, so while it is asking the row lets
+       them have one of their own. */
+    row.closest('.set').classList.add('asking');
     msg.className='note warn';
     msg.textContent = store.id==='cloud'
       ? 'Every tick goes, on every device. The words stay where they are.'
@@ -3483,6 +3678,7 @@ function setAcctState(email){
     btn.textContent = 'Sign in';
     hint.textContent = 'Sign in to see your words and to keep new ones.';
   }
+  youCard(email || null);
 }
 
 function syncNote(text){
@@ -3490,6 +3686,7 @@ function syncNote(text){
   if(!el) return;
   el.textContent = text || '';
   el.className = text ? 'note warn' : 'note';
+  youCard();
 }
 
 /* ---------- the sign-in gate ----------
@@ -3906,7 +4103,9 @@ function emptyIdle(){
   const row=document.getElementById('emptyrow'), msg=document.getElementById('emptymsg');
   row.textContent='';
   const b=document.createElement('button');
-  b.className='btn fld-del'; b.id='emptybtn'; b.textContent='Empty this booklet';
+  b.className='btn fld-del'; b.id='emptybtn';
+  ctlLabel(b, 'Empty this booklet', 'Empty…');
+  row.closest('.set').classList.remove('asking');
   row.appendChild(b);
   msg.className='note'; msg.textContent='';
 }
@@ -3931,6 +4130,7 @@ document.getElementById('emptyrow').addEventListener('click', async e=>{
       ? 'Every word goes, on every device. This cannot be undone.'
       : 'Every word goes from this browser. This cannot be undone.';
     row.textContent=''; row.append(go, no); no.focus();
+    row.closest('.set').classList.add('asking');
     return;
   }
 
@@ -4115,7 +4315,7 @@ const PKEY='vocab-pics', picBtn=document.getElementById('pics');
 function setPics(on){
   document.body.classList.toggle('nopics', !on);
   picBtn.setAttribute('aria-pressed', String(on));
-  picBtn.textContent = on ? 'Pictures on' : 'Pictures off';
+  ctlLabel(picBtn, on ? 'Pictures on' : 'Pictures off', on ? 'On' : 'Off');
   try{ localStorage.setItem(PKEY, on?'1':'0'); }catch(e){}
 }
 let picsOn=true; try{ picsOn = localStorage.getItem(PKEY)!=='0'; }catch(e){}
@@ -4138,7 +4338,8 @@ document.getElementById('automerge').addEventListener('click', async ()=>{
     if(!r.ok) throw new Error('HTTP '+r.status);
     GATEWAY.auto_merge = want;
     btn.setAttribute('aria-pressed', String(want));
-    btn.textContent = want ? 'Merging automatically' : 'Merge automatically';
+    ctlLabel(btn, want ? 'Merging automatically' : 'Merge automatically',
+                  want ? 'Automatic' : 'Wait to read');
     syncNote('');
   }catch(e){ syncNote('That setting did not save — '+errText(e)); }
   btn.disabled = false;
@@ -4290,7 +4491,8 @@ async function loadGateway(){
   const am = document.getElementById('automerge');
   if(am){
     am.setAttribute('aria-pressed', String(!!GATEWAY.auto_merge));
-    am.textContent = GATEWAY.auto_merge ? 'Merging automatically' : 'Merge automatically';
+    ctlLabel(am, GATEWAY.auto_merge ? 'Merging automatically' : 'Merge automatically',
+                 GATEWAY.auto_merge ? 'Automatic' : 'Wait to read');
   }
 }
 
@@ -5048,4 +5250,155 @@ document.getElementById('dlprog').addEventListener('click',()=>{
 });
 
 /* search lives with the mark filter, up beside the progress it reads — see applyFilters */
+
+/* ---------- You, where the panel is narrow ----------
+   Below 1023px the panel is a card and three folds rather than ten stacked blocks; the
+   stylesheet does the drawing, and this does the four things a stylesheet cannot. The width
+   has to be the stylesheet's own — see the media query, which says why it is 1023 and not
+   the 719 the rest of the shell turns on.
+
+   The width is a function and not a const, and so is the question it answers. setPics()
+   runs while the page is still parsing, hundreds of lines above this one, and reaches
+   isPhone() through ctlLabel(); a `const NARROW` up here would still be in its dead zone
+   at that moment and would throw. A function declaration is hoisted and is not. */
+function narrowQuery(){ return '(max-width:1023px)'; }
+function isPhone(){ return window.matchMedia(narrowQuery()).matches; }
+
+/* A control has one name in two lengths. On a desk the row has a column of its own for the
+   reason and the button can afford to say "Pictures on"; on a phone the row is one line
+   already headed PICTURES, and the button saying it again was half of why the panel read as
+   a wall. Both are kept on the element, so turning the phone sideways is not a relabelling
+   problem — see the matchMedia listener at the bottom. */
+function ctlLabel(el, long, short){
+  if(!el) return;
+  el.dataset.long = long; el.dataset.short = short;
+  el.textContent = isPhone() ? short : long;
+}
+function relabel(){
+  const phone = isPhone();
+  document.querySelectorAll('#settings [data-long]').forEach(el=>{
+    el.textContent = phone ? el.dataset.short : el.dataset.long;
+  });
+}
+
+/* The card. Who you are, whether it is saving, and how far along you are — the three facts
+   a phone opens a tab called "You" expecting, and the last of which used to be the smallest
+   type on the page. It is written from whatever the account and the tally last said, so the
+   email is remembered here rather than read back out of the panel. */
+var youEmail = null;
+function youCard(email){
+  if(email !== undefined) youEmail = email;
+  const card = document.getElementById('youcard');
+  if(!card) return;
+  const who = document.getElementById('youwho'), sub = document.getElementById('yousub');
+  const big = document.getElementById('youbig'), bar = document.getElementById('youbar');
+
+  const sync = document.getElementById('sync');
+  const stuck = !!(sync && sync.textContent.trim());
+  card.classList.remove('out','warn');
+
+  if(!ACCOUNTS){
+    who.textContent = 'On this device';
+    sub.textContent = 'Words stay in this browser';
+    card.classList.add('out');
+  }else if(youEmail){
+    who.textContent = youEmail;
+    /* The line above the card already carries the whole sentence when a save has not
+       landed. This says only that one has not, in the two words a glance can take. */
+    sub.textContent = stuck ? 'Not all saved' : 'Signed in';
+    if(stuck) card.classList.add('warn');
+  }else{
+    who.textContent = 'Not signed in';
+    sub.textContent = 'Words stay in this browser';
+    card.classList.add('out');
+  }
+
+  const n = done.size, all = W.length;
+  big.innerHTML = `${n}<i> / ${all}</i>`;
+  bar.style.width = all ? (n / all * 100) + '%' : '0%';
+}
+
+/* ---------- the folds ---------- */
+const FOLDKEY = 'vocab-you-folds';
+const youGroups = ()=> [...document.querySelectorAll('#settings .set-group')];
+
+/* Shut by default except the first. A reader who opens You is far likelier to be adding
+   words than changing a voice, and Starting over holds the two things there is no way back
+   from — a fold is a small piece of distance to put in front of them. */
+function foldInit(){
+  let saved = null;
+  try{ saved = JSON.parse(localStorage.getItem(FOLDKEY)); }catch(e){}
+  youGroups().forEach((g,i)=>{
+    g.classList.toggle('shut', Array.isArray(saved) ? !!saved[i] : i > 0);
+  });
+  foldSync();
+}
+
+/* The heading is a <button> because on a phone it does something. On a desk it does not, so
+   it leaves the tab order rather than stopping a keyboard on a control with no effect. */
+function foldSync(){
+  const phone = isPhone(), quiet = document.body.classList.contains('nosound');
+  youGroups().forEach(g=>{
+    const h = g.querySelector('.set-h');
+    if(h){
+      h.tabIndex = phone ? 0 : -1;
+      if(phone) h.setAttribute('aria-expanded', String(!g.classList.contains('shut')));
+      else h.removeAttribute('aria-expanded');
+    }
+    const n = g.querySelector('.set-n');
+    if(n){
+      /* Counted from the rules that hide rows rather than from the layout, so the number is
+         right while the panel is still shut and has no boxes to measure. */
+      const rows = [...g.querySelectorAll('.set')].filter(r=>
+        !r.hasAttribute('hidden') &&
+        !(phone && r.classList.contains('set-acct')) &&
+        !(quiet && r.classList.contains('set-sound')));
+      n.textContent = rows.length;
+    }
+  });
+}
+
+/* Each row keeps its reason in the page and hands it to its own control, so a line drawing
+   only the words "Reading speed" is still read out with "Slower is easier to shadow aloud
+   when a word is new" behind it. Hiding that sentence was never meant to delete it. */
+function youDescribe(){
+  document.querySelectorAll('#settings .set').forEach((row,i)=>{
+    const d = row.querySelector('.set-d');
+    const c = row.querySelector('.ctl > .btn, .ctl > select');
+    if(!d || !c) return;
+    if(!d.id) d.id = 'setd-' + i;
+    if(!c.getAttribute('aria-describedby')) c.setAttribute('aria-describedby', d.id);
+  });
+}
+
+document.getElementById('settings').addEventListener('click', e=>{
+  const h = e.target.closest('.set-h');
+  if(h){
+    if(!isPhone()) return;                 /* no folds on a desk; every row is shown */
+    const g = h.parentElement;
+    g.classList.toggle('shut');
+    h.setAttribute('aria-expanded', String(!g.classList.contains('shut')));
+    try{ localStorage.setItem(FOLDKEY,
+      JSON.stringify(youGroups().map(x=>x.classList.contains('shut')))); }catch(err){}
+    return;
+  }
+
+  /* The row is the door. A chevron is fourteen pixels wide and the line it sits on is three
+     hundred, so the line takes the tap — but only where there is exactly one button to send
+     it to, and never on the two that ask, where a stray thumb should not land. */
+  if(!isPhone()) return;
+  const row = e.target.closest('#settings .set');
+  if(!row || row.classList.contains('set-ask') || row.classList.contains('set-wide')) return;
+  if(e.target.closest('.btn, select, input, a')) return;
+  const btns = row.querySelectorAll('.ctl > .btn');
+  if(btns.length === 1 && btns[0].tagName === 'BUTTON' && !btns[0].disabled) btns[0].click();
+});
+
+/* The card is the account, so it is the way into it — and Sign out is what is in there. */
+document.getElementById('youcard').addEventListener('click', ()=> openPanel(acctPanel));
+
+foldInit(); youDescribe(); relabel(); youCard();
+/* Turning a phone sideways crosses 719px, and a panel left holding the wrong set of names
+   and an open fold nobody can close is worse than either layout. */
+window.matchMedia(narrowQuery()).addEventListener('change', ()=>{ relabel(); foldSync(); });
 </script>

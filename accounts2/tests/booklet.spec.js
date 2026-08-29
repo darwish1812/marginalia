@@ -402,3 +402,134 @@ test.describe('the shell at each size', () => {
     await expect(page.locator('.brand'), 'the fold was not remembered').toBeHidden();
   });
 });
+
+test.describe('You, where the panel is narrow', () => {
+  /* Was: the panel was three columns collapsed into one, so ten settings became thirty
+     stacked blocks and 1,255px of scroll on a 812px screen — nothing denser or lighter than
+     anything else, and no way to see which voice or what speed without pressing something.
+     A number that stands for the whole complaint is the only honest guard against it
+     creeping back one padding rule at a time. */
+  test('opens on a card, not on a wall', async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await stock(page);
+    await page.locator('.dest[data-dest="you"]').click();
+    await expect(page.locator('#youcard')).toBeVisible();
+    await expect(page.locator('#tally2'), 'the card carries the tally now').toBeHidden();
+    await expect(page.locator('.set-acct'), 'and it carries the account').toBeHidden();
+    await expect(page.locator('.set-d').first(), 'the row is not one line').toBeHidden();
+    /* Measured with every fold open, which is the state the old panel was always in. A
+       folded panel is short whatever the rows look like, so measuring it at rest would
+       have passed with the reasons switched back on — it did, the first time this was
+       written. */
+    for (const h of await page.locator('.set-group .set-h').all()) {
+      if (await h.getAttribute('aria-expanded') === 'false') await h.click();
+    }
+    const box = await page.locator('#settings').boundingBox();
+    expect(box.height, 'the panel has grown back into a wall').toBeLessThan(750);
+  });
+
+  /* Was: every answer lived inside a button you had to press to read it. */
+  test('says which voice and what speed without being pressed', async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await stock(page);
+    await page.locator('.dest[data-dest="you"]').click();
+    await page.locator('.set-group').nth(1).locator('.set-h').click();
+    await expect(page.locator('#pics')).toHaveText('On');
+    await expect(page.locator('#speed')).toHaveText(/^[0-9.]+×$/);
+    await expect(page.locator('#voice')).toBeVisible();
+  });
+
+  /* The sentence under each label is hidden on a phone but not deleted: a reader who cannot
+     see the row still has to be told why the speed matters. */
+  test('keeps every reason for a reader who cannot see the row', async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await stock(page);
+    await page.locator('.dest[data-dest="you"]').click();
+    const id = await page.locator('#speed').getAttribute('aria-describedby');
+    expect(id, 'the control lost its reason').toBeTruthy();
+    await expect(page.locator('#' + id)).toHaveText(/shadow aloud/);
+  });
+
+  test('folds a group, and remembers which', async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await stock(page);
+    await page.locator('.dest[data-dest="you"]').click();
+    const first = page.locator('.set-group').first();
+    await expect(first.locator('.set-b')).toBeVisible();      // your words, open at rest
+    await first.locator('.set-h').click();
+    await expect(first.locator('.set-b')).toBeHidden();
+    await page.reload();
+    await expect(page.locator('.card').first()).toBeVisible();
+    await page.locator('.dest[data-dest="you"]').click();
+    await expect(page.locator('.set-group').first().locator('.set-b'),
+      'the fold was not remembered').toBeHidden();
+  });
+
+  /* A chevron is 14px wide on a line 343px long. The line takes the tap. */
+  test('the row is the door, not just its chevron', async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await stock(page);
+    await page.locator('.dest[data-dest="you"]').click();
+    await page.locator('.set-door', { hasText: 'Add words' }).locator('.set-t').click();
+    await expect(page.locator('#panel')).toBeVisible();
+  });
+
+  test('the card is the way to the account', async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await stock(page);
+    await page.locator('.dest[data-dest="you"]').click();
+    await page.locator('#youcard').click();
+    await expect(page.locator('#account')).toBeVisible();
+  });
+
+  /* Two pills and a sentence do not fit beside a name on a 343px line, so while it asks the
+     row gives them one of their own. Without it the name is squeezed to nothing. */
+  test('a bulk action still asks, on a line of its own', async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await stock(page);
+    await page.locator('.dest[data-dest="you"]').click();
+    await page.locator('.set-group').nth(2).locator('.set-h').click();
+    await page.locator('#emptybtn').click();
+    const row = page.locator('.set-ask.grave');
+    await expect(row).toHaveClass(/asking/);
+    await expect(page.locator('#emptygo')).toHaveText('Empty 154 words');
+    const name = await row.locator('.set-t').boundingBox();
+    const go   = await page.locator('#emptygo').boundingBox();
+    expect(go.y, 'the confirmation did not take its own line')
+      .toBeGreaterThan(name.y + name.height - 2);
+    /* The failure this is really watching for: the name crushed into a ribbon to make room
+       for two pills beside it, which is what happens if the row stops letting them wrap. */
+    expect(name.width, 'the name was squeezed out of the way').toBeGreaterThan(120);
+  });
+
+  /* The fault that set the width. An iPad held upright gave the panel 435px and the three
+     columns would not fit in it: 132px of overflow, and a horizontal scrollbar under the
+     whole app. It had been doing that before any of this was written. */
+  test('a tablet held upright gets the card too, and no sideways scroll', async ({ page }) => {
+    await page.setViewportSize(TABLET);
+    await stock(page);
+    await page.locator('.dest[data-dest="you"]').click();
+    await expect(page.locator('#youcard')).toBeVisible();
+    const over = await page.evaluate(() => {
+      const d = document.documentElement;
+      return d.scrollWidth - d.clientWidth;
+    });
+    expect(over, 'the panel is pushing the page sideways again').toBeLessThanOrEqual(1);
+  });
+
+  /* The whole of the above lives in one media query. This is the guard on that claim: a
+     desk keeps three columns, every sentence, the long names, and no card. */
+  test('and a desk keeps its three columns, its reasons and its long names', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await stock(page);
+    await page.locator('.dest[data-dest="you"]').click();
+    await expect(page.locator('#youcard')).toBeHidden();
+    await expect(page.locator('#tally2')).toBeVisible();
+    await expect(page.locator('#pics')).toHaveText('Pictures on');
+    await expect(page.locator('#emptybtn')).toHaveText('Empty this booklet');
+    await expect(page.locator('#addhint')).toBeVisible();
+    const cols = await page.locator('#settings')
+      .evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
+    expect(cols, 'the desk lost its columns').toBe(3);
+  });
+});

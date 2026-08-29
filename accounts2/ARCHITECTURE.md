@@ -507,9 +507,11 @@ save in the first place.
 
 Settings held three kinds of thing in one flat list: three doors to other panels, a bulk
 action, and four preferences. A reader after the download had to know it lived under a gear
-beside a voice picker. They are grouped now — the rooms, then **The whole booklet**, then
-**This device only** — and that last line is the app's own, not a new one: words, marks and
+beside a voice picker. They are grouped now — **Your words**, then **This device only**, then
+**Starting over** — and the middle line is the app's own, not a new one: words, marks and
 corrections follow the account, while pictures, voice and speed are per-device on purpose.
+Keeping a copy sits with your words because that is what it copies; the two actions there is
+no way back from sit together and last, behind a fold that is shut when the panel opens.
 `automerge` looks like a preference but persists on the account through `/me`, so it stays
 with the doors, under the one it changes.
 
@@ -539,8 +541,14 @@ Both columns that can flex carry a floor, and they need one each. The control co
 that width on a narrow screen too, and since the `1fr` reason column had a min of `0` it
 absorbed every pixel of the shrinking and collapsed to 76px on an iPad held upright. With a
 floor on each, the control column is what gives, and those two buttons stack, which is the
-right row to sacrifice. Under 720px the grid drops to one column and the cells stack the way
-they always did.
+right row to sacrifice.
+
+That held down to about 1024px and no further, which is not what this paragraph used to
+claim. `152 + 240 + 180` and two gaps is 612px, and an iPad held upright leaves the panel
+435 once the rail and the field index have taken theirs — so it overflowed by 132px and put
+a horizontal scrollbar under the whole app. Floors stop a column collapsing; they cannot
+make three columns fit in the width of two. Below 1024px the panel stops being a grid
+entirely — see 3.6d.
 
 That is also what fixed the confirmations. They live in the control cell and wrap inside it,
 so a row grows downward while its right edge stays where every other right edge is — the two
@@ -555,7 +563,58 @@ to say. The status line above the groups is a child of the grid too, and needs
 `grid-column:1/-1` or it reports being offline down 152px of title column.
 
 **The rows carry no hairline.** Three columns holding their line is structure enough; a rule
-every forty pixels through ten rows is a fence around every word. Only the groups keep one.
+every forty pixels through ten rows is a fence around every word. Only the groups keep one —
+and below 1024px, where there are no columns to hold the line, the rows do get one.
+
+### 3.6d You, where the panel is narrow
+
+Below 1024px the same rows become what a phone settings screen is. This is one media query
+and the markup those rows need; nothing above the breakpoint changes.
+
+**1024 and not 719,** which is where the rest of the shell turns. The panel does not get the
+whole screen: an iPad upright is 834px wide and leaves it 435, narrower than the phone the
+layout is named after. The width is a question about the panel, not about the device.
+
+**A card, then folds.** The panel opens on `#youcard` — the account, whether it is saving,
+and the tally with a bar. Those were three separate things: the tally floated above the list
+in the smallest type on the page, attached to nothing, and the account was a row whose
+control said **Signed in**, which is a state wearing a button's clothes. The card is also the
+door to the account panel, which is where **Sign out** lives — the same place an iPhone keeps
+it, behind the name at the top of Settings. `#tally2` and the Account row are hidden here;
+they are what the desk uses instead.
+
+**A row is one line:** name on the left, the answer on the right. The reason is hidden and
+the control loses its pill — on a line already headed PICTURES, a button reading *Pictures
+on* says the word twice and tells you nothing a plain **On** does not. Every control carries
+both lengths on `data-long` / `data-short`; `ctlLabel()` writes them and `relabel()` swaps
+them, including when a phone is turned sideways across the breakpoint.
+
+**The reasons are hidden, not deleted.** `youDescribe()` gives each `.set-d` an id and points
+its control at it with `aria-describedby`, so a row drawing only *Reading speed* is still
+read out with *slower is easier to shadow aloud when a word is new* behind it. A referenced
+element is announced even when it is `display:none`, which is the whole reason this works.
+
+**The tap target is the row, not the chevron.** A chevron is 14px wide on a line 343px long,
+so the click is forwarded in script — but only on rows with exactly one button to forward it
+to, and never on the two that ask, where a stray thumb should not land. Those two keep their
+own small target and an ellipsis on the label, which says *this one stops to ask* without
+repeating the row's own name.
+
+**While a bulk action asks, its row gives the confirmation a line of its own,** through an
+`.asking` class set where the confirmation is built and cleared by `resetIdle()` /
+`emptyIdle()`. Two pills and a sentence do not fit beside a name in 343px, and without it the
+name is squeezed to nothing.
+
+**The folds remember.** `vocab-you-folds` holds one boolean per group. Your words is open at
+rest and the other two are shut: a reader who opens **You** is likelier to be adding words
+than changing a voice, and a fold is a small piece of distance to put in front of the two
+things there is no way back from. The heading is a `<button>` because down here it does
+something; above the breakpoint `foldSync()` takes it out of the tab order and strips its
+`aria-expanded`, since a control that does nothing should not stop a keyboard.
+
+**The panel gives up its own frame.** `#settings` is a box in the same ink as the rows inside
+it, so a card drawn on top read as a card inside a card and neither looked like either — and
+the 24px it was holding is 13% of the width of a phone.
 
 **`.set-t` and `.set-d` are scoped to `.panel` on purpose.** Unscoped they lose to `.panel p`
 — and had been losing. A title asks for 12px, `--paper` and 5px beneath it, and was rendering
@@ -644,12 +703,14 @@ code is worth knowing —
 5. `Ctrl/Cmd+P` and confirm the print booklet reflows.
 6. Tick two fields in the flash-card picker, confirm the start button's total is their sum,
    and run the deck to the end.
-7. Narrow the window under 720px: the bar should fall to two rows with a `⋯`, and everything
-   behind it should still work. Widen it again and the bar should be one row, unchanged.
-8. At 1194px — an iPad in landscape — the bar should be one row, and Settings opened from the
-   top of the page should end above the bottom of the window and scroll to its last row.
-9. Empty the booklet from **Account**; the picker should come back, offering the packs and a
-   way to leave it empty.
+7. Narrow the window under 720px: the head should stay one row, the four destinations should
+   move to a bar along the bottom, and the field strip should stick under the head.
+8. Open **You** and drag the window across 1024px in both directions. Under it: a card, three
+   folds, one-line rows, and short control names. Over it: three columns, every reason, the
+   long names, no card — and no horizontal scrollbar on either side of the line, which is the
+   fault the width was chosen for.
+9. Empty the booklet from **You → Starting over**; the picker should come back, offering the
+   packs and a way to leave it empty.
 
 ### Deploy
 
@@ -694,6 +755,7 @@ changes, and a banner comment is not. Search for the name.
 | **accounts** | The two Supabase constants, the `ACCOUNTS` flag, `FN_BASE`, the client, and the globals `FIELDS`, `W`, `SEED`, `CORRECTIONS`. |
 | **faults** | `VERSION`, `fault()`, and the two window listeners. Writes what broke to the `faults` table: uncaught errors, unhandled rejections, the two sync failures the reader is already shown, and a booklet that would not open. Signed in only, twelve rows a session, deduplicated, and never a word of anybody's content. Never throws and never blocks: a reporter that can break the app is a second fault, not a first. |
 | **speech** | Voice discovery and filtering, the remembered choice, rate, and `speak()`. `refreshVoices()` re-reads the list when the app returns to the front and when You opens — it was read twice in the life of a page, which is not enough on a phone that downloads voices and resumes rather than reloads. Degrades to nothing where `speechSynthesis` is absent. |
+| **You, where the panel is narrow** | `isPhone()`, `ctlLabel()`, `relabel()`, `youCard()`, `foldInit()`, `foldSync()`, `youDescribe()`. Below 1024px the settings panel is a card and three folding groups of one-line rows; the stylesheet draws it and this does the four things a stylesheet cannot — one control name in two lengths, the card's contents, the folds and their memory, and the hidden reasons kept reachable through `aria-describedby`. The width lives in `narrowQuery()` and must match the media query. |
 | **render** | `esc()`, `posTags()`, `render()`, and the ink index. Rebuilds the whole book from `W`. |
 | **what is on the page** | `applyFilters()`, `markFilter`, `fieldFilter`, and the `.seg` control. The single owner of card `display`: the search text, the ✓ filter and the chosen field, answered together. |
 | **flash cards** | `fcOpen()`, `fcPool()`, `fcDraw()`, `fcNext()`. `fcSel` holds the ticked fields; `fcPool()` takes a set of them. A deck built on start and dropped on close; it marks through `setLearned()`, never its own store. |
