@@ -155,7 +155,7 @@ once and none of them learns where it is saving to.
 | `clearDone()` | Empties the array. | `update({done:false})` across the account. |
 
 `savedNote` is a per-store string appended to the merge confirmation, so the same message
-says "Download the file and commit it" locally and "Saved to your account" in the cloud.
+says "Saved in this browser" locally and "Saved to your account" in the cloud.
 
 The offline mirror (`vocab-rows-<uid>`) is what lets the booklet open on a train. Reads come
 from it when the network does not answer; writes always require a connection and say so.
@@ -510,8 +510,16 @@ action, and four preferences. A reader after the download had to know it lived u
 beside a voice picker. They are grouped now — **Your words**, then **This device only**, then
 **Starting over** — and the middle line is the app's own, not a new one: words, marks and
 corrections follow the account, while pictures, voice and speed are per-device on purpose.
-Keeping a copy sits with your words because that is what it copies; the two actions there is
-no way back from sit together and last, behind a fold that is shut when the panel opens.
+The two actions there is no way back from sit together and last, behind a fold that is shut
+when the panel opens.
+
+**Keep a copy was removed on 2026-08-29,** and `download()` and `serialise()` with it —
+nothing else called either. It offered a `words.json` and a `progress.json`, and it dated
+from before accounts, when a download was how a word survived closing the tab. It is worth
+naming what went with it: there is now no export at all, so a copy running with no Supabase
+project behind it keeps words in the browser and has no way to get them out. Four messages
+that pointed a reader at that button — the merge confirmation, the add-words hint, the
+account hint and the accounts-are-not-set-up panel — were rewritten to stop promising it.
 `automerge` looks like a preference but persists on the account through `/me`, so it stays
 with the doors, under the one it changes.
 
@@ -537,7 +545,7 @@ two controls shared an edge; even a grid per group left three different title co
 because a group can only measure its own rows.
 
 Both columns that can flex carry a floor, and they need one each. The control column was
-`auto` first: sized to the widest control in the panel — Keep a copy's two buttons — it held
+`auto` first: sized to the widest control in the panel — then Keep a copy's two buttons — it held
 that width on a narrow screen too, and since the `1fr` reason column had a min of `0` it
 absorbed every pixel of the shrinking and collapsed to 76px on an iPad held upright. With a
 floor on each, the control column is what gives, and those two buttons stack, which is the
@@ -779,7 +787,7 @@ changes, and a banner comment is not. Search for the name.
 | **what came back** | `previewProblems()`, `previewRow()`, the preview and its keep/discard. |
 | **the one press** | The `enrich` handler: the run, the fall back to manual, the quota. |
 | **merging a reply** | `mergeArray()`, `mergeMsg()`, and the paste handler that unwraps and feeds it. |
-| **turning a reply into an array** | `parseReply()`, and `download()`/`serialise()` with the search filter. |
+| **turning a reply into an array** | `parseReply()`, and the search filter. |
 
 ---
 
@@ -817,6 +825,6 @@ Two conventions are worth knowing because code depends on them:
   wrote, and the two versions can still trade files.
 - **Key order is fixed** — `w`, `f`, `[i]`, `p`, `d`, `e`, `a`, `[n]` — for the same reason.
 
-`serialise()` is the single definition of what a `words.json` is, so an export and
-a commit can never disagree. Words still waiting for detail are deliberately left out: a
-blank definition is a note to self, not a booklet entry.
+`serialise()` held the single definition of what a `words.json` is, so an export and a commit
+could never disagree. It went with Keep a copy — the booklet only reads that format now, it
+does not write it.

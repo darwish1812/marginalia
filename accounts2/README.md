@@ -61,9 +61,10 @@ links all land back on these; a URL that isn't listed here is refused.
 **5. Put it online.** Same as before — a public repo, then
 **Settings → Pages → Source: Deploy from a branch → `main` / `root`.**
 
-Leave step 3 undone and the app still runs: no sign-in, words kept in that browser, and the
-**Download words.json** button as the way they leave it. That is the fallback the whole way
-down, not a broken state.
+Leave step 3 undone and the app still runs: no sign-in, and words kept in that browser.
+That is the fallback the whole way down, not a broken state — but it is a one-way one. There
+is no export any more, so words added without an account live in that browser and nowhere
+else. Do step 3 if they are worth keeping.
 
 ## Signing in
 
@@ -122,8 +123,7 @@ labelled button with no mark, which is fine and still works.
    anything.
 
 That is the whole loop. **There is nothing to save at the end** — the words are already in
-your account and already on your other devices. A download is offered rather than demanded:
-take a copy when you want one of your own.
+your account and already on your other devices.
 
 A word that is checked but not yet enriched waits in a **"Waiting for detail"** section at
 the top of the book — searchable and printable straight away, just bare. Enrich it later and
@@ -190,9 +190,8 @@ ink can only belong to one of them, because the ink index down the side is the i
 the whole book.
 
 **You → Starting over** holds the two things there is no way back from — resetting the marks
-and emptying the booklet — behind a fold that is shut when the panel opens. Keeping a copy
-sits with your words, because that is what it copies. **Reset marks** puts every card back to
-unlearned and asks first, naming the number it is about to clear; the words are untouched.
+and emptying the booklet — behind a fold that is shut when the panel opens.
+**Reset marks** puts every card back to unlearned and asks first, naming the number it is about to clear; the words are untouched.
 **Empty this booklet** clears every word at once. It asks first, and names how many are
 about to go: the button reads **Empty 154 words** rather than **Empty it**, because a count
 is harder to press without meaning it. What is left is the same empty booklet a new
@@ -330,7 +329,7 @@ under "Unfiled" and leaves alone until you do. `n` is a caution shown only where
 earned, `i` an optional picture: either a path in `img/` or a `data:` URI for a drawing that
 came back with the reply.
 
-A downloaded copy is the format the original booklet used, so the two versions can still
-trade files — with one exception worth knowing. An unfiled word exports as `"f": null`, and
-the original filters on a matching field id, so it would quietly skip those cards. File them
-first if you are sending a copy that way.
+This is the format the original booklet used, so a `words.json` written by hand or carried
+over from that version still stocks this one — with one exception worth knowing. An unfiled
+word is `"f": null`, and the original filters on a matching field id, so it would quietly
+skip those cards.

@@ -528,6 +528,72 @@ test.describe('You, where the panel is narrow', () => {
     expect(name.width, 'the name was squeezed out of the way').toBeGreaterThan(120);
   });
 
+  /* The whole of "I downloaded a voice and it never appeared", in one case. Chrome answers
+     the first getVoices() with an empty list, so the row hides itself during load; the real
+     list arrives through onvoiceschanged a moment later. Until 2026-08-29 the row never came
+     back — refreshVoices() refilled a <select> nobody could see — and the count above it went
+     on reporting the row it could no longer show. */
+  test('a voice arriving after load brings its row back, and the count with it', async ({ page }) => {
+    await page.addInitScript(() => {
+      let voices = [];
+      window.__arrive = () => {
+        voices = [{ name: 'Test English', lang: 'en-GB', default: true,
+                    localService: true, voiceURI: 'test' }];
+        if (typeof speechSynthesis.onvoiceschanged === 'function') speechSynthesis.onvoiceschanged();
+      };
+      try {
+        Object.defineProperty(window.speechSynthesis, 'getVoices',
+          { value: () => voices, configurable: true });
+      } catch { /* the assertions below will say so plainly */ }
+    });
+    await page.setViewportSize(PHONE);
+    await stock(page);
+    await page.locator('.dest[data-dest="you"]').click();
+    const group = page.locator('.set-group').nth(1);
+    await group.locator('.set-h').click();
+    await expect(page.locator('#voice'), 'no voices yet, so no row').toBeHidden();
+    await expect(group.locator('.set-n')).toHaveText('2');
+
+    await page.evaluate(() => window.__arrive());
+    await expect(page.locator('#voice'), 'the row never came back').toBeVisible();
+    await expect(group.locator('.set-n'), 'the count did not follow the row').toHaveText('3');
+  });
+
+  /* Was: the heading read "Your words 3" over four rows. The count is taken from the rows
+     that are showing, and Merging is hidden when the page loads and un-hidden later, when
+     the gateway answers — which is after the count has already been taken. The gateway's
+     own call site cannot be reached without an account, so what is pinned here is the
+     invariant it depends on: a row appearing changes the number above it. */
+  test('a row appearing after load changes the count above it', async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await stock(page);
+    await page.locator('.dest[data-dest="you"]').click();
+    const count = page.locator('.set-group').first().locator('.set-n');
+    const before = Number(await count.textContent());
+    await page.evaluate(() => {
+      document.getElementById('automerge-row').hidden = false;
+      foldSync();
+    });
+    await expect(count).toHaveText(String(before + 1));
+    const rows = await page.locator('.set-group').first()
+      .locator('.set:visible').count();
+    expect(Number(await count.textContent()), 'the count and the rows disagree').toBe(rows);
+  });
+
+  /* Was: the card sat under the iPhone's clock. openPanel() hides the head, and the head is
+     the only thing carrying the status bar inset, so a panel has to ask for it.
+     env(safe-area-inset-top) is 0 in a desktop Chromium and cannot be emulated, so what is
+     checked here is that the rule is live and scoped: the phone's own 12px, and the desk's
+     22px left alone. The inset rides on top of the first of those. */
+  test('a panel opens where the head would have been, not under the clock', async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await stock(page);
+    await page.locator('.dest[data-dest="you"]').click();
+    await expect(page.locator('#settings')).toHaveCSS('margin-top', '12px');
+    await page.setViewportSize(DESKTOP);
+    await expect(page.locator('#settings')).toHaveCSS('margin-top', '22px');
+  });
+
   /* The fault that set the width. An iPad held upright gave the panel 435px and the three
      columns would not fit in it: 132px of overflow, and a horizontal scrollbar under the
      whole app. It had been doing that before any of this was written. */

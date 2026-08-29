@@ -718,7 +718,7 @@
      no two buttons shared an edge. Now every title starts on one line, every reason on a
      second and every control ends on a third, whichever group it is in. */
   /* The control column is minmax, not auto. As auto it never gave anything back: sized to
-     the widest control in the panel — Keep a copy's two buttons — it held that width on a
+     the widest control in the panel — then Keep a copy's two buttons — it held that width on a
      narrow screen too and squeezed every reason into a 76px ribbon. With a floor instead it
      shrinks to one button's worth and those two stack, which is the row that should give. */
   /* The columns only. `display` stays out of this rule: an id outranks .panel and .panel.on
@@ -847,6 +847,14 @@
      so the old phone block — written sixty lines above .set-h — would have lost every
      argument with it and lost them silently. */
   @media(max-width:1023px){
+    /* Nothing stands above an open panel. `openPanel()` hides the head, and the head is
+       what carries `env(safe-area-inset-top)` on a phone — so with the head gone the panel
+       is the first thing on the screen and has to ask for the inset itself. It never did:
+       `.panel`'s own 22px was clearing an iPhone's clock by luck, and stopped clearing it
+       the moment this panel gave up its 24px of padding. 12px is where the head puts its
+       own first line, so a panel opens where the head would have been. */
+    .panel{margin-top:calc(12px + env(safe-area-inset-top,0px))}
+
     /* The panel gives up its own frame here. It is a box in the same ink as the rows
        inside it, so a card drawn on top of it read as a card inside a card and neither
        looked like either — and the 24px it was holding is 13% of the width of a phone. */
@@ -942,10 +950,8 @@
       transform:rotate(-45deg);
     }
 
-    /* The one row with two controls, and the only one whose controls take a line of their
-       own rather than crushing the name into a ribbon. */
-    .set-wide .ctl{flex-basis:100%; justify-content:flex-start; padding-top:2px}
-    .set-wide .ctl > .btn,
+    /* Keep a copy was the one row with two controls and the reason .set-wide existed. Both
+       went; a confirmation is the only thing that puts two buttons on a row now. */
     #resetgo,#resetno,#emptygo,#emptyno{
       border:1px solid var(--rule); padding:8px 13px; border-radius:7px;
       text-transform:uppercase; font-size:11px; letter-spacing:.11em;
@@ -1659,21 +1665,6 @@
             <div class="ctl"><button class="btn" id="fldbtn" aria-pressed="false">Edit fields</button></div>
           </div>
 
-          <!-- Not a step in adding words — it never was, really. Keeping a copy is something
-               you do to your own words, so it sits with them rather than under a heading
-               about the booklet as an object. Two buttons, so on a phone this is the one row
-               whose controls take a line of their own. -->
-          <div class="set set-wide">
-            <p class="set-t">Keep a copy</p>
-            <p class="set-d" id="copyhint">Your words save themselves. Take a copy whenever you want one.</p>
-            <div class="ctl">
-              <button class="btn" id="dl"
-                      data-long="Download words.json" data-short="Words.json">Download words.json</button>
-              <button class="btn" id="dlprog"
-                      data-long="Export progress" data-short="Progress">Export progress</button>
-            </div>
-          </div>
-
           </div>
         </div>
 
@@ -1706,8 +1697,8 @@
 
         <!-- The two there is no way back from, together and last, behind a fold that is shut
              when the panel opens. They were spread through a list called "the whole booklet"
-             beside Keep a copy, which is a friendly thing to do to your words and sat one
-             row above the least friendly. -->
+             under a heading about the booklet as an object, which put the least friendly
+             thing in the app in the same list as the rest. -->
         <div class="set-group">
           <button class="set-h" type="button">Starting over<span class="set-n"></span></button>
           <div class="set-b">
@@ -1767,7 +1758,7 @@
         <div class="acct" id="acct-in" hidden>
           <p class="set-t">Signed in</p>
           <p class="set-d">You are signed in as <b id="who"></b>. Your words are saved to this
-            account as you add them; nothing needs downloading or committing.</p>
+            account as you add them, on every device you read on.</p>
           <div class="row"><button class="btn" id="signout">Sign out</button></div>
           <p class="note" id="acctmsg2"></p>
         </div>
@@ -1775,8 +1766,8 @@
         <div class="acct" id="acct-off" hidden>
           <p class="set-t">Accounts are not set up</p>
           <p class="set-d">This copy has no Supabase project behind it yet, so it is running on
-            this device alone — words are kept in this browser and the Download button is how
-            they leave it. See <b>README.md</b> for the ten-minute setup.</p>
+            this device alone — words are kept in this browser, and they stay in it. See
+            <b>README.md</b> for the ten-minute setup.</p>
         </div>
       </section>
 
@@ -1852,7 +1843,7 @@
    without a signed-in session. See README.md.
 
    Leave them empty and nothing breaks: the booklet runs on this device alone, exactly as
-   it did before accounts existed, with Download as the way words leave it. */
+   it did before accounts existed: the words live in this browser and stay in it. */
 const SUPABASE_URL      = 'https://pnsmrzlncqlbrkpamnyq.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_lH1l_wn_b45JvzFE7ZeIDg_4FQdjb-2';
 
@@ -2008,6 +1999,7 @@ function fillVoices(en){
 function showVoiceRow(on){
   const row = vSel.closest('.set');
   if(row) row.style.display = on ? '' : 'none';
+  foldSync();      /* a row coming or going changes the count on its fold */
 }
 
 if(vSel) vSel.addEventListener('change',()=>{
@@ -3096,7 +3088,7 @@ function setLocalGone(a){ try{ localStorage.setItem(LOCALGONE, JSON.stringify(a)
    written once and never learn where they are saving to. */
 const localStore = {
   id:'local',
-  savedNote:' Download the file and commit it.',
+  savedNote:' Saved in this browser.',
   /* `seed` is the parsed words.json. Local mode treats it as the committed truth and
      layers this device's unsaved additions on top, newest-wins-never: a word already in
      the file beats the local copy, because the file is what everyone else sees. */
@@ -3673,7 +3665,7 @@ function setAcctState(email){
   if(!ACCOUNTS){
     off.hidden = false;
     btn.textContent = 'Not set up';
-    hint.textContent = 'No account behind this copy — words are kept in this browser, and Download is how they leave it.';
+    hint.textContent = 'No account behind this copy — words are kept in this browser, and they stay in it.';
   }else if(email){
     inn.hidden = false;
     document.getElementById('who').textContent = email;
@@ -3895,7 +3887,6 @@ document.getElementById('acctbtn').addEventListener('click',()=>{
 function showLocal(){
   const bare = W.filter(x=>!x.d || !x.d.trim()).length;
   const hint = document.getElementById('addhint');
-  const copy = document.getElementById('copyhint');
 
   if(store.id === 'cloud'){
     if(hint){
@@ -3904,25 +3895,20 @@ function showLocal(){
         : 'Paste a list and the booklet does the rest.';
       hint.style.color = '';
     }
-    if(copy) copy.textContent = bare
-      ? `Your words save themselves. A downloaded copy leaves out the ${bare} still waiting for detail.`
-      : 'Your words save themselves as you add them. Take a copy whenever you want one of your own.';
     return;
   }
 
   const adds = localAdds();
-  const ready = adds.filter(x=>x.d && x.d.trim()).length, stillBare = adds.length - ready;
+  const stillBare = adds.filter(x=>!x.d || !x.d.trim()).length;
   if(hint){
-    hint.textContent = adds.length
-      ? `${adds.length} word${adds.length===1?'':'s'} added on this device, not yet committed.`
-      : 'Paste a list and the booklet does the rest.';
+    /* It said "not yet committed" while a Download button stood two rows below waiting to
+       be pressed. There is no button and no commit now, so it says where the words are,
+       which is the part that was ever worth knowing. */
+    const parts = [];
+    if(adds.length) parts.push(`${adds.length} word${adds.length===1?'':'s'} added in this browser.`);
+    if(stillBare)   parts.push(`${stillBare} still waiting for detail.`);
+    hint.textContent = parts.length ? parts.join(' ') : 'Paste a list and the booklet does the rest.';
     hint.style.color = adds.length ? 'var(--ink-1)' : '';
-  }
-  if(copy){
-    const lines = ['Download the updated file and paste it into words.json on GitHub.'];
-    if(ready) lines.push(`${ready} word${ready>1?'s are':' is'} on this device only until you do.`);
-    if(stillBare) lines.push(`${stillBare} still waiting for detail ${stillBare>1?'are':'is'} left out of it.`);
-    copy.textContent = lines.join(' ');
   }
 }
 
@@ -4494,6 +4480,11 @@ async function loadGateway(){
   const row = document.getElementById('automerge-row');
   /* a toggle for something that cannot happen is worse than no toggle */
   if(row) row.hidden = !GATEWAY.enabled;
+  /* And the fold above it has to be told. The count is taken from the rows that are showing,
+     and this row is hidden when the page loads and un-hidden when the gateway answers —
+     which is after foldInit() has already counted. A heading reading "Your words 3" over
+     four rows was the visible half of that. */
+  foldSync();
   const am = document.getElementById('automerge');
   if(am){
     am.setAttribute('aria-pressed', String(!!GATEWAY.auto_merge));
@@ -5235,25 +5226,10 @@ document.getElementById('merge').addEventListener('click',async ()=>{
   document.getElementById('report').innerHTML=''; fresh=[]; setReady(false);
 });
 
-function download(name, text){
-  const b=new Blob([text],{type:'application/json'}), u=URL.createObjectURL(b);
-  const a=document.createElement('a'); a.href=u; a.download=name; a.click();
-  setTimeout(()=>URL.revokeObjectURL(u),1000);
-}
-/* One definition of what a words.json is, so an export and a commit can never disagree
-   about it. Words still waiting for detail are left out: a blank definition is a note to
-   self, not a booklet entry. */
-function serialise(){
-  return JSON.stringify({
-    schema:1, updated:new Date().toISOString().slice(0,10),
-    fields:FIELDS, corrections:CORRECTIONS,
-    words:W.filter(x=>x.d && x.d.trim())
-  },null,1);
-}
-document.getElementById('dl').addEventListener('click',()=>download('words.json', serialise()));
-document.getElementById('dlprog').addEventListener('click',()=>{
-  download('progress.json', JSON.stringify([...done],null,1));
-});
+/* Keep a copy stood here — download(), serialise(), and the two buttons that called them.
+   Nothing else in the booklet called either, so both went with the row. Words live on the
+   account now, and on a copy with no account behind it they live in this browser and stay
+   there. */
 
 /* search lives with the mark filter, up beside the progress it reads — see applyFilters */
 
@@ -5326,7 +5302,11 @@ function youCard(email){
 
 /* ---------- the folds ---------- */
 const FOLDKEY = 'vocab-you-folds';
-const youGroups = ()=> [...document.querySelectorAll('#settings .set-group')];
+/* A function declaration, not a const holding an arrow — the same dead-zone rule that put
+   narrowQuery() in a function. foldSync() is now called from showVoiceRow(), which runs
+   while the page is still parsing, and a const up here is not initialised yet at that
+   moment. Everything foldSync() touches has to be hoisted or it throws on load. */
+function youGroups(){ return [...document.querySelectorAll('#settings .set-group')]; }
 
 /* Shut by default except the first. A reader who opens You is far likelier to be adding
    words than changing a voice, and Starting over holds the two things there is no way back
@@ -5395,7 +5375,7 @@ document.getElementById('settings').addEventListener('click', e=>{
      it to, and never on the two that ask, where a stray thumb should not land. */
   if(!isPhone()) return;
   const row = e.target.closest('#settings .set');
-  if(!row || row.classList.contains('set-ask') || row.classList.contains('set-wide')) return;
+  if(!row || row.classList.contains('set-ask')) return;
   if(e.target.closest('.btn, select, input, a')) return;
   const btns = row.querySelectorAll('.ctl > .btn');
   if(btns.length === 1 && btns[0].tagName === 'BUTTON' && !btns[0].disabled) btns[0].click();
