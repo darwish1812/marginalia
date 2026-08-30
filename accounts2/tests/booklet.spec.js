@@ -167,6 +167,24 @@ test.describe('the card menu', () => {
     await expect(page.locator(`[data-w="${word}"]`)).toHaveCount(0);
     await expect(page.locator('.card')).toHaveCount(before - 1);
   });
+  /* The confirmation is not a dialog — it opens inside the card, the way every other
+     question in this booklet opens where you are standing. What that owes the reader is
+     that the question is actually on the screen: focus() alone scrolls by whatever rule the
+     browser likes, and on a phone that can leave it behind the bar standing over the page.
+     Asked on a card well down the book, at phone size, where both can go wrong. */
+  test('the question is on the screen, and clear of the bar', async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await stock(page);
+    const card = page.locator('.card').nth(6);
+    await card.scrollIntoViewIfNeeded();
+    await card.locator('.more').click();
+    await page.locator('.card-menu [data-remove]').click();
+    const box = await page.locator('.cm-confirm').boundingBox();
+    const bar = await page.locator('.nav').boundingBox();
+    expect(box.y, 'the question is off the top').toBeGreaterThanOrEqual(0);
+    expect(box.y + box.height, 'the question is behind the bar').toBeLessThanOrEqual(bar.y + 1);
+  });
+
   /* Was: the two answers were touching, and read as one wide button with a seam down it.
      `.row` is a panel rule — `.panel .row` — so the confirm's copy of it, inside a card,
      inherited neither the flex nor the gap. */

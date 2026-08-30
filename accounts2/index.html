@@ -1017,6 +1017,11 @@
   /* One rhythm down the block: 14 to the rule, 14 under it, then 7 · 16 · 14 between the
      question, its consequence, the two answers and anything that went wrong. */
   .cm-confirm{margin-top:14px; padding-top:14px; border-top:1px solid rgba(34,36,63,.14)}
+  /* Below 720 the four destinations are a bar standing over the page, so a question scrolled
+     to the bottom edge would land behind it. */
+  @media(max-width:719px){
+    .cm-confirm{scroll-margin-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+  }
   .cm-ct{font-family:"Fraunces",Georgia,serif; font-size:16px; font-weight:600; margin:0}
   .cm-confirm .cm-cd{font-size:13.5px; color:#4A4C63; margin:7px 0 0; line-height:1.5;
                      max-width:46ch}
@@ -2515,9 +2520,23 @@ function confirmRemove(card){
   const no=document.createElement('button'); no.className='btn'; no.dataset.cancelremove='1'; no.textContent='Cancel';
   row.append(yes,no);
   box.append(h,p,row);
+  /* No keepStill() here, though every other height change in this book uses it. It would do
+     nothing: the question is appended inside the card and below its top edge, so the card
+     does not move — only the cards under it do, which is what opening something means. A
+     test written to prove otherwise passed with the call taken out, which is how that got
+     noticed rather than shipped as a comment claiming to fix nothing. */
   card.querySelector('.body').appendChild(box);
   card.classList.add('open');
-  yes.focus();
+  /* What does need saying: focus() scrolls by whatever rule the browser likes, which on a
+     phone can leave the question sitting behind the bar standing over the page. So the
+     scroll is taken deliberately instead — only if the question is not already whole on the
+     screen, by the least it can move, and clear of the bar via scroll-margin. */
+  yes.focus({preventScroll:true});
+  /* `nearest` is already "only if it is not fully visible, and by the least it can" — and it
+     honours scroll-margin, which is where the bar's height is written down. Deciding that
+     here in script instead got it wrong: it compared against the viewport, and the bottom of
+     the viewport on a phone is behind the bar. */
+  box.scrollIntoView({block:'nearest'});
 }
 
 async function fileWord(w, f){
