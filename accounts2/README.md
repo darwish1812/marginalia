@@ -191,8 +191,12 @@ to Unfiled, and the button says how many before you press it. Eight fields at mo
 ink can only belong to one of them, because the ink index down the side is the index of
 the whole book.
 
-**You → Starting over** holds the two things there is no way back from — resetting the marks
-and emptying the booklet — behind a fold that is shut when the panel opens.
+**You → Starting over** holds the three things there is no way back from — resetting the
+marks, emptying the booklet, and leaving it — behind a fold that is shut when the panel opens.
+**Delete my account** takes your words, your fields, your corrections and the account itself,
+and this device forgets its copy. It offers a copy on the way out: one press writes a
+`words.json` — through the share sheet on a phone, a download elsewhere — which is the same
+file a new booklet can be stocked from. Signing up again with the same address starts empty.
 **Reset marks** puts every card back to unlearned and asks first, naming the number it is about to clear; the words are untouched.
 **Empty this booklet** clears every word at once. It asks first, and names how many are
 about to go: the button reads **Empty 154 words** rather than **Empty it**, because a count

@@ -642,6 +642,49 @@ throw, so it has to be one. The drag is on the whole sheet rather than the 38px 
 a thumb aiming at a 38px bar is a thumb aiming at nothing, and the two answers are excluded
 or pressing one would sometimes count as a drag.
 
+### 3.6c3 Leaving
+
+Until 2026-08-30 there was no way out of this booklet: no deletion, and since Keep a copy went,
+no export either. Somebody who signed up was in for good. Both app stores require the door and
+it should have been there without them asking.
+
+**The browser cannot do it.** Removing a row from `auth.users` needs the service role, which
+bypasses row level security entirely, so the work is in `supabase/functions/delete-account` and
+the app only asks, calls, and forgets. Its README carries the deploy line and the by-hand
+proof, because there is no automated test for this and cannot be one — it needs a real session
+and the suite holds no credentials.
+
+**`runs` is the one table that does not cascade,** and it is deleted explicitly by the
+function. It lives in `gateway.sql` rather than `schema.sql` and `subject` is a bare `uuid`
+with no foreign key, which is exactly why it was missed until somebody went looking table by
+table.
+
+**Nothing local is thrown away until the account is actually gone.** `deleteAccount()` returns
+false and speaks in the dialog if the call refuses, the same rule removing a word follows. Only
+on success does `forgetDevice()` run — and it takes the words, the marks, the caches and the
+offline mirror while **leaving the voice, the speed, the pictures, the folds and the rail**.
+Those are facts about a screen, not about an account, and wiping them would be a second
+deletion nobody asked for. That distinction has the only test that matters here.
+
+**A copy is offered on the way out,** which is the one place the removed Keep a copy earns its
+return: leaving with no way to take your words is a harsher exit than it looks, and both stores
+ask about portability. `takeCopy()` shares the file where sharing files is possible and
+downloads where it is not — on a booklet added to the Home Screen, iOS answers an `<a download>`
+by opening the file or by nothing at all.
+
+**The gate says it happened**, once, out of `sessionStorage` — a destructive action that ends
+looking exactly like a sign-out leaves you wondering whether it worked.
+
+**No password is asked for.** Convention says otherwise, but this booklet offers Google and
+Apple sign-in, so a reader who came in that way has no password to be asked for — re-auth would
+need a whole second path for the people least able to use the first. The count on the button is
+doing the work instead.
+
+**The dialog is the one built for removing a word.** `askOpen()` takes a question rather than a
+card: a title, one or two sentences, the two answers, and an optional aside. Two grave questions
+sharing one door is the same argument that gave the phone and the desk one dialog rather than
+two.
+
 ### 3.6d You, where the panel is narrow
 
 Below 1024px the same rows become what a phone settings screen is. This is one media query

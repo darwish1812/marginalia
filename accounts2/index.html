@@ -1050,6 +1050,16 @@
   .ask-d{font-size:15px; line-height:1.5; color:var(--dim); margin:8px 0 0}
   .ask-err{color:var(--ink-3); font-size:14px; line-height:1.45; margin:12px 0 0}
   .ask-err:empty{display:none}
+  .ask-d:empty{display:none}
+  /* Underlined rather than pilled: it is a way out of the question, not a third answer to
+     it, and it should not stand level with the two that are. */
+  .ask-aside{
+    display:block; margin:14px 0 0; padding:0; background:none; border:0; cursor:pointer;
+    font:600 11px/1.4 "Archivo",sans-serif; letter-spacing:.09em; text-transform:uppercase;
+    color:var(--ink-1); text-decoration:underline; text-underline-offset:4px;
+  }
+  .ask-aside:hover{color:var(--paper)}
+  .ask-aside.done{color:var(--ink-2); text-decoration:none; cursor:default}
   /* Stacked and full width on a phone: side by side, a thumb reaching across the screen for
      the safe answer passes over the destructive one on the way. */
   .ask-row{display:grid; gap:9px; margin-top:20px}
@@ -1814,6 +1824,17 @@
             <p class="note" id="emptymsg"></p>
           </div>
 
+          <!-- The last row in the app, and the only one that ends the account rather than
+               changing it. It sits under emptying because the two are ordered by how final
+               they are, and it is hidden without an account because there is nothing to
+               leave. -->
+          <div class="set set-ask grave" id="wipe-row" hidden>
+            <p class="set-t">Delete my account</p>
+            <p class="set-d">Your words, your fields and the account itself. No undo.</p>
+            <div class="ctl"><button class="btn fld-del" id="wipebtn"
+                 data-long="Delete my account" data-short="Delete…">Delete my account</button></div>
+          </div>
+
           </div>
         </div>
       </section>
@@ -1867,6 +1888,9 @@
   <!-- Shown instead of the book when accounts are on and nobody is signed in. It is the
        only place the email form lives, so there is one sign-in in the app, not two. -->
   <section class="gate" id="gate" hidden>
+    <!-- Set only by leaving, and cleared by the next load: a destructive action that ends
+         looking exactly like a sign-out leaves you wondering whether it worked. -->
+    <p class="note good" id="gate-gone" hidden></p>
     <h2 id="gate-h">Your own booklet</h2>
     <p id="gate-p">Sign in and you get your own copy of these words — a hundred and fifty to
       begin with, yours to add to, mark up and mangle. Nothing you do to them touches
@@ -1927,11 +1951,15 @@
        aria-labelledby="ask-q" hidden>
     <button class="ask-grab" id="askgrab" aria-label="Close"></button>
     <p class="ask-q" id="ask-q"></p>
-    <p class="ask-d">It goes from the booklet, and does not come back.</p>
+    <p class="ask-d" id="ask-d"></p>
+    <!-- A second sentence, for the question that needs one. Removing a word does not. -->
+    <p class="ask-d" id="ask-d2"></p>
     <p class="ask-err" id="ask-err"></p>
+    <!-- The way out of the way out: a copy, offered only where leaving is the question. -->
+    <button class="ask-aside" id="askaside" hidden></button>
     <div class="ask-row">
-      <button class="btn ask-go" id="askgo">Remove the word</button>
-      <button class="btn" id="askno">Keep it</button>
+      <button class="btn ask-go" id="askgo"></button>
+      <button class="btn" id="askno"></button>
     </div>
   </div>
 
@@ -2553,7 +2581,14 @@ function openCardMenu(card, btn){
    middle on anything wider. See askOpen(). */
 function confirmRemove(card){
   closeCardMenu();
-  askOpen(card);
+  const w = card.dataset.w;
+  askOpen({
+    title: ['Remove ', {em:w}, '?'],
+    lines: [['It goes from the booklet, and does not come back.']],
+    go: 'Remove the word',
+    from: card.querySelector('.more') || null,
+    onGo: ()=> removeWord(w),
+  });
 }
 
 async function fileWord(w, f){
@@ -3787,10 +3822,14 @@ function setAcctState(email){
     document.getElementById('who').textContent = email;
     btn.textContent = 'Signed in';
     hint.textContent = email+' — your words follow you between devices.';
+    const wipe = document.getElementById('wipe-row');
+    if(wipe) wipe.hidden = false;
   }else{
     out.hidden = false;
     btn.textContent = 'Sign in';
     hint.textContent = 'Sign in to see your words and to keep new ones.';
+    const wipe = document.getElementById('wipe-row');
+    if(wipe) wipe.hidden = true;
   }
   youCard(email || null);
 }
@@ -5351,6 +5390,131 @@ document.getElementById('merge').addEventListener('click',async ()=>{
 
 /* search lives with the mark filter, up beside the progress it reads — see applyFilters */
 
+/* ---------- leaving ----------
+   Until now there was no way out of this booklet at all: no deletion, and since Keep a copy
+   went, no export either. Somebody who signed up was in for good. Both app stores require
+   this door and it should have been here without them asking.
+
+   The browser cannot delete an auth.users row — that needs the service role, which is the
+   key to every account at once — so the work happens in the delete-account function and this
+   only asks, calls, and forgets. */
+const WIPE = ACCOUNTS ? FN_BASE + '/functions/v1/delete-account' : null;
+
+/* What a words.json is. Keep a copy used to own this and went with it; it comes back for one
+   door only, because leaving with no way to take your words is a harsher exit than it looks
+   and is the one moment a copy is genuinely worth offering. Words still waiting for detail
+   are left out: a blank definition is a note to self, not a booklet entry. */
+function serialise(){
+  return JSON.stringify({
+    schema:1, updated:new Date().toISOString().slice(0,10),
+    fields:FIELDS, corrections:CORRECTIONS,
+    words:W.filter(x=>x.d && x.d.trim())
+  },null,1);
+}
+
+/* A download is the obvious way and it is the wrong one on the device this app is mostly
+   read on: in a booklet added to the Home Screen, iOS answers an <a download> by opening the
+   file, or by nothing at all. The share sheet is the way out there, and it is a better one
+   anyway — it offers Files, Mail and everything else in the same gesture. So: share where
+   sharing files is possible, download where it is not. */
+async function takeCopy(){
+  const text = serialise();
+  const name = 'words.json';
+  try{
+    const file = new File([text], name, {type:'application/json'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title:'Marginalia — your words'});
+      return true;
+    }
+  }catch(e){
+    /* A share the reader waved away is not a failure, but it is not a copy either, so the
+       label must not go green. */
+    if(e && e.name === 'AbortError') return false;
+  }
+  try{
+    const b = new Blob([text], {type:'application/json'});
+    const u = URL.createObjectURL(b);
+    const a = document.createElement('a'); a.href = u; a.download = name; a.click();
+    setTimeout(()=>URL.revokeObjectURL(u), 1000);
+    return true;
+  }catch(e){ return false; }
+}
+
+/* Everything on this device that is the account's rather than the reader's. The voice, the
+   speed, the pictures, the folds and the width of the rail all stay: those are facts about
+   this screen, not about the booklet, and wiping them would be a second, unasked-for
+   deletion. */
+function forgetDevice(uid){
+  const keys = ['vocab-booklet-progress','vocab-words-cache','vocab-words-local',
+                'vocab-fix-local','vocab-fields-local','vocab-gone-local',
+                'vocab-wordfield-local','vocab-pack-local','vocab-seeded-local'];
+  if(uid) keys.push('vocab-rows-' + uid);
+  keys.forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} });
+}
+
+/* Returns false and says so in the sheet if anything refuses, the way removing a word does.
+   A half-finished deletion is the worst outcome here, so nothing local is thrown away until
+   the account is actually gone. */
+async function deleteAccount(){
+  if(!WIPE || !sb) return false;
+  const uid = cloudStore.uid;
+  try{
+    const {data:{session}} = await sb.auth.getSession();
+    if(!session) throw new Error('You are not signed in any more.');
+    const r = await fetch(WIPE, {
+      method:'POST',
+      headers:{Authorization:'Bearer ' + session.access_token},
+    });
+    if(!r.ok){
+      let why = 'HTTP ' + r.status;
+      try{ const j = await r.json(); if(j && j.error) why = j.error; }catch(e){}
+      throw new Error(why);
+    }
+  }catch(e){
+    fault('sync', e, 'delete-account');
+    askFault('The account was not deleted — ' + errText(e));
+    return false;
+  }
+  /* Only now. */
+  forgetDevice(uid);
+  try{ sessionStorage.setItem('vocab-left', '1'); }catch(e){}
+  try{ await sb.auth.signOut(); }catch(e){}
+  location.reload();
+  return true;
+}
+
+/* The gate says it happened, once. sessionStorage rather than a query string, so it does not
+   survive being bookmarked and cannot be arrived at by anybody who did not just do it. */
+(function(){
+  let left = null;
+  try{ left = sessionStorage.getItem('vocab-left'); sessionStorage.removeItem('vocab-left'); }catch(e){}
+  if(!left) return;
+  const el = document.getElementById('gate-gone');
+  if(!el) return;
+  el.textContent = 'Your account and everything in it is gone. Nothing was kept.';
+  el.hidden = false;
+})();
+
+document.getElementById('wipebtn').addEventListener('click', ()=>{
+  const n = W.length, f = FIELDS.length;
+  askOpen({
+    title: ['Delete your account?'],
+    lines: [
+      [{b:n + (n===1?' word':' words')}, ' go, and the ',
+       {b:f + (f===1?' field':' fields')}, ' you file them under. So do your corrections, ',
+       'your marks, and the account itself.'],
+      ['This device forgets its copy too. Signing up again with the same address starts an ',
+       'empty booklet.'],
+    ],
+    go: 'Delete my account and ' + n + (n===1?' word':' words'),
+    keep: 'Keep my account',
+    from: document.getElementById('wipebtn'),
+    aside: { label: 'Take a copy first', done: 'Copy taken', run: takeCopy },
+    onGo: deleteAccount,
+  });
+});
+
+
 /* ---------- the question, risen ----------
    Below 720px removing a word is asked from a sheet at the bottom edge rather than from a
    block inside the card. The stylesheet draws it; this is the four things a stylesheet
@@ -5360,7 +5524,6 @@ document.getElementById('merge').addEventListener('click',async ()=>{
    This is the first dialog in the booklet. Everything else asks where you are standing, and
    that was the argument for keeping this in the card too — until the card turned out to be
    exactly the problem: a message built out of the entry reads as the entry. */
-var askFor = null;        /* the word being asked about */
 var askFrom = null;       /* what to give focus back to */
 /* Whether it is meant to be up. The class alone could not answer that: opening waits a frame
    before adding it, and an Escape inside that frame closed a sheet that then opened itself
@@ -5368,20 +5531,52 @@ var askFrom = null;       /* what to give focus back to */
    left it alone. One flag both halves agree on. */
 var askUp = false;
 
+/* A sentence with a few words in it that matter more than the rest — the counts, mostly.
+   Written as an array so nothing has to build HTML from a string. */
+function fillLine(el, parts){
+  if(!el) return;
+  el.textContent = '';
+  (parts || []).forEach(part=>{
+    if(typeof part === 'string') return el.append(part);
+    const b = document.createElement('b'); b.textContent = part.b; el.appendChild(b);
+  });
+}
+
 const askEl    = () => document.getElementById('asksheet');
 const askScrim = () => document.getElementById('askscrim');
 
-function askOpen(card){
+/* What the sheet is currently asking. It held a word when removing one was the only thing it
+   did; it holds the whole question now, because leaving the booklet needed the same door and
+   two dialogs for two grave questions would have been the same mistake as two confirmations
+   for one. */
+var asking = null;
+
+/* opts: {title, lines[], go, onGo, from, aside:{label, done, run}} */
+function askOpen(opts){
   const sheet = askEl(), scrim = askScrim();
   if(!sheet || !scrim) return;
-  askFor  = card.dataset.w;
-  askFrom = card.querySelector('.more') || null;
+  asking  = opts;
+  askFrom = opts.from || null;
 
   const q = document.getElementById('ask-q');
-  q.textContent = 'Remove ';
-  const em = document.createElement('i'); em.textContent = askFor;
-  q.appendChild(em); q.append('?');
+  q.textContent = '';
+  opts.title.forEach(part=>{
+    if(typeof part === 'string') return q.append(part);
+    const em = document.createElement('i'); em.textContent = part.em; q.appendChild(em);
+  });
+  const lines = opts.lines || [];
+  fillLine(document.getElementById('ask-d'),  lines[0]);
+  fillLine(document.getElementById('ask-d2'), lines[1]);
+  document.getElementById('askgo').textContent = opts.go;
+  document.getElementById('askno').textContent = opts.keep || 'Keep it';
   document.getElementById('ask-err').textContent = '';
+
+  /* The aside is built here rather than left in the markup, so a question that does not offer
+     one cannot leave a stale label behind it. */
+  const aside = document.getElementById('askaside');
+  aside.hidden = !opts.aside;
+  aside.className = 'ask-aside';
+  if(opts.aside) aside.textContent = opts.aside.label;
 
   scrim.hidden = false; sheet.hidden = false;
   document.body.classList.add('ask-on');
@@ -5405,7 +5600,7 @@ function askClose(){
   sheet.classList.remove('up'); scrim.classList.remove('on');
   sheet.style.transform = '';
   document.body.classList.remove('ask-on');
-  const back = askFrom; askFor = null; askFrom = null;
+  const back = askFrom; asking = null; askFrom = null;
   /* Hidden only once it has left, or it vanishes instead of sliding. Matched to the CSS. */
   setTimeout(()=>{
     if(!askUp){ sheet.hidden = true; scrim.hidden = true; }
@@ -5426,13 +5621,22 @@ document.getElementById('askno').addEventListener('click', askClose);
 document.getElementById('askscrim').addEventListener('click', askClose);
 document.getElementById('askgrab').addEventListener('click', askClose);
 document.getElementById('askgo').addEventListener('click', async ()=>{
-  const w = askFor;
-  if(!w) return;
+  if(!asking) return;
   const go = document.getElementById('askgo');
   go.disabled = true;
-  const gone = await removeWord(w);
+  const done = await asking.onGo();
   go.disabled = false;
-  if(gone) askClose();
+  if(done) askClose();
+});
+
+/* The aside does its thing and says so in place, rather than closing the question it is a
+   detour from. Somebody taking a copy on the way out has not decided to leave yet. */
+document.getElementById('askaside').addEventListener('click', async ()=>{
+  if(!asking || !asking.aside) return;
+  const el = document.getElementById('askaside');
+  if(el.classList.contains('done')) return;
+  const ok = await asking.aside.run();
+  if(ok){ el.textContent = asking.aside.done; el.classList.add('done'); }
 });
 
 /* The handle promises a downward throw, so it has to be one. The whole sheet takes the drag,
@@ -5443,7 +5647,12 @@ document.getElementById('askgo').addEventListener('click', async ()=>{
   let startY = 0, dy = 0, dragging = false;
 
   sheet.addEventListener('pointerdown', e=>{
-    if(sheet.hidden || e.target.closest('.btn')) return;
+    /* Every button is excluded except the handle, which is the one that means to be dragged.
+       It said `.btn` at first, and the copy offered on the way out is not a .btn — so the
+       drag swallowed its press and the one door out of the booklet could not be opened by a
+       thumb. Anything you can press is not a drag surface. */
+    if(sheet.hidden) return;
+    if(e.target.closest('button') && !e.target.closest('.ask-grab')) return;
     dragging = true; startY = e.clientY; dy = 0;
     sheet.style.transition = 'none';
     try{ sheet.setPointerCapture(e.pointerId); }catch(err){}

@@ -437,6 +437,99 @@ test.describe('emptying the booklet', () => {
   });
 });
 
+test.describe('leaving the booklet', () => {
+  /* There is no account in this build, so there is nothing to leave and the row must not be
+     there offering. Everything below unhides it by hand and stubs the call — the real one
+     needs a session and an edge function, which is the half of the app the suite cannot
+     reach. */
+  test('there is no way out where there is no account', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await stock(page);
+    await page.locator('.dest[data-dest="you"]').click();
+    await expect(page.locator('#wipe-row')).toBeHidden();
+  });
+
+  /* The count on the button is what replaced typing a word, and it is doing more work here
+     than anywhere else in the app: it is the last thing a reader sees before the account
+     goes. The sentence has to name the words and the fields, and the button has to carry
+     the number. */
+  test('the question names what goes, and the button carries the count', async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await stock(page);
+    await page.locator('.dest[data-dest="you"]').click();
+    await page.evaluate(() => { document.getElementById('wipe-row').hidden = false; });
+    await page.locator('.set-group').nth(2).locator('.set-h').click();
+    await page.locator('#wipebtn').click();
+
+    await expect(page.locator('#ask-q')).toHaveText('Delete your account?');
+    await expect(page.locator('#ask-d')).toContainText('154 words');
+    await expect(page.locator('#ask-d')).toContainText('8 fields');
+    await expect(page.locator('#ask-d2')).toContainText('forgets its copy');
+    await expect(page.locator('#askgo')).toHaveText('Delete my account and 154 words');
+    await expect(page.locator('#askno')).toHaveText('Keep my account');
+  });
+
+  /* The one door out that was removed and put back for this. It must not close the question
+     it is a detour from — somebody taking a copy has not decided to leave yet. */
+  test('a copy can be taken without answering the question', async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await stock(page);
+    await page.locator('.dest[data-dest="you"]').click();
+    await page.evaluate(() => {
+      document.getElementById('wipe-row').hidden = false;
+      window.takeCopy = async () => true;          // no real download in a test run
+    });
+    await page.locator('.set-group').nth(2).locator('.set-h').click();
+    await page.locator('#wipebtn').click();
+
+    const aside = page.locator('#askaside');
+    await expect(aside).toHaveText('Take a copy first');
+    await aside.click();
+    await expect(aside).toHaveText('Copy taken');
+    await expect(page.locator('#asksheet'), 'taking a copy closed the question').toBeVisible();
+  });
+
+  /* A deletion that fails must not throw anything away, and must say so where the reader is
+     looking — which is the sheet, since the panel behind it is under a scrim. */
+  test('a deletion that fails keeps the question up and says why', async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await stock(page);
+    await page.locator('.dest[data-dest="you"]').click();
+    await page.evaluate(() => {
+      document.getElementById('wipe-row').hidden = false;
+      window.deleteAccount = async () => { askFault('The account was not deleted — HTTP 500'); return false; };
+    });
+    await page.locator('.set-group').nth(2).locator('.set-h').click();
+    await page.locator('#wipebtn').click();
+    await page.locator('#askgo').click();
+
+    await expect(page.locator('#ask-err')).toContainText('was not deleted');
+    await expect(page.locator('#asksheet')).toBeVisible();
+  });
+
+  /* The dangerous half of forgetting a device is forgetting too much. The voice, the speed,
+     the pictures and the folds are facts about this screen, not about the account, and
+     wiping them would be a second deletion nobody asked for. */
+  test('the device forgets the words and keeps the preferences', async ({ page }) => {
+    await stock(page);
+    const left = await page.evaluate(() => {
+      const content = ['vocab-booklet-progress','vocab-words-cache','vocab-words-local',
+                       'vocab-fix-local','vocab-fields-local','vocab-gone-local',
+                       'vocab-wordfield-local','vocab-pack-local','vocab-seeded-local',
+                       'vocab-rows-abc'];
+      const mine = ['vocab-voice','vocab-rate','vocab-pics','vocab-you-folds','vocab-nav-tight'];
+      [...content, ...mine].forEach(k => localStorage.setItem(k, 'x'));
+      forgetDevice('abc');
+      return {
+        content: content.filter(k => localStorage.getItem(k) !== null),
+        mine:    mine.filter(k => localStorage.getItem(k) === null),
+      };
+    });
+    expect(left.content, 'the account left something behind on this device').toEqual([]);
+    expect(left.mine, 'leaving took settings that belong to this screen').toEqual([]);
+  });
+});
+
 test.describe('the shell at each size', () => {
   /* Was: the search box claimed a whole line, so View and the tally sat on a second row
      and the head was three bands deep before a word of the book. */
@@ -624,7 +717,9 @@ test.describe('You, where the panel is narrow', () => {
     await page.locator('.dest[data-dest="you"]').click();
     await page.locator('.set-group').nth(2).locator('.set-h').click();
     await page.locator('#emptybtn').click();
-    const row = page.locator('.set-ask.grave');
+    /* by the row that owns the empty button — `.set-ask.grave` is two rows now that leaving
+       the booklet sits under emptying it */
+    const row = page.locator('.set-ask', { has: page.locator('#emptyrow') });
     await expect(row).toHaveClass(/asking/);
     await expect(page.locator('#emptygo')).toHaveText('Empty 154 words');
     const name = await row.locator('.set-t').boundingBox();
