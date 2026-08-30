@@ -1019,6 +1019,9 @@
   .cm-confirm .cm-cd{font-size:13.5px; color:#4A4C63; margin:6px 0 0; line-height:1.5}
   .cm-confirm .row{margin-top:12px}
   .cm-confirm .btn{color:rgba(34,36,63,.6); border-color:rgba(34,36,63,.25)}
+  /* A card is paper — the panels' warning ink is unreadable on it, so it gets the oxblood
+     it uses for everything else that has gone wrong. */
+  .card-err{color:var(--ink-3); font-size:13.5px; line-height:1.4; margin:8px 0 0}
   .cm-confirm .btn:hover{color:#22243F; border-color:rgba(34,36,63,.5)}
   .cm-yes{background:var(--ink-3) !important; border-color:var(--ink-3) !important; color:var(--paper) !important}
   /* the dashed chip is the second, more findable door into the same menu */
@@ -2493,7 +2496,7 @@ function confirmRemove(card){
   const p=document.createElement('p'); p.className='cm-cd';
   p.textContent = store.id==='cloud'
     ? 'It goes from this booklet on every device you use, and will not come back on the next sign-in.'
-    : 'It goes from this booklet on this device. The committed file is not touched.';
+    : 'It goes from this booklet, in this browser.';
   const row=document.createElement('div'); row.className='row';
   const yes=document.createElement('button'); yes.className='btn cm-yes'; yes.dataset.reallyremove='1'; yes.textContent='Remove';
   const no=document.createElement('button'); no.className='btn'; no.dataset.cancelremove='1'; no.textContent='Cancel';
@@ -2506,15 +2509,54 @@ function confirmRemove(card){
 
 async function fileWord(w, f){
   try{ await store.setField(w, f); }
-  catch(e){ fault('sync', e, 'file'); syncNote('That word did not move — '+errText(e)); return; }
+  catch(e){
+    /* Same fault, same door: filing is done from the card too. */
+    fault('sync', e, 'file');
+    const msg = 'That word did not move — '+errText(e);
+    syncNote(msg); cardFault(w, msg);
+    return;
+  }
+  clearCardFault(w);
   const x=W.find(y=>y.w===w); if(x) x.f=f;
   syncNote('');
   render(); loadProgress(); showLocal(); renderFields();
 }
 
+/* Where a write that failed says so. syncNote() alone was not enough and had been hiding
+   this: #sync lives at the top of the You panel, and nobody is standing in You when they
+   remove a word from the book. The write failed, the reason was written down on another
+   screen, and from the reader's side the button did nothing at all. So it is said twice —
+   once in the status line, which is the record, and once against the card, which is where
+   the question was asked. */
+function cardFault(w, msg){
+  const card = document.querySelector(`[data-w="${CSS.escape(w)}"]`);
+  if(!card) return;
+  const box = card.querySelector('.cm-confirm') || card.querySelector('.body');
+  if(!box) return;
+  let note = card.querySelector('.card-err');
+  if(!note){
+    note = document.createElement('p');
+    note.className = 'note warn card-err';
+    box.appendChild(note);
+  }
+  note.textContent = msg;
+  card.classList.add('open');
+}
+const clearCardFault = w => {
+  const card = document.querySelector(`[data-w="${CSS.escape(w)}"]`);
+  const note = card && card.querySelector('.card-err');
+  if(note) note.remove();
+};
+
 async function removeWord(w){
   try{ await store.removeWord(w); }
-  catch(e){ fault('sync', e, 'remove'); syncNote('That word was not removed — '+errText(e)); return; }
+  catch(e){
+    fault('sync', e, 'remove');
+    const msg = 'That word was not removed — '+errText(e);
+    syncNote(msg); cardFault(w, msg);
+    return;
+  }
+  clearCardFault(w);
   W = W.filter(y=>y.w!==w);
   done.delete(w);
   syncNote('');

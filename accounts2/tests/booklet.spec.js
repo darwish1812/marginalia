@@ -167,6 +167,28 @@ test.describe('the card menu', () => {
     await expect(page.locator(`[data-w="${word}"]`)).toHaveCount(0);
     await expect(page.locator('.card')).toHaveCount(before - 1);
   });
+  /* Was: a removal that failed said so at the top of the You panel, which is not the screen
+     anybody is standing on when they remove a word from the book. The write failed, the
+     reason was written down somewhere else, and from the reader's side the button did
+     nothing at all — which is exactly how it was reported. The signed-in path is where this
+     bites and the suite cannot reach it, so the failure is forced here instead. */
+  test('a removal that fails says so on the card, not on another screen', async ({ page }) => {
+    await stock(page);
+    const card = page.locator('.card').first();
+    const word = await card.getAttribute('data-w');
+    await page.evaluate(() => {
+      store.removeWord = async () => { throw new Error('the database refused that'); };
+    });
+    await card.locator('.more').click();
+    await page.locator('.card-menu [data-remove]').click();
+    await page.locator('[data-reallyremove]').click();
+
+    await expect(card.locator('.card-err'), 'the failure was not shown on the card')
+      .toContainText('was not removed');
+    await expect(card.locator('.card-err')).toBeVisible();
+    /* and the word is still there, because it was not removed */
+    await expect(page.locator(`[data-w="${word}"]`)).toHaveCount(1);
+  });
 });
 
 test.describe('the View lens', () => {
