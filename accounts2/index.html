@@ -796,6 +796,11 @@
   .note.warn{color:var(--ink-1)}
   .note.bad{color:var(--ink-3)}
   .note.good{color:var(--ink-2)}
+  .gate-gone{border-left:3px solid var(--ink-2); padding:1px 0 1px 15px; margin:0 0 30px}
+  .gate-gone b{display:block; font-family:"Archivo",sans-serif; font-size:9.5px; font-weight:600;
+               letter-spacing:.16em; text-transform:uppercase; color:var(--ink-2);
+               margin-bottom:7px}
+  .gate-gone p{margin:0; font-size:15px; line-height:1.6; color:var(--dim)}
   /* ---------- first run ---------- */
   .firstrun{max-width:920px; margin:70px auto 0; padding:0 4px}
   .firstrun h2{font-family:"Fraunces",Georgia,serif; font-weight:600; font-size:clamp(32px,5vw,52px);
@@ -1889,8 +1894,16 @@
        only place the email form lives, so there is one sign-in in the app, not two. -->
   <section class="gate" id="gate" hidden>
     <!-- Set only by leaving, and cleared by the next load: a destructive action that ends
-         looking exactly like a sign-out leaves you wondering whether it worked. -->
-    <p class="note good" id="gate-gone" hidden></p>
+         looking exactly like a sign-out leaves you wondering whether it worked.
+
+         A receipt, not an announcement. The verdigris is on the rule and the one word that
+         says what happened; the sentence itself is in the ordinary ink, because a whole line
+         of green reads as congratulation and nobody deleting their account is being
+         congratulated. -->
+    <div class="gate-gone" id="gate-gone" hidden>
+      <b>Deleted</b>
+      <p id="gate-gone-t"></p>
+    </div>
     <h2 id="gate-h">Your own booklet</h2>
     <p id="gate-p">Sign in and you get your own copy of these words — a hundred and fifty to
       begin with, yours to add to, mark up and mangle. Nothing you do to them touches
@@ -5491,7 +5504,14 @@ async function deleteAccount(){
   if(!left) return;
   const el = document.getElementById('gate-gone');
   if(!el) return;
-  el.textContent = 'Your account and everything in it is gone. Nothing was kept.';
+  /* It said "Your account and everything in it is gone. Nothing was kept." — true, and
+     colder than it needed to be. "Nothing was kept" earns its place, because somebody who
+     left for that reason wants to hear exactly that; what was missing is the sentence after
+     it. Ending on a full stop leaves a reader standing in front of a sign-in form with no
+     idea whether they are welcome back. */
+  const t = document.getElementById('gate-gone-t');
+  if(t) t.textContent = 'Your words, your fields and the account are gone, and nothing was ' +
+                        'kept. You can start a new booklet whenever you like.';
   el.hidden = false;
 })();
 

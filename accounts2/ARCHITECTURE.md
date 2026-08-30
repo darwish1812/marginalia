@@ -673,7 +673,16 @@ downloads where it is not — on a booklet added to the Home Screen, iOS answers
 by opening the file or by nothing at all.
 
 **The gate says it happened**, once, out of `sessionStorage` — a destructive action that ends
-looking exactly like a sign-out leaves you wondering whether it worked.
+looking exactly like a sign-out leaves you wondering whether it worked. It is a receipt rather
+than an announcement: the verdigris is on the rule and on the one word that says what happened,
+and the sentence is in the ordinary ink, because a whole line of green reads as congratulation
+and nobody deleting their account is being congratulated. It shipped as a bare green paragraph
+first, which is not what was mocked and looked like the app cheering.
+
+The wording matters more here than anywhere else in the app. *Nothing was kept* earns its
+place — somebody who left for that reason wants to hear exactly that — but ending there leaves
+a reader standing in front of a sign-in form with no idea whether they are welcome back, so it
+says they can start again.
 
 **No password is asked for.** Convention says otherwise, but this booklet offers Google and
 Apple sign-in, so a reader who came in that way has no password to be asked for — re-auth would

@@ -507,6 +507,26 @@ test.describe('leaving the booklet', () => {
     await expect(page.locator('#asksheet')).toBeVisible();
   });
 
+  /* The receipt is shown once. It is written to sessionStorage on the way out and read back
+     on the next load — so it cannot be bookmarked, cannot be arrived at by anybody who did
+     not just do it, and must not still be sitting there the second time the gate is opened.
+     Showing it twice would be worse than not showing it: the first is a receipt, the second
+     is the app insisting. */
+  test('the receipt is shown once and then forgotten', async ({ page }) => {
+    await stock(page);
+    await page.evaluate(() => sessionStorage.setItem('vocab-left', '1'));
+    await page.reload();
+    await expect(page.locator('.card').first()).toBeVisible();
+    await expect(page.locator('#gate-gone')).not.toHaveAttribute('hidden', '');
+    await expect(page.locator('#gate-gone-t')).toContainText('nothing was kept');
+    await expect(page.locator('#gate-gone-t'), 'it does not say what happens next')
+      .toContainText('start a new booklet');
+
+    await page.reload();
+    await expect(page.locator('.card').first()).toBeVisible();
+    await expect(page.locator('#gate-gone'), 'the receipt came back').toHaveAttribute('hidden', '');
+  });
+
   /* The dangerous half of forgetting a device is forgetting too much. The voice, the speed,
      the pictures and the folds are facts about this screen, not about the account, and
      wiping them would be a second deletion nobody asked for. */
