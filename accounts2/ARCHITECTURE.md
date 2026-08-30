@@ -672,17 +672,17 @@ ask about portability. `takeCopy()` shares the file where sharing files is possi
 downloads where it is not — on a booklet added to the Home Screen, iOS answers an `<a download>`
 by opening the file or by nothing at all.
 
-**The gate says it happened**, once, out of `sessionStorage` — a destructive action that ends
-looking exactly like a sign-out leaves you wondering whether it worked. It is a receipt rather
-than an announcement: the verdigris is on the rule and on the one word that says what happened,
-and the sentence is in the ordinary ink, because a whole line of green reads as congratulation
-and nobody deleting their account is being congratulated. It shipped as a bare green paragraph
-first, which is not what was mocked and looked like the app cheering.
+**The dialog becomes the receipt**, and the reader decides when to leave the room. It was on
+the gate first, put there by a flag in `sessionStorage` and read after a reload, and that was
+the wrong place twice over: it arrived as something about signing in rather than about what had
+just been done, and it sat over a form inviting you to make another account. `askOpen()` is
+called again with `keep:null` — a statement rather than a question, one way on and nothing to
+decline — and `deleteAccount()` returns false so the sheet is not closed under the receipt it
+has just been given.
 
 The wording matters more here than anywhere else in the app. *Nothing was kept* earns its
 place — somebody who left for that reason wants to hear exactly that — but ending there leaves
-a reader standing in front of a sign-in form with no idea whether they are welcome back, so it
-says they can start again.
+a reader with no idea whether they are welcome back, so it says they can start again.
 
 **No password is asked for.** Convention says otherwise, but this booklet offers Google and
 Apple sign-in, so a reader who came in that way has no password to be asked for — re-auth would
@@ -693,6 +693,29 @@ doing the work instead.
 card: a title, one or two sentences, the two answers, and an optional aside. Two grave questions
 sharing one door is the same argument that gave the phone and the desk one dialog rather than
 two.
+
+### 3.6c4 Three questions, one door
+
+Emptying the booklet asked inside its own row — the button was replaced by two, a sentence
+appeared beside them, and the row grew. Removing a word asked in a dialog. Leaving asked in a
+dialog and then wrote a note on the gate. Three grave questions asked three different ways is
+the same mistake as two confirmations for one, a level up. **They are one dialog now.**
+
+**Reset marks is the exception, and stays inside its row.** It is the only one of the four you
+can undo by simply doing it again — the words are untouched — so it does not need the screen
+dimmed for it. That is also why it left the group of finals: a thing you can undo sitting in
+the same list as two you cannot makes the list mean less, and makes the fold in front of it
+mean less too. It has gone up to **Your words**, which is what it acts on, and the last group
+is named **No way back** for what is actually left in it.
+
+**The answers are stacked at every width.** On a desk they were briefly `1fr 1fr`, which is
+`minmax(auto,1fr)` — floored by the longest label's min-content — so *Delete my account and 152
+words* took 288px of a 420px dialog and the pair overflowed it by 35. One column everywhere is
+both correct and less CSS.
+
+**The scrim only takes clicks while it is up.** It fades over 260ms and is not hidden until
+300, and in between it was invisible and still catching everything: press Cancel, tap the next
+thing immediately, and nothing happens. A dead zone you cannot see is worse than a slow one.
 
 ### 3.6d You, where the panel is narrow
 

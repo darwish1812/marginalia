@@ -409,9 +409,11 @@ test.describe('emptying the booklet', () => {
     await page.locator('.dest[data-dest="you"]').click();
     await page.locator('#emptybtn').click();
     await expect(page.locator('#emptytype'), 'the typed step should be gone').toHaveCount(0);
-    await expect(page.locator('#emptygo')).toHaveText('Empty 154 words');
-    await expect(page.locator('#emptygo')).toBeEnabled();
-    await expect(page.locator('#emptymsg')).toContainText('cannot be undone');
+    await expect(page.locator('#asksheet')).toBeVisible();
+    await expect(page.locator('#askgo')).toHaveText('Empty 154 words');
+    await expect(page.locator('#ask-d')).toContainText('154 words');
+    await expect(page.locator('#ask-d'), 'it does not say what survives')
+      .toContainText('fields, your account');
   });
 
   test('cancelling leaves every word where it was', async ({ page }) => {
@@ -419,8 +421,8 @@ test.describe('emptying the booklet', () => {
     await stock(page);
     await page.locator('.dest[data-dest="you"]').click();
     await page.locator('#emptybtn').click();
-    await page.locator('#emptyno').click();
-    await expect(page.locator('#emptybtn')).toBeVisible();      // back to rest
+    await page.locator('#askno').click();
+    await expect(page.locator('#asksheet')).toBeHidden();
     await page.locator('.dest[data-dest="book"]').click();
     await expect(page.locator('.card')).toHaveCount(154);
   });
@@ -430,10 +432,37 @@ test.describe('emptying the booklet', () => {
     await stock(page);
     await page.locator('.dest[data-dest="you"]').click();
     await page.locator('#emptybtn').click();
-    await page.locator('#emptygo').click();
+    await page.locator('#askgo').click();
     /* an emptied booklet is the state the first-run picker was written for */
     await expect(page.locator('#firstrun')).toBeVisible();
     await expect(page.locator('.card')).toHaveCount(0);
+    await expect(page.locator('#asksheet'), 'the question stayed up').toBeHidden();
+  });
+
+  /* Was: three grave questions asked three different ways — a dialog for removing a word, a
+     row that grew for emptying, and a third thing for leaving. They are one dialog now, and
+     Reset marks is the only confirmation still asked inside its row, because it is the only
+     one you can undo by doing it again. */
+  test('the three finals all ask in the same place', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await stock(page);
+    /* Reset marks is disabled when nothing is marked — a live button that does nothing is a
+       lie — so there has to be a mark before it can be asked about. */
+    await page.locator('.card .mark').first().click();
+    await page.locator('.dest[data-dest="you"]').click();
+    await page.evaluate(() => { document.getElementById('wipe-row').hidden = false; });
+
+    for (const [button, expected] of [['#emptybtn', 'Empty this booklet?'],
+                                      ['#wipebtn',  'Delete your account?']]) {
+      await page.locator(button).click();
+      await expect(page.locator('#ask-q')).toHaveText(expected);
+      await page.keyboard.press('Escape');
+      await expect(page.locator('#asksheet')).toBeHidden();
+    }
+    /* and the one that is not final still asks where it stands */
+    await page.locator('#reset').click();
+    await expect(page.locator('#resetgo')).toBeVisible();
+    await expect(page.locator('#asksheet'), 'reset opened the dialog').toBeHidden();
   });
 });
 
@@ -507,27 +536,44 @@ test.describe('leaving the booklet', () => {
     await expect(page.locator('#asksheet')).toBeVisible();
   });
 
-  /* The receipt is shown once. It is written to sessionStorage on the way out and read back
-     on the next load — so it cannot be bookmarked, cannot be arrived at by anybody who did
-     not just do it, and must not still be sitting there the second time the gate is opened.
-     Showing it twice would be worse than not showing it: the first is a receipt, the second
-     is the app insisting. */
-  test('the receipt is shown once and then forgotten', async ({ page }) => {
-    await stock(page);
-    await page.evaluate(() => sessionStorage.setItem('vocab-left', '1'));
-    await page.reload();
-    await expect(page.locator('.card').first()).toBeVisible();
-    await expect(page.locator('#gate-gone')).not.toHaveAttribute('hidden', '');
-    await expect(page.locator('#gate-gone-t')).toContainText('nothing was kept');
-    await expect(page.locator('#gate-gone-t'), 'it does not say what happens next')
-      .toContainText('start a new booklet');
+  /* The receipt used to be a note on the sign-in page, put there by a flag in sessionStorage
+     and read after a reload. That was the wrong place twice over: it arrived as something
+     about signing in rather than about what you had just done, and it sat over a form
+     inviting you to make another account. It is said in the dialog where the deletion
+     happened, and the reader decides when to leave the room.
 
-    await page.reload();
-    await expect(page.locator('.card').first()).toBeVisible();
-    await expect(page.locator('#gate-gone'), 'the receipt came back').toHaveAttribute('hidden', '');
+     A statement, not a question — so it has one answer and nothing to decline. */
+  test('the receipt is a statement, with one way on', async ({ page }) => {
+    await stock(page);
+    await page.evaluate(() => askOpen({
+      label: 'Deleted',
+      title: ['Your account is gone.'],
+      lines: [['Nothing was kept.']],
+      go: 'Continue', keep: null,
+      onGo: () => false,
+    }));
+    await expect(page.locator('#ask-done')).toHaveText('Deleted');
+    await expect(page.locator('#ask-q')).toHaveText('Your account is gone.');
+    await expect(page.locator('#askgo')).toHaveText('Continue');
+    await expect(page.locator('#askno'), 'a statement offered something to decline').toBeHidden();
+    await expect(page.locator('#askgo'), 'the only way on does not hold focus').toBeFocused();
   });
 
-  /* The dangerous half of forgetting a device is forgetting too much. The voice, the speed,
+  /* And the label is not left behind on the next question asked. */
+  test('the label does not survive into the next question', async ({ page }) => {
+    await stock(page);
+    await page.evaluate(() => askOpen({ label:'Deleted', title:['Gone.'], go:'Continue',
+                                        keep:null, onGo:()=>false }));
+    await expect(page.locator('#ask-done')).toHaveText('Deleted');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#asksheet')).toBeHidden();
+    await page.locator('.card').first().locator('.more').click();
+    await page.locator('.card-menu [data-remove]').click();
+    await expect(page.locator('#ask-done')).toBeEmpty();
+    await expect(page.locator('#askno'), 'the second answer never came back').toBeVisible();
+  });
+
+  /* The dangerous half of forgetting a device  /* The dangerous half of forgetting a device is forgetting too much. The voice, the speed,
      the pictures and the folds are facts about this screen, not about the account, and
      wiping them would be a second deletion nobody asked for. */
   test('the device forgets the words and keeps the preferences', async ({ page }) => {
@@ -730,20 +776,22 @@ test.describe('You, where the panel is narrow', () => {
   });
 
   /* Two pills and a sentence do not fit beside a name on a 343px line, so while it asks the
-     row gives them one of their own. Without it the name is squeezed to nothing. */
-  test('a bulk action still asks, on a line of its own', async ({ page }) => {
+     row gives them one of their own. Without it the name is squeezed to nothing.
+
+     Reset marks is the only confirmation still asked inside a row — emptying and leaving both
+     went to the dialog — and it is the right one to keep there: it is the only one of the
+     three you can undo by simply doing it again. */
+  test('the one question still asked in a row takes a line of its own', async ({ page }) => {
     await page.setViewportSize(PHONE);
     await stock(page);
+    await page.locator('.card .mark').first().click();     // or Reset marks is disabled
     await page.locator('.dest[data-dest="you"]').click();
-    await page.locator('.set-group').nth(2).locator('.set-h').click();
-    await page.locator('#emptybtn').click();
-    /* by the row that owns the empty button — `.set-ask.grave` is two rows now that leaving
-       the booklet sits under emptying it */
-    const row = page.locator('.set-ask', { has: page.locator('#emptyrow') });
+    await page.locator('#reset').click();
+
+    const row = page.locator('.set-ask', { has: page.locator('#resetrow') });
     await expect(row).toHaveClass(/asking/);
-    await expect(page.locator('#emptygo')).toHaveText('Empty 154 words');
     const name = await row.locator('.set-t').boundingBox();
-    const go   = await page.locator('#emptygo').boundingBox();
+    const go   = await page.locator('#resetgo').boundingBox();
     expect(go.y, 'the confirmation did not take its own line')
       .toBeGreaterThan(name.y + name.height - 2);
     /* The failure this is really watching for: the name crushed into a ribbon to make room
@@ -751,7 +799,7 @@ test.describe('You, where the panel is narrow', () => {
     expect(name.width, 'the name was squeezed out of the way').toBeGreaterThan(120);
   });
 
-  /* The whole of "I downloaded a voice and it never appeared", in one case. Chrome answers
+  /* The whole of "I downloaded a voice and it never appeared"  /* The whole of "I downloaded a voice and it never appeared", in one case. Chrome answers
      the first getVoices() with an empty list, so the row hides itself during load; the real
      list arrives through onvoiceschanged a moment later. Until 2026-08-29 the row never came
      back — refreshVoices() refilled a <select> nobody could see — and the count above it went

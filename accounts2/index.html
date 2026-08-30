@@ -796,11 +796,13 @@
   .note.warn{color:var(--ink-1)}
   .note.bad{color:var(--ink-3)}
   .note.good{color:var(--ink-2)}
-  .gate-gone{border-left:3px solid var(--ink-2); padding:1px 0 1px 15px; margin:0 0 30px}
-  .gate-gone b{display:block; font-family:"Archivo",sans-serif; font-size:9.5px; font-weight:600;
-               letter-spacing:.16em; text-transform:uppercase; color:var(--ink-2);
-               margin-bottom:7px}
-  .gate-gone p{margin:0; font-size:15px; line-height:1.6; color:var(--dim)}
+  /* The dialog says what happened, in the place it happened. The verdigris is on the label
+     only: a whole line of the colour this app keeps for "that went right" reads as
+     congratulation, and nobody deleting their account is being congratulated. */
+  .ask-done{display:block; font-family:"Archivo",sans-serif; font-size:9.5px; font-weight:600;
+            letter-spacing:.16em; text-transform:uppercase; color:var(--ink-2);
+            margin:0 0 9px}
+  .ask-done:empty{display:none}
   /* ---------- first run ---------- */
   .firstrun{max-width:920px; margin:70px auto 0; padding:0 4px}
   .firstrun h2{font-family:"Fraunces",Georgia,serif; font-weight:600; font-size:clamp(32px,5vw,52px);
@@ -980,14 +982,16 @@
 
     /* Keep a copy was the one row with two controls and the reason .set-wide existed. Both
        went; a confirmation is the only thing that puts two buttons on a row now. */
-    #resetgo,#resetno,#emptygo,#emptyno{
+    /* Reset marks is the last confirmation asked inside a row — emptying and leaving both
+       moved to the dialog, and #emptygo/#emptyno went with them. */
+    #resetgo,#resetno{
       border:1px solid var(--rule); padding:8px 13px; border-radius:7px;
       text-transform:uppercase; font-size:11px; letter-spacing:.11em;
     }
     /* While a bulk action is asking, its two answers wear the pill again and take the line
        below: a confirmation that looks like a value is not a confirmation. */
     .set-ask.asking .ctl{flex-basis:100%; justify-content:flex-start; padding-top:6px}
-    #resetgo,#emptygo{color:var(--ink-3); border-color:rgba(196,72,92,.45)}
+    #resetgo{color:var(--ink-3); border-color:rgba(196,72,92,.45)}
   }
 
   /* ---------- the card menu ---------- */
@@ -1032,8 +1036,12 @@
   .ask-scrim{
     position:fixed; inset:0; z-index:80; background:rgba(8,9,22,.62);
     opacity:0; transition:opacity .26s ease;
+    /* Only while it is up. It fades over 260ms and is not hidden until 300, and in between
+       it was invisible and still catching everything — press Cancel, tap the next thing
+       immediately, and nothing happens. A dead zone you cannot see is worse than a slow one. */
+    pointer-events:none;
   }
-  .ask-scrim.on{opacity:1}
+  .ask-scrim.on{opacity:1; pointer-events:auto}
   .ask-sheet{
     position:fixed; left:0; right:0; bottom:0; z-index:81;
     background:var(--night-2); color:var(--paper);
@@ -1089,7 +1097,6 @@
     }
     .ask-sheet.up{transform:translate(-50%,-50%); opacity:1}
     .ask-grab{display:none}
-    .ask-row{grid-template-columns:1fr 1fr}
     .ask-sheet .btn{padding:12px 14px}
   }
   @media(prefers-reduced-motion:reduce){ .ask-sheet,.ask-scrim{transition:none} }
@@ -1767,6 +1774,21 @@
             <div class="ctl"><button class="btn" id="fldbtn" aria-pressed="false">Edit fields</button></div>
           </div>
 
+          <!-- Every tick at once, and the only one of the three destructive actions that
+               is not final — the words stay exactly where they are. That is why it sits here
+               among the doors rather than below with the two there is no way back from, and
+               why it is the one that still asks inside its own row rather than in a dialog.
+               A question you can answer wrongly and simply do again does not need the screen
+               dimmed for it. -->
+          <div class="set set-ask">
+            <p class="set-t">Reset marks</p>
+            <p class="set-d">Every card back to unlearned. The words stay.</p>
+            <div class="ctl" id="resetrow"><button class="btn" id="reset"
+                 data-long="Reset marks" data-short="Reset…">Reset marks</button></div>
+            <p class="note" id="resetmsg"></p>
+          </div>
+
+
           </div>
         </div>
 
@@ -1797,26 +1819,14 @@
           </div>
         </div>
 
-        <!-- The two there is no way back from, together and last, behind a fold that is shut
-             when the panel opens. They were spread through a list called "the whole booklet"
-             under a heading about the booklet as an object, which put the least friendly
-             thing in the app in the same list as the rest. -->
+        <!-- The two finals, alone. They shared a group called "Starting over" with Reset
+             marks, which is not final at all — putting a thing you can undo in the same list
+             as two you cannot makes the list mean less, and makes the fold in front of it
+             mean less too. Reset marks has gone up to the words it acts on; what is left here
+             is only what it says. -->
         <div class="set-group">
-          <button class="set-h" type="button">Starting over<span class="set-n"></span></button>
+          <button class="set-h" type="button">No way back<span class="set-n"></span></button>
           <div class="set-b">
-
-          <!-- Every tick at once. This stood in the toolbar wearing the same pill as Study
-               mode and went off on a single click — cheaper than removing one word, which
-               asks twice. It asks now: the confirmation replaces the button inside the
-               control cell, so the row keeps the same right edge as every other row while
-               it is asking. -->
-          <div class="set set-ask">
-            <p class="set-t">Reset marks</p>
-            <p class="set-d">Every card back to unlearned. The words stay.</p>
-            <div class="ctl" id="resetrow"><button class="btn" id="reset"
-                 data-long="Reset marks" data-short="Reset…">Reset marks</button></div>
-            <p class="note" id="resetmsg"></p>
-          </div>
 
           <!-- The only bulk action in the app. Removing words one at a time is right for
                a booklet you are tending; it is cruelty for someone who signed up, got a
@@ -1893,17 +1903,6 @@
   <!-- Shown instead of the book when accounts are on and nobody is signed in. It is the
        only place the email form lives, so there is one sign-in in the app, not two. -->
   <section class="gate" id="gate" hidden>
-    <!-- Set only by leaving, and cleared by the next load: a destructive action that ends
-         looking exactly like a sign-out leaves you wondering whether it worked.
-
-         A receipt, not an announcement. The verdigris is on the rule and the one word that
-         says what happened; the sentence itself is in the ordinary ink, because a whole line
-         of green reads as congratulation and nobody deleting their account is being
-         congratulated. -->
-    <div class="gate-gone" id="gate-gone" hidden>
-      <b>Deleted</b>
-      <p id="gate-gone-t"></p>
-    </div>
     <h2 id="gate-h">Your own booklet</h2>
     <p id="gate-p">Sign in and you get your own copy of these words — a hundred and fifty to
       begin with, yours to add to, mark up and mangle. Nothing you do to them touches
@@ -1963,6 +1962,7 @@
   <div class="ask-sheet" id="asksheet" role="dialog" aria-modal="true"
        aria-labelledby="ask-q" hidden>
     <button class="ask-grab" id="askgrab" aria-label="Close"></button>
+    <p class="ask-done" id="ask-done"></p>
     <p class="ask-q" id="ask-q"></p>
     <p class="ask-d" id="ask-d"></p>
     <!-- A second sentence, for the question that needs one. Removing a word does not. -->
@@ -4259,57 +4259,46 @@ document.getElementById('fldlist').addEventListener('click', async e=>{
 /* ---------- emptying the booklet ----------
    Typed rather than tapped. A two-tap confirm is right for one word; for every word at
    once the reader should have to say what they mean. */
+/* Emptying used to ask inside its own row: the button was replaced by two, a sentence
+   appeared beside them, and the row grew. It asks in the dialog now, like removing a word and
+   like leaving — three grave questions asked three different ways was the same mistake as two
+   confirmations for one, one level up. What is left of the old machinery is this: something
+   has to put the button back when You is reopened, because openPanel() calls it. */
 function emptyIdle(){
-  const row=document.getElementById('emptyrow'), msg=document.getElementById('emptymsg');
-  row.textContent='';
-  const b=document.createElement('button');
-  b.className='btn fld-del'; b.id='emptybtn';
-  ctlLabel(b, 'Empty this booklet', 'Empty…');
-  row.closest('.set').classList.remove('asking');
-  row.appendChild(b);
-  msg.className='note'; msg.textContent='';
+  const msg = document.getElementById('emptymsg');
+  if(msg){ msg.className = 'note'; msg.textContent = ''; }
 }
 
-document.getElementById('emptyrow').addEventListener('click', async e=>{
-  const row=document.getElementById('emptyrow'), msg=document.getElementById('emptymsg');
-
-  if(e.target.closest('#emptybtn')){
-    /* It asked you to type the word "empty" once. It asks the way Reset marks does now —
-       two buttons and a sentence — which is the pattern the rest of the panel already uses.
-       The count moves onto the button in its place: pressing something that says "Empty 154
-       words" is a harder thing to do without meaning it than pressing one that says "Empty
-       it", and it costs the reader nothing. */
-    const n=W.length;
-    const go=document.createElement('button');
-    go.className='btn fld-del'; go.id='emptygo';
-    go.textContent = n ? 'Empty '+n+(n===1?' word':' words') : 'Empty it';
-    const no=document.createElement('button');
-    no.className='btn'; no.id='emptyno'; no.textContent='Cancel';
-    msg.className='note warn';
-    /* Same again: the count is on the button, the consequence is the same either way. */
-    msg.textContent = 'Every word goes. This cannot be undone.';
-    row.textContent=''; row.append(go, no); no.focus();
-    row.closest('.set').classList.add('asking');
-    return;
+async function emptyBooklet(){
+  try{ await store.removeAllWords(); }
+  catch(err){
+    fault('sync', err, 'empty');
+    askFault('Nothing was removed — ' + errText(err));
+    return false;
   }
+  W = []; done.clear();
+  render(); loadProgress(); showLocal(); renderFields();
+  /* An empty booklet is the state the first-run picker was written for, and until now the
+     only people who ever saw it were brand new. Somebody who has just cleared the shelf is
+     the other half of that audience: they are standing in front of the same question. The
+     panel closes and the screen behind it asks it. */
+  openPanel(null);
+  await showFirstRun({restock:true});
+  return true;
+}
 
-  if(e.target.closest('#emptyno')){ emptyIdle(); return; }
-
-  if(e.target.closest('#emptygo')){
-    const go=document.getElementById('emptygo');
-    go.disabled=true; msg.className='note'; msg.textContent='Emptying…';
-    try{ await store.removeAllWords(); }
-    catch(err){ msg.className='note bad'; msg.textContent='Nothing was removed — '+errText(err); go.disabled=false; return; }
-    W=[]; done.clear();
-    render(); loadProgress(); showLocal(); renderFields();
-    /* An empty booklet is the state the first-run picker was written for, and until now the
-       only people who ever saw it were brand new. Somebody who has just cleared the shelf is
-       the other half of that audience: they are standing in front of the same question. The
-       panel closes and the screen behind it asks it. */
-    emptyIdle();
-    openPanel(null);
-    await showFirstRun({restock:true});
-  }
+document.getElementById('emptyrow').addEventListener('click', e=>{
+  if(!e.target.closest('#emptybtn')) return;
+  const n = W.length;
+  askOpen({
+    title: ['Empty this booklet?'],
+    lines: [[{b: n + (n===1 ? ' word' : ' words')}, ' go, and the starting question comes back. ',
+             'Your fields, your account and everything else stay exactly as they are.']],
+    go: n ? 'Empty ' + n + (n===1 ? ' word' : ' words') : 'Empty it',
+    keep: 'Keep my words',
+    from: document.getElementById('emptybtn'),
+    onGo: emptyBooklet,
+  });
 });
 
 document.getElementById('fldadd').addEventListener('click',()=>{
@@ -5490,30 +5479,25 @@ async function deleteAccount(){
   }
   /* Only now. */
   forgetDevice(uid);
-  try{ sessionStorage.setItem('vocab-left', '1'); }catch(e){}
   try{ await sb.auth.signOut(); }catch(e){}
-  location.reload();
-  return true;
+  /* And the same dialog becomes the receipt, rather than the gate carrying it. A message on
+     the sign-in page was the wrong place twice over: it arrives after a reload, so it reads
+     as something about signing in rather than about what you just did, and it is sitting
+     over a form inviting you to make another account. It is said here, where it happened,
+     and the reader decides when to leave the room. */
+  askOpen({
+    label: 'Deleted',
+    title: ['Your account is gone.'],
+    lines: [['Your words, your fields and the account itself have all been removed, and ',
+             'nothing was kept.'],
+            ['You can start a new booklet whenever you like.']],
+    go: 'Continue',
+    keep: null,
+    onGo: ()=>{ location.reload(); return false; },
+  });
+  /* false, so the sheet is not closed under the receipt it has just been given. */
+  return false;
 }
-
-/* The gate says it happened, once. sessionStorage rather than a query string, so it does not
-   survive being bookmarked and cannot be arrived at by anybody who did not just do it. */
-(function(){
-  let left = null;
-  try{ left = sessionStorage.getItem('vocab-left'); sessionStorage.removeItem('vocab-left'); }catch(e){}
-  if(!left) return;
-  const el = document.getElementById('gate-gone');
-  if(!el) return;
-  /* It said "Your account and everything in it is gone. Nothing was kept." — true, and
-     colder than it needed to be. "Nothing was kept" earns its place, because somebody who
-     left for that reason wants to hear exactly that; what was missing is the sentence after
-     it. Ending on a full stop leaves a reader standing in front of a sign-in form with no
-     idea whether they are welcome back. */
-  const t = document.getElementById('gate-gone-t');
-  if(t) t.textContent = 'Your words, your fields and the account are gone, and nothing was ' +
-                        'kept. You can start a new booklet whenever you like.';
-  el.hidden = false;
-})();
 
 document.getElementById('wipebtn').addEventListener('click', ()=>{
   const n = W.length, f = FIELDS.length;
@@ -5584,11 +5568,16 @@ function askOpen(opts){
     if(typeof part === 'string') return q.append(part);
     const em = document.createElement('i'); em.textContent = part.em; q.appendChild(em);
   });
+  document.getElementById('ask-done').textContent = opts.label || '';
   const lines = opts.lines || [];
   fillLine(document.getElementById('ask-d'),  lines[0]);
   fillLine(document.getElementById('ask-d2'), lines[1]);
   document.getElementById('askgo').textContent = opts.go;
-  document.getElementById('askno').textContent = opts.keep || 'Keep it';
+  /* keep:null is a statement rather than a question — the receipt after leaving, which has
+     one way on and nothing to decline. */
+  const no = document.getElementById('askno');
+  no.hidden = opts.keep === null;
+  if(!no.hidden) no.textContent = opts.keep || 'Keep it';
   document.getElementById('ask-err').textContent = '';
 
   /* The aside is built here rather than left in the markup, so a question that does not offer
@@ -5610,7 +5599,9 @@ function askOpen(opts){
   /* The safe answer takes focus, the way emptying the booklet does. A question about
      something there is no way back from should not open with the destructive answer under
      a thumb or a return key. */
-  document.getElementById('askno').focus();
+  /* The safe answer where there is one; the only answer where there is not. */
+  const first = document.getElementById(opts.keep === null ? 'askgo' : 'askno');
+  first.focus();
 }
 
 function askClose(){
