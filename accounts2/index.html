@@ -2505,9 +2505,11 @@ function confirmRemove(card){
   const em=document.createElement('i'); em.textContent=w; h.appendChild(em);
   h.append('?');
   const p=document.createElement('p'); p.className='cm-cd';
-  p.textContent = store.id==='cloud'
-    ? 'It goes from this booklet on every device you use, and will not come back on the next sign-in.'
-    : 'It goes from this booklet, in this browser.';
+  /* One sentence, whichever store is answering. It said "on every device you use" against an
+     account and "in this browser" without one, which is where the words happen to be kept —
+     a fact worth telling somebody who asks where their words live, and no business of a
+     confirmation. What is being asked here is whether the word should go. It says that. */
+  p.textContent = 'It goes from the booklet, and does not come back.';
   const row=document.createElement('div'); row.className='row';
   const yes=document.createElement('button'); yes.className='btn cm-yes'; yes.dataset.reallyremove='1'; yes.textContent='Remove';
   const no=document.createElement('button'); no.className='btn'; no.dataset.cancelremove='1'; no.textContent='Cancel';
@@ -3089,9 +3091,9 @@ document.getElementById('resetrow').addEventListener('click', e=>{
        them have one of their own. */
     row.closest('.set').classList.add('asking');
     msg.className='note warn';
-    msg.textContent = store.id==='cloud'
-      ? 'Every tick goes, on every device. The words stay where they are.'
-      : 'Every tick goes from this browser. The words stay where they are.';
+    /* Generic, like the other two: what a confirmation owes you is what happens, not a note
+       on where the ticks are kept. */
+    msg.textContent = 'Every tick goes. The words stay where they are.';
     return;
   }
 
@@ -4194,9 +4196,8 @@ document.getElementById('emptyrow').addEventListener('click', async e=>{
     const no=document.createElement('button');
     no.className='btn'; no.id='emptyno'; no.textContent='Cancel';
     msg.className='note warn';
-    msg.textContent = store.id==='cloud'
-      ? 'Every word goes, on every device. This cannot be undone.'
-      : 'Every word goes from this browser. This cannot be undone.';
+    /* Same again: the count is on the button, the consequence is the same either way. */
+    msg.textContent = 'Every word goes. This cannot be undone.';
     row.textContent=''; row.append(go, no); no.focus();
     row.closest('.set').classList.add('asking');
     return;
