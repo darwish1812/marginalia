@@ -30,6 +30,18 @@ async function stock(page) {
  * One fake voice, installed before the page loads, so the branch is exercised identically
  * everywhere. Call it before stock(). The no-voice path is still covered: every other deck
  * test runs without this, and on CI that is genuinely a machine that cannot speak. */
+/* The sheet rises over 300ms. boundingBox() does not wait for a transition, so anything
+   measuring where it ended up has to poll — the first version of these two tests read the
+   box mid-flight and failed by 7px and by a whole screen. */
+async function settled(page) {
+  await expect.poll(async () => {
+    const a = await page.locator('#asksheet').boundingBox();
+    await page.waitForTimeout(60);
+    const b = await page.locator('#asksheet').boundingBox();
+    return Math.round(Math.abs(a.y - b.y));
+  }, { timeout: 3000 }).toBe(0);
+}
+
 async function withVoice(page) {
   await page.addInitScript(() => {
     const voices = [{ name: 'Test English', lang: 'en-GB', default: true,
@@ -149,9 +161,9 @@ test.describe('the card menu', () => {
     const word = await card.getAttribute('data-w');
     await card.locator('.more').click();
     await page.locator('.card-menu [data-remove]').click();
-    await expect(card.locator('.cm-confirm')).toBeVisible();
-    await card.locator('[data-cancelremove]').click();
-    await expect(card.locator('.cm-confirm')).toHaveCount(0);
+    await expect(page.locator('#asksheet')).toBeVisible();
+    await page.locator('#askno').click();
+    await expect(page.locator('#asksheet')).toBeHidden();
     await expect(page.locator(`[data-w="${word}"]`), 'cancelling removed it anyway').toHaveCount(1);
   });
 
@@ -163,49 +175,91 @@ test.describe('the card menu', () => {
     const before = await page.locator('.card').count();
     await card.locator('.more').click();
     await page.locator('.card-menu [data-remove]').click();
-    await card.locator('[data-reallyremove]').click();
+    await page.locator('#askgo').click();
     await expect(page.locator(`[data-w="${word}"]`)).toHaveCount(0);
     await expect(page.locator('.card')).toHaveCount(before - 1);
+    await expect(page.locator('#asksheet'), 'the sheet stayed up').toBeHidden();
   });
-  /* The confirmation is not a dialog — it opens inside the card, the way every other
-     question in this booklet opens where you are standing. What that owes the reader is
-     that the question is actually on the screen: focus() alone scrolls by whatever rule the
-     browser likes, and on a phone that can leave it behind the bar standing over the page.
-     Asked on a card well down the book, at phone size, where both can go wrong. */
-  test('the question is on the screen, and clear of the bar', async ({ page }) => {
+
+  /* Was: the confirmation was built out of the card — the card's serif, the card's grey, a
+     hairline like the one under the Arabic — and read as more entry however it was worded.
+     It is a dialog now, and the thing worth pinning is that it is over the app rather than
+     inside the card: nothing of it is a descendant of the card it is asking about. */
+  test('the question is over the app, not inside the card', async ({ page }) => {
     await page.setViewportSize(PHONE);
     await stock(page);
     const card = page.locator('.card').nth(6);
     await card.scrollIntoViewIfNeeded();
     await card.locator('.more').click();
     await page.locator('.card-menu [data-remove]').click();
-    const box = await page.locator('.cm-confirm').boundingBox();
-    const bar = await page.locator('.nav').boundingBox();
-    expect(box.y, 'the question is off the top').toBeGreaterThanOrEqual(0);
-    expect(box.y + box.height, 'the question is behind the bar').toBeLessThanOrEqual(bar.y + 1);
+    await expect(page.locator('#asksheet')).toBeVisible();
+    await expect(card.locator('#asksheet'), 'the question is inside the card').toHaveCount(0);
+    await expect(page.locator('#askscrim')).toBeVisible();
   });
 
-  /* Was: the two answers were touching, and read as one wide button with a seam down it.
-     `.row` is a panel rule — `.panel .row` — so the confirm's copy of it, inside a card,
-     inherited neither the flex nor the gap. */
-  test('the two answers are a pair, not one button with a seam', async ({ page }) => {
+  /* On a phone it rises from the bottom edge and sits on it — over the four destinations,
+     not above them, or the sheet would float with a strip of book beneath it. */
+  test('on a phone it sits on the bottom edge, over the destinations', async ({ page }) => {
+    await page.setViewportSize(PHONE);
     await stock(page);
-    const card = page.locator('.card').first();
-    await card.locator('.more').click();
+    await page.locator('.card').first().locator('.more').click();
     await page.locator('.card-menu [data-remove]').click();
-    const yes = await page.locator('[data-reallyremove]').boundingBox();
-    const no  = await page.locator('[data-cancelremove]').boundingBox();
-    expect(no.x - (yes.x + yes.width), 'the answers are touching').toBeGreaterThanOrEqual(6);
-    expect(Math.abs(no.height - yes.height), 'the answers are different heights')
-      .toBeLessThanOrEqual(1);
+    await settled(page);
+    const sheet = await page.locator('#asksheet').boundingBox();
+    const bar   = await page.locator('.nav').boundingBox();
+    expect(Math.round(PHONE.height - (sheet.y + sheet.height)),
+      'the sheet is not on the bottom edge').toBeLessThanOrEqual(1);
+    expect(sheet.y, 'the sheet does not cover the destinations').toBeLessThan(bar.y);
+  });
+
+  /* Wider than a phone there is no bottom edge worth rising from, so the same dialog stands
+     in the middle. Same words, same ink — only where it sits changes. */
+  test('on a desk it stands in the middle instead', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await stock(page);
+    await page.locator('.card').first().locator('.more').click();
+    await page.locator('.card-menu [data-remove]').click();
+    await settled(page);
+    const sheet = await page.locator('#asksheet').boundingBox();
+    const midX = Math.abs((sheet.x + sheet.width / 2) - DESKTOP.width / 2);
+    const midY = Math.abs((sheet.y + sheet.height / 2) - DESKTOP.height / 2);
+    expect(midX, 'not centred across').toBeLessThanOrEqual(2);
+    expect(midY, 'not centred down').toBeLessThanOrEqual(2);
+    await expect(page.locator('#askgrab'), 'nothing to drag on a desk').toBeHidden();
+  });
+
+  test('escape and the scrim both put the question away', async ({ page }) => {
+    await page.setViewportSize(TABLET);
+    await stock(page);
+    await page.locator('.card').first().locator('.more').click();
+    await page.locator('.card-menu [data-remove]').click();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#asksheet')).toBeHidden();
+
+    await page.locator('.card').first().locator('.more').click();
+    await page.locator('.card-menu [data-remove]').click();
+    await page.locator('#askscrim').click({ position: { x: 5, y: 5 } });
+    await expect(page.locator('#asksheet')).toBeHidden();
+  });
+
+  /* The safe answer holds focus when it opens, the way emptying the booklet does. A question
+     about something there is no way back from should not open with the destructive answer
+     under a thumb or a return key. */
+  test('the safe answer is the one holding focus', async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await stock(page);
+    await page.locator('.card').first().locator('.more').click();
+    await page.locator('.card-menu [data-remove]').click();
+    await expect(page.locator('#askno')).toBeFocused();
   });
 
   /* Was: a removal that failed said so at the top of the You panel, which is not the screen
-     anybody is standing on when they remove a word from the book. The write failed, the
-     reason was written down somewhere else, and from the reader's side the button did
-     nothing at all — which is exactly how it was reported. The signed-in path is where this
-     bites and the suite cannot reach it, so the failure is forced here instead. */
-  test('a removal that fails says so on the card, not on another screen', async ({ page }) => {
+     anybody is standing on when they remove a word. It is worse with a dialog — the card is
+     behind a scrim and cannot be read at all — so the reason belongs in the sheet, and the
+     sheet has to stay up to carry it. The signed-in path is where this bites and the suite
+     cannot reach it, so the failure is forced here instead. */
+  test('a removal that fails says so in the sheet, which stays up', async ({ page }) => {
+    await page.setViewportSize(PHONE);
     await stock(page);
     const card = page.locator('.card').first();
     const word = await card.getAttribute('data-w');
@@ -214,12 +268,11 @@ test.describe('the card menu', () => {
     });
     await card.locator('.more').click();
     await page.locator('.card-menu [data-remove]').click();
-    await page.locator('[data-reallyremove]').click();
+    await page.locator('#askgo').click();
 
-    await expect(card.locator('.card-err'), 'the failure was not shown on the card')
+    await expect(page.locator('#ask-err'), 'the failure was not shown in the sheet')
       .toContainText('was not removed');
-    await expect(card.locator('.card-err')).toBeVisible();
-    /* and the word is still there, because it was not removed */
+    await expect(page.locator('#asksheet'), 'the sheet came down on a failure').toBeVisible();
     await expect(page.locator(`[data-w="${word}"]`)).toHaveCount(1);
   });
 });

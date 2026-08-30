@@ -181,7 +181,9 @@ section at the top of the book: searchable, printable, and perfectly fine to lea
 
 Every card has a **⋯** button carrying the three things you can do to it: file it under any
 field, send it back to Unfiled, or remove it. An unfiled card also grows a dashed
-**File under** chip, which opens the same menu. Removing asks first, in the card.
+**File under** chip, which opens the same menu. Removing asks first — on a phone the
+question rises from the bottom edge, on a laptop it stands in the middle, and either way it
+is over the page rather than inside the card.
 
 To change the fields themselves, **You → Edit fields**: rename them, give them a
 different ink, add one, or remove one. Removing a field never removes its words — they go

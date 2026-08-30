@@ -604,6 +604,44 @@ is a grid row that cannot move. That changes which element scrolls, which `keepS
 splash observer and every `window.scrollTo` in `openPanel()` are all written against — worth
 doing only against a fault that has been reproduced.
 
+### 3.6c2 Removing a word, and the booklet's first dialog
+
+The confirmation used to be built inside the card, on the argument that this booklet asks
+every question where you are standing and has no dialogs anywhere. The card turned out to be
+the problem rather than the place: a message made of the card's own serif, the card's own
+grey and a hairline exactly like the one under the Arabic reads as more entry however it is
+worded. Three treatments that kept it in the card — its own recessed surface, a takeover, a
+band bleeding past the margins — were all answers to *make it look less like the card*. A
+sheet is not on the card at all.
+
+**One dialog, at every width.** Below 720px it rises from the bottom edge, which is where a
+thumb is; above, it stands in the middle, because a bottom edge two feet across is nowhere
+near a mouse. Same ink, same words, same two answers — only where it sits changes. `.ask-row`
+is one column on a phone and two on a desk: side by side on a phone, a thumb reaching across
+for the safe answer passes over the destructive one on the way.
+
+**The answers name outcomes.** *Remove the word* and *Keep it*, not Remove and Cancel —
+Cancel names the mechanism, and on a question there is no way back from the safe answer
+should read clearest. The safe one holds focus when it opens, the way emptying does.
+
+**`askUp` is the state, not the class.** Opening waits a frame before adding `.up`, so the
+browser has laid the sheet out at `translateY(102%)` and has something to transition from.
+An Escape inside that frame closed a sheet which then opened itself when the frame arrived —
+and stayed open, because the tidy-up 300ms later read the class, saw `.up`, and left it. One
+flag both halves agree on.
+
+**A failure keeps it up and speaks in it.** The card is behind a scrim and cannot be read, so
+`cardFault()` alone would put the reason somewhere invisible — the same fault the status line
+already had, one layer further out. `removeWord()` returns whether the word actually went,
+and the sheet comes down only if it did.
+
+**What it costs.** This is the first dialog in the booklet, and it brings what a dialog
+brings: a focus trap on Tab, Escape at the head of the chain the rest of the app answers on,
+`body.ask-on{overflow:hidden}` for the scroll, and a downward drag — the handle promises a
+throw, so it has to be one. The drag is on the whole sheet rather than the 38px handle, since
+a thumb aiming at a 38px bar is a thumb aiming at nothing, and the two answers are excluded
+or pressing one would sometimes count as a drag.
+
 ### 3.6d You, where the panel is narrow
 
 Below 1024px the same rows become what a phone settings screen is. This is one media query

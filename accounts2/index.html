@@ -1014,32 +1014,77 @@
   .cm-dot{width:9px; height:9px; border-radius:50%; flex:none}
   .cm-sep{height:1px; background:rgba(34,36,63,.12); margin:4px 6px}
   .cm-none{font-family:"Archivo",sans-serif; font-size:11.5px; color:rgba(34,36,63,.55); padding:8px 10px; line-height:1.45}
-  /* One rhythm down the block: 14 to the rule, 14 under it, then 7 · 16 · 14 between the
-     question, its consequence, the two answers and anything that went wrong. */
-  .cm-confirm{margin-top:14px; padding-top:14px; border-top:1px solid rgba(34,36,63,.14)}
-  /* Below 720 the four destinations are a bar standing over the page, so a question scrolled
-     to the bottom edge would land behind it. */
-  @media(max-width:719px){
-    .cm-confirm{scroll-margin-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+  /* ---------- the question, risen ----------
+     Removing a word used to be asked inside the card, on the argument that this booklet has
+     no dialogs. The card turned out to be the problem: a message built out of the entry —
+     its serif, its grey, a hairline exactly like the one under the Arabic — reads as more
+     entry however it is worded. Nothing here is made of the card. It is the app's own ink,
+     over a dimmed page, and what is behind it is visibly behind it.
+
+     One dialog at every width. On a phone it rises from the bottom edge, which is where a
+     thumb is; wider than that it stands in the middle, because a bottom edge two feet across
+     is nowhere near a mouse. Same words, same ink, same two answers — only where it sits. */
+  .ask-scrim{
+    position:fixed; inset:0; z-index:80; background:rgba(8,9,22,.62);
+    opacity:0; transition:opacity .26s ease;
   }
-  .cm-ct{font-family:"Fraunces",Georgia,serif; font-size:16px; font-weight:600; margin:0}
-  .cm-confirm .cm-cd{font-size:13.5px; color:#4A4C63; margin:7px 0 0; line-height:1.5;
-                     max-width:46ch}
-  /* The gap. `.row` is a panel rule — `.panel .row` — and a card is not a panel, so this
-     one inherited no flex and no gap and the two answers were simply touching, which read
-     as one wide button with a seam down it. */
-  .cm-confirm .row{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:16px}
-  /* Both answers the same height and the same weight of edge, so the pair reads as a pair:
-     the outline was a quarter-opacity hairline beside a solid fill and looked unfinished. */
-  .cm-confirm .btn{color:rgba(34,36,63,.62); border-color:rgba(34,36,63,.3); padding:9px 16px}
-  .cm-confirm .btn:hover{color:#22243F; border-color:rgba(34,36,63,.5)}
-  /* A card is paper, and the panels' warning ochre is barely legible on it — but that is
-     also what it was rendering, because `.note.warn` outranks a single class. Named twice
-     here so the oxblood it was always meant to have actually wins. */
-  .card .card-err,.cm-confirm .card-err{
+  .ask-scrim.on{opacity:1}
+  .ask-sheet{
+    position:fixed; left:0; right:0; bottom:0; z-index:81;
+    background:var(--night-2); color:var(--paper);
+    border-radius:20px 20px 0 0; box-shadow:0 -10px 34px rgba(0,0,0,.45);
+    padding:10px 20px calc(26px + env(safe-area-inset-bottom,0px));
+    transform:translateY(102%);
+    /* Decelerating hard at the end, so it arrives rather than stops. */
+    transition:transform .3s cubic-bezier(.32,.72,0,1);
+    touch-action:none;          /* the sheet handles its own downward drag */
+  }
+  .ask-sheet.up{transform:translateY(0)}
+  .ask-grab{
+    display:block; width:38px; height:4px; padding:0; border:0; border-radius:2px;
+    background:rgba(241,239,233,.22); margin:0 auto 18px; cursor:grab;
+  }
+  .ask-q{font-family:"Fraunces",Georgia,serif; font-weight:600; font-size:21px; line-height:1.2;
+         letter-spacing:-.01em; margin:0; color:var(--paper)}
+  .ask-q i{font-style:italic}
+  .ask-d{font-size:15px; line-height:1.5; color:var(--dim); margin:8px 0 0}
+  .ask-err{color:var(--ink-3); font-size:14px; line-height:1.45; margin:12px 0 0}
+  .ask-err:empty{display:none}
+  /* Stacked and full width on a phone: side by side, a thumb reaching across the screen for
+     the safe answer passes over the destructive one on the way. */
+  .ask-row{display:grid; gap:9px; margin-top:20px}
+  .ask-sheet .btn{
+    width:100%; padding:14px 16px; border-radius:10px; font-size:11.5px;
+    border-color:rgba(241,239,233,.22);
+  }
+  .ask-go{background:var(--ink-3); border-color:var(--ink-3); color:var(--paper)}
+  .ask-go:hover{background:#D05266; border-color:#D05266; color:var(--paper)}
+
+  /* Wider than a phone: the middle of the screen, and no handle, because there is nothing to
+     throw downward. Written after the rules it overrides — a media query carries no extra
+     specificity, and put above them it loses every argument silently. */
+  @media(min-width:720px){
+    .ask-sheet{
+      left:50%; right:auto; bottom:auto; top:50%;
+      width:min(420px, calc(100vw - 48px));
+      border-radius:12px; padding:24px 26px 26px;
+      transform:translate(-50%,-46%); opacity:0;
+      transition:transform .22s cubic-bezier(.32,.72,0,1), opacity .18s ease;
+      touch-action:auto;
+    }
+    .ask-sheet.up{transform:translate(-50%,-50%); opacity:1}
+    .ask-grab{display:none}
+    .ask-row{grid-template-columns:1fr 1fr}
+    .ask-sheet .btn{padding:12px 14px}
+  }
+  @media(prefers-reduced-motion:reduce){ .ask-sheet,.ask-scrim{transition:none} }
+  body.ask-on{overflow:hidden}
+
+  /* .cm-confirm and its rules went with the in-card confirmation. What is left is the line
+     a failed write leaves on a card, which filing still uses. */
+  .card .card-err{
     color:var(--ink-3); font-size:13.5px; line-height:1.45; margin:14px 0 0; max-width:46ch;
   }
-  .cm-yes{background:var(--ink-3) !important; border-color:var(--ink-3) !important; color:var(--paper) !important}
   /* the dashed chip is the second, more findable door into the same menu */
   .filebtn{
     display:inline-flex; align-items:center; gap:6px; margin-top:12px; padding:5px 10px;
@@ -1049,7 +1094,7 @@
   }
   .filebtn:hover{border-color:var(--c); color:var(--c)}
   .filebtn:focus-visible{outline:2px solid var(--c); outline-offset:2px}
-  @media print{ .more,.filebtn,.card-menu,.cm-confirm{display:none !important} }
+  @media print{ .more,.filebtn,.card-menu,.ask-sheet,.ask-scrim{display:none !important} }
 
   /* ---------- enrichment ----------
      Nothing is ever removed from the DOM. Falling back to the manual loop has to be a class
@@ -1875,6 +1920,21 @@
     <div class="fc-body" id="fc-body"></div>
   </section>
 
+  <!-- The question, on a phone. Static markup rather than built each time, because a sheet
+       has to be in the page before it can be transitioned into it. -->
+  <div class="ask-scrim" id="askscrim" hidden></div>
+  <div class="ask-sheet" id="asksheet" role="dialog" aria-modal="true"
+       aria-labelledby="ask-q" hidden>
+    <button class="ask-grab" id="askgrab" aria-label="Close"></button>
+    <p class="ask-q" id="ask-q"></p>
+    <p class="ask-d">It goes from the booklet, and does not come back.</p>
+    <p class="ask-err" id="ask-err"></p>
+    <div class="ask-row">
+      <button class="btn ask-go" id="askgo">Remove the word</button>
+      <button class="btn" id="askno">Keep it</button>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -2363,18 +2423,7 @@ book.addEventListener('click',e=>{
     return;
   }
   /* Filing and Remove live on the menu's own handler — the menu hangs off <body> and never
-     reaches this listener. The confirm below does sit inside the card, so it stays here. */
-  if(e.target.closest('[data-reallyremove]')){
-    e.stopPropagation();
-    removeWord(e.target.closest('.card').dataset.w);
-    return;
-  }
-  const cancelRm = e.target.closest('[data-cancelremove]');
-  if(cancelRm){
-    e.stopPropagation();
-    const box=cancelRm.closest('.cm-confirm'); if(box) box.remove();
-    return;
-  }
+     reaches this listener. The confirmation is a dialog now and owns its own buttons. */
   const m = e.target.closest('.mark');
   if(m){
     const card=m.closest('.card'), id=card.dataset.w;
@@ -2496,47 +2545,15 @@ function openCardMenu(card, btn){
   const first=menu.querySelector('.cm-item'); if(first) first.focus();
 }
 
-/* The confirm lives in the card rather than in a dialog, the way the panels open where
-   you are standing. There is no dialog anywhere else in this booklet and this is not
-   the place to introduce one. */
+/* The confirmation used to be built inside the card, on the argument that this booklet has
+   no dialogs and asks every question where you are standing. The card turned out to be the
+   problem: a message made of the card's own serif, the card's own grey and a hairline like
+   the one under the Arabic reads as more card, whatever it says. It is one dialog now, and
+   the same one at every width — rising from the bottom edge on a phone, standing in the
+   middle on anything wider. See askOpen(). */
 function confirmRemove(card){
   closeCardMenu();
-  const w = card.dataset.w;
-  if(card.querySelector('.cm-confirm')) return;
-  const box=document.createElement('div');
-  box.className='cm-confirm';
-  const h=document.createElement('p'); h.className='cm-ct';
-  h.append('Remove ');
-  const em=document.createElement('i'); em.textContent=w; h.appendChild(em);
-  h.append('?');
-  const p=document.createElement('p'); p.className='cm-cd';
-  /* One sentence, whichever store is answering. It said "on every device you use" against an
-     account and "in this browser" without one, which is where the words happen to be kept —
-     a fact worth telling somebody who asks where their words live, and no business of a
-     confirmation. What is being asked here is whether the word should go. It says that. */
-  p.textContent = 'It goes from the booklet, and does not come back.';
-  const row=document.createElement('div'); row.className='row';
-  const yes=document.createElement('button'); yes.className='btn cm-yes'; yes.dataset.reallyremove='1'; yes.textContent='Remove';
-  const no=document.createElement('button'); no.className='btn'; no.dataset.cancelremove='1'; no.textContent='Cancel';
-  row.append(yes,no);
-  box.append(h,p,row);
-  /* No keepStill() here, though every other height change in this book uses it. It would do
-     nothing: the question is appended inside the card and below its top edge, so the card
-     does not move — only the cards under it do, which is what opening something means. A
-     test written to prove otherwise passed with the call taken out, which is how that got
-     noticed rather than shipped as a comment claiming to fix nothing. */
-  card.querySelector('.body').appendChild(box);
-  card.classList.add('open');
-  /* What does need saying: focus() scrolls by whatever rule the browser likes, which on a
-     phone can leave the question sitting behind the bar standing over the page. So the
-     scroll is taken deliberately instead — only if the question is not already whole on the
-     screen, by the least it can move, and clear of the bar via scroll-margin. */
-  yes.focus({preventScroll:true});
-  /* `nearest` is already "only if it is not fully visible, and by the least it can" — and it
-     honours scroll-margin, which is where the bar's height is written down. Deciding that
-     here in script instead got it wrong: it compared against the viewport, and the bottom of
-     the viewport on a phone is behind the bar. */
-  box.scrollIntoView({block:'nearest'});
+  askOpen(card);
 }
 
 async function fileWord(w, f){
@@ -2563,7 +2580,7 @@ async function fileWord(w, f){
 function cardFault(w, msg){
   const card = document.querySelector(`[data-w="${CSS.escape(w)}"]`);
   if(!card) return;
-  const box = card.querySelector('.cm-confirm') || card.querySelector('.body');
+  const box = card.querySelector('.body');
   if(!box) return;
   let note = card.querySelector('.card-err');
   if(!note){
@@ -2580,19 +2597,21 @@ const clearCardFault = w => {
   if(note) note.remove();
 };
 
+/* Returns whether the word actually went, so the sheet knows whether to come down. */
 async function removeWord(w){
   try{ await store.removeWord(w); }
   catch(e){
     fault('sync', e, 'remove');
     const msg = 'That word was not removed — '+errText(e);
-    syncNote(msg); cardFault(w, msg);
-    return;
+    syncNote(msg); cardFault(w, msg); askFault(msg);
+    return false;
   }
   clearCardFault(w);
   W = W.filter(y=>y.w!==w);
   done.delete(w);
   syncNote('');
   render(); loadProgress(); showLocal(); renderFields();
+  return true;
 }
 
 /* Arabic: each card carries its own toggle; this one drives them all at once */
@@ -4337,6 +4356,9 @@ document.getElementById('fldbtn').addEventListener('click',()=>{
 function panelOpen(){ return PANELS.some(p=>p.classList.contains('on')); }
 document.addEventListener('keydown',e=>{
   if(e.key!=='Escape') return;
+  /* The sheet first: a modal outranks a menu. */
+  const sheet=document.getElementById('asksheet');
+  if(sheet && !sheet.hidden){ askClose(); return; }
   if(document.querySelector('.card-menu')){ closeCardMenu(); return; }
   if(!lens.hidden){ closeLens(); lensBtn.focus(); return; }
   const open = document.querySelector('.card.open');
@@ -5328,6 +5350,139 @@ document.getElementById('merge').addEventListener('click',async ()=>{
    there. */
 
 /* search lives with the mark filter, up beside the progress it reads — see applyFilters */
+
+/* ---------- the question, risen ----------
+   Below 720px removing a word is asked from a sheet at the bottom edge rather than from a
+   block inside the card. The stylesheet draws it; this is the four things a stylesheet
+   cannot do — open and close it, keep a keyboard inside it, let a thumb throw it away, and
+   put focus back where it came from.
+
+   This is the first dialog in the booklet. Everything else asks where you are standing, and
+   that was the argument for keeping this in the card too — until the card turned out to be
+   exactly the problem: a message built out of the entry reads as the entry. */
+var askFor = null;        /* the word being asked about */
+var askFrom = null;       /* what to give focus back to */
+/* Whether it is meant to be up. The class alone could not answer that: opening waits a frame
+   before adding it, and an Escape inside that frame closed a sheet that then opened itself
+   when the frame arrived — and stayed open, because the tidy-up afterwards saw the class and
+   left it alone. One flag both halves agree on. */
+var askUp = false;
+
+const askEl    = () => document.getElementById('asksheet');
+const askScrim = () => document.getElementById('askscrim');
+
+function askOpen(card){
+  const sheet = askEl(), scrim = askScrim();
+  if(!sheet || !scrim) return;
+  askFor  = card.dataset.w;
+  askFrom = card.querySelector('.more') || null;
+
+  const q = document.getElementById('ask-q');
+  q.textContent = 'Remove ';
+  const em = document.createElement('i'); em.textContent = askFor;
+  q.appendChild(em); q.append('?');
+  document.getElementById('ask-err').textContent = '';
+
+  scrim.hidden = false; sheet.hidden = false;
+  document.body.classList.add('ask-on');
+  askUp = true;
+  /* A frame, so the browser lays the sheet out at translateY(102%) before being asked to
+     move it — without it there is no transition to run and the sheet simply appears. */
+  requestAnimationFrame(()=>{
+    if(!askUp) return;                       /* closed again before the frame arrived */
+    scrim.classList.add('on'); sheet.classList.add('up');
+  });
+  /* The safe answer takes focus, the way emptying the booklet does. A question about
+     something there is no way back from should not open with the destructive answer under
+     a thumb or a return key. */
+  document.getElementById('askno').focus();
+}
+
+function askClose(){
+  const sheet = askEl(), scrim = askScrim();
+  if(!sheet || sheet.hidden) return;
+  askUp = false;
+  sheet.classList.remove('up'); scrim.classList.remove('on');
+  sheet.style.transform = '';
+  document.body.classList.remove('ask-on');
+  const back = askFrom; askFor = null; askFrom = null;
+  /* Hidden only once it has left, or it vanishes instead of sliding. Matched to the CSS. */
+  setTimeout(()=>{
+    if(!askUp){ sheet.hidden = true; scrim.hidden = true; }
+  }, 300);
+  if(back) back.focus();
+}
+
+/* A failure keeps the sheet up and says so in it — the card is behind a scrim and cannot be
+   read, so cardFault() alone would put the reason somewhere invisible. Same fault this
+   booklet already had with the status line, one layer further out. */
+function askFault(msg){
+  const sheet = askEl();
+  if(!sheet || sheet.hidden) return;
+  document.getElementById('ask-err').textContent = msg;
+}
+
+document.getElementById('askno').addEventListener('click', askClose);
+document.getElementById('askscrim').addEventListener('click', askClose);
+document.getElementById('askgrab').addEventListener('click', askClose);
+document.getElementById('askgo').addEventListener('click', async ()=>{
+  const w = askFor;
+  if(!w) return;
+  const go = document.getElementById('askgo');
+  go.disabled = true;
+  const gone = await removeWord(w);
+  go.disabled = false;
+  if(gone) askClose();
+});
+
+/* The handle promises a downward throw, so it has to be one. The whole sheet takes the drag,
+   not just the handle — a thumb aiming at a 38px bar is a thumb aiming at nothing — but the
+   two answers are excluded, or pressing one would sometimes count as a drag. */
+(function(){
+  const sheet = askEl();
+  let startY = 0, dy = 0, dragging = false;
+
+  sheet.addEventListener('pointerdown', e=>{
+    if(sheet.hidden || e.target.closest('.btn')) return;
+    dragging = true; startY = e.clientY; dy = 0;
+    sheet.style.transition = 'none';
+    try{ sheet.setPointerCapture(e.pointerId); }catch(err){}
+  });
+  sheet.addEventListener('pointermove', e=>{
+    if(!dragging) return;
+    dy = Math.max(0, e.clientY - startY);      /* down only: a sheet does not go up */
+    sheet.style.transform = 'translateY(' + dy + 'px)';
+  });
+  const end = ()=>{
+    if(!dragging) return;
+    dragging = false;
+    sheet.style.transition = '';
+    sheet.style.transform = '';
+    /* A third of the sheet, or 70px, whichever is less — a tall sheet should not need a
+       longer throw than a short one. */
+    if(dy > Math.min(70, sheet.offsetHeight / 3)) askClose();
+  };
+  sheet.addEventListener('pointerup', end);
+  sheet.addEventListener('pointercancel', end);
+})();
+
+/* A dialog holds the keyboard. Tab cycles inside it and Escape leaves — Escape is added to
+   the chain the rest of the app already answers on, ahead of everything, because a modal
+   outranks a menu. */
+document.addEventListener('keydown', e=>{
+  const sheet = askEl();
+  if(!sheet || sheet.hidden || e.key !== 'Tab') return;
+  const stops = [...sheet.querySelectorAll('button:not([disabled])')];
+  if(!stops.length) return;
+  const first = stops[0], last = stops[stops.length - 1];
+  if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+  else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+});
+
+/* Turned sideways past the breakpoint there is no bar for a sheet to rise from, so the
+   question goes back to being asked in the card. */
+window.matchMedia('(max-width:719px)').addEventListener('change', e=>{ if(!e.matches) askClose(); });
+
 
 /* ---------- You, where the panel is narrow ----------
    Below 1023px the panel is a card and three folds rather than ten stacked blocks; the
