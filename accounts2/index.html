@@ -1014,15 +1014,26 @@
   .cm-dot{width:9px; height:9px; border-radius:50%; flex:none}
   .cm-sep{height:1px; background:rgba(34,36,63,.12); margin:4px 6px}
   .cm-none{font-family:"Archivo",sans-serif; font-size:11.5px; color:rgba(34,36,63,.55); padding:8px 10px; line-height:1.45}
+  /* One rhythm down the block: 14 to the rule, 14 under it, then 7 · 16 · 14 between the
+     question, its consequence, the two answers and anything that went wrong. */
   .cm-confirm{margin-top:14px; padding-top:14px; border-top:1px solid rgba(34,36,63,.14)}
   .cm-ct{font-family:"Fraunces",Georgia,serif; font-size:16px; font-weight:600; margin:0}
-  .cm-confirm .cm-cd{font-size:13.5px; color:#4A4C63; margin:6px 0 0; line-height:1.5}
-  .cm-confirm .row{margin-top:12px}
-  .cm-confirm .btn{color:rgba(34,36,63,.6); border-color:rgba(34,36,63,.25)}
-  /* A card is paper — the panels' warning ink is unreadable on it, so it gets the oxblood
-     it uses for everything else that has gone wrong. */
-  .card-err{color:var(--ink-3); font-size:13.5px; line-height:1.4; margin:8px 0 0}
+  .cm-confirm .cm-cd{font-size:13.5px; color:#4A4C63; margin:7px 0 0; line-height:1.5;
+                     max-width:46ch}
+  /* The gap. `.row` is a panel rule — `.panel .row` — and a card is not a panel, so this
+     one inherited no flex and no gap and the two answers were simply touching, which read
+     as one wide button with a seam down it. */
+  .cm-confirm .row{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:16px}
+  /* Both answers the same height and the same weight of edge, so the pair reads as a pair:
+     the outline was a quarter-opacity hairline beside a solid fill and looked unfinished. */
+  .cm-confirm .btn{color:rgba(34,36,63,.62); border-color:rgba(34,36,63,.3); padding:9px 16px}
   .cm-confirm .btn:hover{color:#22243F; border-color:rgba(34,36,63,.5)}
+  /* A card is paper, and the panels' warning ochre is barely legible on it — but that is
+     also what it was rendering, because `.note.warn` outranks a single class. Named twice
+     here so the oxblood it was always meant to have actually wins. */
+  .card .card-err,.cm-confirm .card-err{
+    color:var(--ink-3); font-size:13.5px; line-height:1.45; margin:14px 0 0; max-width:46ch;
+  }
   .cm-yes{background:var(--ink-3) !important; border-color:var(--ink-3) !important; color:var(--paper) !important}
   /* the dashed chip is the second, more findable door into the same menu */
   .filebtn{

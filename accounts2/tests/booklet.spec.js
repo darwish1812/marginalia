@@ -167,6 +167,21 @@ test.describe('the card menu', () => {
     await expect(page.locator(`[data-w="${word}"]`)).toHaveCount(0);
     await expect(page.locator('.card')).toHaveCount(before - 1);
   });
+  /* Was: the two answers were touching, and read as one wide button with a seam down it.
+     `.row` is a panel rule — `.panel .row` — so the confirm's copy of it, inside a card,
+     inherited neither the flex nor the gap. */
+  test('the two answers are a pair, not one button with a seam', async ({ page }) => {
+    await stock(page);
+    const card = page.locator('.card').first();
+    await card.locator('.more').click();
+    await page.locator('.card-menu [data-remove]').click();
+    const yes = await page.locator('[data-reallyremove]').boundingBox();
+    const no  = await page.locator('[data-cancelremove]').boundingBox();
+    expect(no.x - (yes.x + yes.width), 'the answers are touching').toBeGreaterThanOrEqual(6);
+    expect(Math.abs(no.height - yes.height), 'the answers are different heights')
+      .toBeLessThanOrEqual(1);
+  });
+
   /* Was: a removal that failed said so at the top of the You panel, which is not the screen
      anybody is standing on when they remove a word from the book. The write failed, the
      reason was written down somewhere else, and from the reader's side the button did
