@@ -209,9 +209,16 @@
   .stage{min-width:0}
   .headwrap{position:sticky; top:0; z-index:20}
   /* relative, not static: the View popover hangs off this and used to be positioned by the
-     sticky that has just moved to the wrapper */
+     sticky that has just moved to the wrapper.
+
+     z-index, because backdrop-filter builds a stacking context and a stacking context is a
+     ceiling: the popover's z-index:40 counts only against its brothers inside this head,
+     never against the chip strip below, which is a later sibling and therefore painted
+     over it. The top 40px of the lens — the whole "Which words" heading — sat behind the
+     chips on a phone, which is the only width where the strip is shown at all. The number
+     that has to be raised is this one, not the popover's. */
   .head{
-    position:relative; display:flex; align-items:center; gap:10px;
+    position:relative; z-index:2; display:flex; align-items:center; gap:10px;
     padding:13px 22px; background:rgba(20,22,52,.93); backdrop-filter:blur(10px);
     border-bottom:1px solid var(--rule);
     padding-top:calc(13px + env(safe-area-inset-top,0px));

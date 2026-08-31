@@ -359,6 +359,20 @@ hearing a word is the point of this booklet, and it stays on the card at every w
 The search box goes to 16px on a phone. Below 16px, iOS Safari zooms the page in when the
 field takes focus and does not zoom back out.
 
+**The head sits above the chip strip on purpose, and the number is on the head rather than on
+the popover.** The View lens hangs off `.head`, which carries a `backdrop-filter` — and a
+`backdrop-filter` builds a stacking context, which is a ceiling. The lens's `z-index:40`
+counted only against its brothers inside the head; against the chip strip, a later sibling in
+the same sticky wrapper, it counted for nothing, and the strip painted over the first 40px of
+it. On a phone — the only width where the strip is drawn at all — the lens's *Which words*
+heading was behind the chips.
+
+Two things to keep in mind about that class of fault. The first is that the fix belongs on the
+element that owns the stacking context, never on the thing inside it: raising the popover's
+number changes nothing, because the ceiling is the head. The second is that `toBeVisible()`
+cannot see it. The element was on screen, laid out, painted — and covered. The test asks
+`elementFromPoint` what is actually under that corner instead.
+
 ### 3.6b Flash cards
 
 A mode rather than a page: a fixed overlay over the book, opened from the bar. The picker

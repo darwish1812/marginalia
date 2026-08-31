@@ -292,6 +292,27 @@ test.describe('the View lens', () => {
     await page.locator('#arabic').click();
     await expect(page.locator('.card .ar').first()).toBeVisible();
   });
+
+  /* The head carries a backdrop-filter, which builds a stacking context, which is a ceiling:
+     the lens's z-index:40 counted only against its brothers inside the head and never
+     against the chip strip below it, a later sibling painted over the top. On a phone — the
+     only width where the strip exists — the first 40px of the lens, the whole "Which words"
+     heading, sat behind the chips. toBeVisible() would not have caught it: the element was
+     on screen, laid out, and painted over. What catches it is asking the page what is
+     actually under that point. */
+  test('the lens stands over the chip strip, not under it', async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await stock(page);
+    await page.locator('#lensbtn').click();
+    await expect(page.locator('#lens')).toBeVisible();
+    const onTop = await page.evaluate(() => {
+      const r = document.getElementById('lens').getBoundingClientRect();
+      /* a few pixels in from the lens's own top-left corner, where the heading is */
+      const el = document.elementFromPoint(r.left + 40, r.top + 8);
+      return !!(el && el.closest('#lens'));
+    });
+    expect(onTop).toBe(true);
+  });
 });
 
 test.describe('the deck', () => {
