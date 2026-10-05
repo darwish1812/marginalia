@@ -1,0 +1,69 @@
+# The tests
+
+```bash
+npm install
+npx playwright install chromium
+npm test
+```
+
+`npm run test:headed` to watch it happen, `npm run test:ui` to step through one.
+
+`npm run shots` captures every destination on phone, tablet and desktop, plus an
+open flashcard round and the first-run pack picker — 18 full-page PNGs in `shots/`,
+which is gitignored. (The sign-in gate itself is not among them: with no account
+backend in the harness it never appears, the same gap the suite states below.)
+Run it after any CSS or layout change and look through
+them; that is what they are for. Comparison is by eye on purpose, and a blank
+render fails the run, so a broken page cannot hide behind an empty shot.
+
+**The app still has no build step.** Everything here is development tooling: `index.html`
+opens in a browser exactly as it always did, and none of this ships. The booklet's one
+runtime dependency is still the Supabase client.
+
+## How it runs
+
+`tests/local-build.mjs` reads `index.html` at run time and writes `index.local.html` with
+one line changed — `SUPABASE_URL` blanked. That is the app's own supported mode: no
+account, words kept in the browser.
+
+It is built each run rather than kept in the repo, because **a copy kept in the repo goes
+stale and then passes while testing an app that no longer exists.** That is precisely what
+happened to `index.test.html` and `index.auto.test.html`, which drifted 1,600 lines behind
+and were still sitting there looking like tests.
+
+`tests/serve.mjs` serves the repo root, because the booklet fetches `words.json` and
+`packs/*.json` by relative path and has to be served beside them.
+
+## What it does not cover
+
+**Everything behind a sign-in.** Sync between devices, row-level security in practice,
+stocking a new account, the offline mirror, the sign-in gate itself, and the OAuth
+redirects. All of it needs credentials, and a test suite should not be holding any.
+
+That gap is not small and it is where a real fault already hid: the iPad redirect bug lived
+at the gate, which is the one place nothing here can reach. Until there is a throwaway test
+account, **that half of the app is checked by hand or not at all.**
+
+Also uncovered: printing, real speech (the runner has no voice and no account, so
+`tests/tts.spec.js` pins the cloud path's contract — toggle, cache, silent
+fallback, validation — with a lent session and stubbed audio, never the wire),
+and anything that needs a real touchscreen — the swipe is driven by mouse events, which exercises the same handler but not
+iOS's own gesture handling.
+
+## Where it runs
+
+`accounts2/.github/workflows/test.yml` is inert: GitHub only reads workflows at the root of
+a repository, and this tree is published into a subdirectory of another one. The live copy
+is `.github/workflows/accounts2.yml` at the root of `darwish1812/marginalia`, scoped to
+`accounts2/**` so pushes touching the original booklet do not run it. The file here is kept
+because it is what this tree would need if it ever gained a remote of its own.
+
+## Writing a new one
+
+Cases here are mostly faults that reached a reader, and each says which one it stands for.
+Keep that up. A test whose reason is written down survives a rewrite; one that only asserts
+gets deleted by whoever finds it inconvenient.
+
+Every test also fails on anything the page throws — `pageerror` and console errors are
+collected per test and asserted empty. Two of the six faults were uncaught exceptions, so
+that one rule would have caught a third of them on its own.
