@@ -13,3 +13,4 @@ node_modules/
 index.local.html
 test-results/
 playwright-report/
+shots/

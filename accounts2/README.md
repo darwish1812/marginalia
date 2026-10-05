@@ -192,7 +192,7 @@ ink can only belong to one of them, because the ink index down the side is the i
 the whole book.
 
 **You → No way back** holds the two that are exactly that — emptying the booklet and
-deleting the account — behind a fold that is shut when the panel opens. **Reset marks** is not
+deleting the account — standing open with the rest. **Reset marks** is not
 one of them and sits up with your words: it puts every card back to unlearned and the words
 stay, so you can simply do it again. **Delete my account** takes your words, your fields, your
 corrections and the account itself, and this device forgets its copy. It offers a copy on the way out: one press writes a
@@ -283,7 +283,7 @@ bump it by hand when you publish or every fault will claim to come from the same
   **You**, since it is a reading rather than a control and a phone has no row to spare for one.
   On a laptop the tally stays in the head, where a row costs nothing.
 - **You is a settings screen on anything narrow.** It opens on a card — who you are, whether
-  it is saving, and how far along you are — then three groups of one-line rows that fold. Each
+   it is saving, and how far along you are — then three open groups of one-line rows. Each
   row says its answer on the right rather than hiding it inside a button you have to press to
   read: **Pictures · On**, **Reading voice · Samantha**, **Reading speed · 0.9×**. Tapping the
   line opens it, and **Sign out** is behind the card. Below 1024px, so an iPad held upright

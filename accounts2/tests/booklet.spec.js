@@ -508,7 +508,6 @@ test.describe('leaving the booklet', () => {
     await stock(page);
     await page.locator('.dest[data-dest="you"]').click();
     await page.evaluate(() => { document.getElementById('wipe-row').hidden = false; });
-    await page.locator('.set-group').nth(2).locator('.set-h').click();
     await page.locator('#wipebtn').click();
 
     await expect(page.locator('#ask-q')).toHaveText('Delete your account?');
@@ -529,7 +528,6 @@ test.describe('leaving the booklet', () => {
       document.getElementById('wipe-row').hidden = false;
       window.takeCopy = async () => true;          // no real download in a test run
     });
-    await page.locator('.set-group').nth(2).locator('.set-h').click();
     await page.locator('#wipebtn').click();
 
     const aside = page.locator('#askaside');
@@ -549,7 +547,6 @@ test.describe('leaving the booklet', () => {
       document.getElementById('wipe-row').hidden = false;
       window.deleteAccount = async () => { askFault('The account was not deleted — HTTP 500'); return false; };
     });
-    await page.locator('.set-group').nth(2).locator('.set-h').click();
     await page.locator('#wipebtn').click();
     await page.locator('#askgo').click();
 
@@ -594,8 +591,8 @@ test.describe('leaving the booklet', () => {
     await expect(page.locator('#askno'), 'the second answer never came back').toBeVisible();
   });
 
-  /* The dangerous half of forgetting a device  /* The dangerous half of forgetting a device is forgetting too much. The voice, the speed,
-     the pictures and the folds are facts about this screen, not about the account, and
+  /* The dangerous half of forgetting a device is forgetting too much. The voice, the speed,
+     and the pictures are facts about this screen, not about the account, and
      wiping them would be a second deletion nobody asked for. */
   test('the device forgets the words and keeps the preferences', async ({ page }) => {
     await stock(page);
@@ -604,7 +601,7 @@ test.describe('leaving the booklet', () => {
                        'vocab-fix-local','vocab-fields-local','vocab-gone-local',
                        'vocab-wordfield-local','vocab-pack-local','vocab-seeded-local',
                        'vocab-rows-abc'];
-      const mine = ['vocab-voice','vocab-rate','vocab-pics','vocab-you-folds','vocab-nav-tight'];
+      const mine = ['vocab-voice','vocab-rate','vocab-pics','vocab-nav-tight'];
       [...content, ...mine].forEach(k => localStorage.setItem(k, 'x'));
       forgetDevice('abc');
       return {
@@ -695,9 +692,9 @@ test.describe('You, where the panel is narrow', () => {
   /* Was: the panel was three columns collapsed into one, so ten settings became thirty
      stacked blocks and 1,255px of scroll on a 812px screen — nothing denser or lighter than
      anything else, and no way to see which voice or what speed without pressing something.
-     A number that stands for the whole complaint is the only honest guard against it
-     creeping back one padding rule at a time. */
-  test('opens on a card, not on a wall', async ({ page }) => {
+     The folds that fixed it are gone now: the groups stand open on every width, so what is
+     pinned here is the replacement invariant — every group visible, no counts, no chevrons. */
+  test('opens on cards, fully open, with nothing to unfold', async ({ page }) => {
     await page.setViewportSize(PHONE);
     await stock(page);
     await page.locator('.dest[data-dest="you"]').click();
@@ -705,15 +702,15 @@ test.describe('You, where the panel is narrow', () => {
     await expect(page.locator('#tally2'), 'the card carries the tally now').toBeHidden();
     await expect(page.locator('.set-acct'), 'and it carries the account').toBeHidden();
     await expect(page.locator('.set-d').first(), 'the row is not one line').toBeHidden();
-    /* Measured with every fold open, which is the state the old panel was always in. A
-       folded panel is short whatever the rows look like, so measuring it at rest would
-       have passed with the reasons switched back on — it did, the first time this was
-       written. */
-    for (const h of await page.locator('.set-group .set-h').all()) {
-      if (await h.getAttribute('aria-expanded') === 'false') await h.click();
+    await expect(page.locator('#settings .set-h .set-n')).toHaveCount(0);
+    for (const b of await page.locator('.set-group .set-b').all()) {
+      await expect(b, 'a group is shut with no way to open it').toBeVisible();
     }
-    const box = await page.locator('#settings').boundingBox();
-    expect(box.height, 'the panel has grown back into a wall').toBeLessThan(750);
+    const over = await page.evaluate(() => {
+      const d = document.documentElement;
+      return d.scrollWidth - d.clientWidth;
+    });
+    expect(over, 'the open panel pushes the page sideways').toBeLessThanOrEqual(1);
   });
 
   /* Was: every answer lived inside a button you had to press to read it.
@@ -726,16 +723,13 @@ test.describe('You, where the panel is narrow', () => {
     await page.setViewportSize(PHONE);
     await stock(page);
     await page.locator('.dest[data-dest="you"]').click();
-    await page.locator('.set-group').nth(1).locator('.set-h').click();
     await expect(page.locator('#pics')).toHaveText('On');
     await expect(page.locator('#speed')).toHaveText(/^[0-9.]+×$/);
     await expect(page.locator('#voice')).toBeVisible();
-    await expect(page.locator('.set-group').nth(1).locator('.set-n')).toHaveText('3');
   });
 
-  /* The mirror. A device with no voice loses those two rows, and the count on the fold has
-     to lose them too — a heading that promises three rows and opens on one is a worse fault
-     than the missing rows, because it looks like something is broken. */
+  /* The mirror. A device with no voice loses those two rows — and with no folds
+     left, there is no heading left to disagree with them either. */
   test('a device with no voice says so in the count, not just the rows', async ({ page }) => {
     await page.addInitScript(() => {
       try {
@@ -746,11 +740,9 @@ test.describe('You, where the panel is narrow', () => {
     await page.setViewportSize(PHONE);
     await stock(page);
     await page.locator('.dest[data-dest="you"]').click();
-    await page.locator('.set-group').nth(1).locator('.set-h').click();
     await expect(page.locator('#voice')).toBeHidden();
     await expect(page.locator('#pics')).toBeVisible();
     await expect(page.locator('#speed'), 'speed is not the voice, and stays').toBeVisible();
-    await expect(page.locator('.set-group').nth(1).locator('.set-n')).toHaveText('2');
   });
 
   /* The sentence under each label is hidden on a phone but not deleted: a reader who cannot
@@ -764,22 +756,6 @@ test.describe('You, where the panel is narrow', () => {
     await expect(page.locator('#' + id)).toHaveText(/shadow aloud/);
   });
 
-  test('folds a group, and remembers which', async ({ page }) => {
-    await page.setViewportSize(PHONE);
-    await stock(page);
-    await page.locator('.dest[data-dest="you"]').click();
-    const first = page.locator('.set-group').first();
-    await expect(first.locator('.set-b')).toBeVisible();      // your words, open at rest
-    await first.locator('.set-h').click();
-    await expect(first.locator('.set-b')).toBeHidden();
-    await page.reload();
-    await expect(page.locator('.card').first()).toBeVisible();
-    await page.locator('.dest[data-dest="you"]').click();
-    await expect(page.locator('.set-group').first().locator('.set-b'),
-      'the fold was not remembered').toBeHidden();
-  });
-
-  /* A chevron is 14px wide on a line 343px long. The line takes the tap. */
   test('the row is the door, not just its chevron', async ({ page }) => {
     await page.setViewportSize(PHONE);
     await stock(page);
@@ -842,34 +818,23 @@ test.describe('You, where the panel is narrow', () => {
     await stock(page);
     await page.locator('.dest[data-dest="you"]').click();
     const group = page.locator('.set-group').nth(1);
-    await group.locator('.set-h').click();
     await expect(page.locator('#voice'), 'no voices yet, so no row').toBeHidden();
-    await expect(group.locator('.set-n')).toHaveText('2');
 
     await page.evaluate(() => window.__arrive());
     await expect(page.locator('#voice'), 'the row never came back').toBeVisible();
-    await expect(group.locator('.set-n'), 'the count did not follow the row').toHaveText('3');
   });
 
-  /* Was: the heading read "Your words 3" over four rows. The count is taken from the rows
-     that are showing, and Merging is hidden when the page loads and un-hidden later, when
-     the gateway answers — which is after the count has already been taken. The gateway's
-     own call site cannot be reached without an account, so what is pinned here is the
-     invariant it depends on: a row appearing changes the number above it. */
-  test('a row appearing after load changes the count above it', async ({ page }) => {
+  /* Was: the heading read "Your words 3" over four rows. The count is gone with the
+     folds; what is pinned here instead is the row it used to miscount — Merging,
+     hidden at load and un-hidden when the gateway answers, simply appears. */
+  test('a row appearing after load simply appears', async ({ page }) => {
     await page.setViewportSize(PHONE);
     await stock(page);
     await page.locator('.dest[data-dest="you"]').click();
-    const count = page.locator('.set-group').first().locator('.set-n');
-    const before = Number(await count.textContent());
     await page.evaluate(() => {
       document.getElementById('automerge-row').hidden = false;
-      foldSync();
     });
-    await expect(count).toHaveText(String(before + 1));
-    const rows = await page.locator('.set-group').first()
-      .locator('.set:visible').count();
-    expect(Number(await count.textContent()), 'the count and the rows disagree').toBe(rows);
+    await expect(page.locator('#automerge-row')).toBeVisible();
   });
 
   /* Was: the page ended 30px below its last card while a fixed bar 60px tall stood over it,
@@ -944,12 +909,14 @@ test.describe('You, where the panel is narrow', () => {
     await stock(page);
     await page.locator('.dest[data-dest="you"]').click();
     await expect(page.locator('#youcard')).toBeHidden();
-    await expect(page.locator('#tally2')).toBeVisible();
+    await expect(page.locator('#tally2'), 'the progress card carries the tally now').toBeHidden();
     await expect(page.locator('#pics')).toHaveText('Pictures on');
     await expect(page.locator('#emptybtn')).toHaveText('Empty this booklet');
     await expect(page.locator('#addhint')).toBeVisible();
-    const cols = await page.locator('#settings')
+    /* SET B: groups are cards now, so the panel itself is one column and each row
+       lays out its own three — name, reason, control — inside its card. */
+    const cols = await page.locator('#settings .set-group .set:not([hidden])').first()
       .evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
-    expect(cols, 'the desk lost its columns').toBe(3);
+    expect(cols, 'settings rows lost their columns').toBe(3);
   });
 });

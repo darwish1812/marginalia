@@ -8,7 +8,8 @@
     "test:headed": "playwright test --headed",
     "test:ui": "playwright test --ui",
     "build:local": "node tests/local-build.mjs",
-    "serve": "node tests/local-build.mjs && node tests/serve.mjs"
+    "serve": "node tests/local-build.mjs && node tests/serve.mjs",
+    "shots": "node scripts/shots.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0"

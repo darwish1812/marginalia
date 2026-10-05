@@ -524,8 +524,8 @@ action, and four preferences. A reader after the download had to know it lived u
 beside a voice picker. They are grouped now — **Your words**, then **This device only**, then
 **Starting over** — and the middle line is the app's own, not a new one: words, marks and
 corrections follow the account, while pictures, voice and speed are per-device on purpose.
-The two actions there is no way back from sit together and last, behind a fold that is shut
-when the panel opens.
+The two actions there is no way back from sit together and last, standing open with
+the rest.
 
 **Keep a copy was removed on 2026-08-29,** and `download()` and `serialise()` with it —
 nothing else called either. It offered a `words.json` and a `progress.json`, and it dated
@@ -676,7 +676,7 @@ table.
 **Nothing local is thrown away until the account is actually gone.** `deleteAccount()` returns
 false and speaks in the dialog if the call refuses, the same rule removing a word follows. Only
 on success does `forgetDevice()` run — and it takes the words, the marks, the caches and the
-offline mirror while **leaving the voice, the speed, the pictures, the folds and the rail**.
+offline mirror while **leaving the voice, the speed, the pictures and the rail**.
 Those are facts about a screen, not about an account, and wiping them would be a second
 deletion nobody asked for. That distinction has the only test that matters here.
 
@@ -740,7 +740,7 @@ and the markup those rows need; nothing above the breakpoint changes.
 whole screen: an iPad upright is 834px wide and leaves it 435, narrower than the phone the
 layout is named after. The width is a question about the panel, not about the device.
 
-**A card, then folds.** The panel opens on `#youcard` — the account, whether it is saving,
+**A card, then open groups.** The panel opens on `#youcard` — the account, whether it is saving,
 and the tally with a bar. Those were three separate things: the tally floated above the list
 in the smallest type on the page, attached to nothing, and the account was a row whose
 control said **Signed in**, which is a state wearing a button's clothes. The card is also the
@@ -770,12 +770,10 @@ repeating the row's own name.
 `emptyIdle()`. Two pills and a sentence do not fit beside a name in 343px, and without it the
 name is squeezed to nothing.
 
-**The folds remember.** `vocab-you-folds` holds one boolean per group. Your words is open at
-rest and the other two are shut: a reader who opens **You** is likelier to be adding words
-than changing a voice, and a fold is a small piece of distance to put in front of the two
-things there is no way back from. The heading is a `<button>` because down here it does
-something; above the breakpoint `foldSync()` takes it out of the tab order and strips its
-`aria-expanded`, since a control that does nothing should not stop a keyboard.
+**Nothing folds.** The groups used to shut with remembered positions and counts on
+their headings; they stand open on every width now, so there is nothing to count,
+to open, or to remember. The headings are `<button>`s out of habit and leave the tab
+order everywhere, the way they already did on a desk.
 
 **The panel gives up its own frame.** `#settings` is a box in the same ink as the rows inside
 it, so a card drawn on top read as a card inside a card and neither looked like either — and
@@ -871,7 +869,7 @@ code is worth knowing —
 7. Narrow the window under 720px: the head should stay one row, the four destinations should
    move to a bar along the bottom, and the field strip should stick under the head.
 8. Open **You** and drag the window across 1024px in both directions. Under it: a card, three
-   folds, one-line rows, and short control names. Over it: three columns, every reason, the
+   open groups, one-line rows, and short control names. Over it: three columns, every reason, the
    long names, no card — and no horizontal scrollbar on either side of the line, which is the
    fault the width was chosen for.
 9. Empty the booklet from **You → Starting over**; the picker should come back, offering the
@@ -920,7 +918,7 @@ changes, and a banner comment is not. Search for the name.
 | **accounts** | The two Supabase constants, the `ACCOUNTS` flag, `FN_BASE`, the client, and the globals `FIELDS`, `W`, `SEED`, `CORRECTIONS`. |
 | **faults** | `VERSION`, `fault()`, and the two window listeners. Writes what broke to the `faults` table: uncaught errors, unhandled rejections, the two sync failures the reader is already shown, and a booklet that would not open. Signed in only, twelve rows a session, deduplicated, and never a word of anybody's content. Never throws and never blocks: a reporter that can break the app is a second fault, not a first. |
 | **speech** | Voice discovery and filtering, the remembered choice, rate, and `speak()`. `refreshVoices()` re-reads the list when the app returns to the front and when You opens — it was read twice in the life of a page, which is not enough on a phone that downloads voices and resumes rather than reloads. `pickVoice()` also has to call `showVoiceRow(true)`: the row only ever knew how to take itself away, and Chrome answers the first `getVoices()` with an empty list, so the row hid itself during load and stayed hidden for the life of the page while `refreshVoices()` refilled a `<select>` nobody could see. Degrades to nothing where `speechSynthesis` is absent. |
-| **You, where the panel is narrow** | `isPhone()`, `ctlLabel()`, `relabel()`, `youCard()`, `foldInit()`, `foldSync()`, `youDescribe()`. Below 1024px the settings panel is a card and three folding groups of one-line rows; the stylesheet draws it and this does the four things a stylesheet cannot — one control name in two lengths, the card's contents, the folds and their memory, and the hidden reasons kept reachable through `aria-describedby`. The width lives in `narrowQuery()` and must match the media query. |
+| **You, where the panel is narrow** | `isPhone()`, `ctlLabel()`, `relabel()`, `youCard()`, `youDescribe()`. Below 1024px the settings panel is a card and three open groups of one-line rows; the stylesheet draws it and this does the three things a stylesheet cannot — one control name in two lengths, the card's contents, and the hidden reasons kept reachable through `aria-describedby`. The width lives in `narrowQuery()` and must match the media query. |
 | **render** | `esc()`, `posTags()`, `render()`, and the ink index. Rebuilds the whole book from `W`. |
 | **what is on the page** | `applyFilters()`, `markFilter`, `fieldFilter`, and the `.seg` control. The single owner of card `display`: the search text, the ✓ filter and the chosen field, answered together. |
 | **flash cards** | `fcOpen()`, `fcPool()`, `fcDraw()`, `fcNext()`. `fcSel` holds the ticked fields; `fcPool()` takes a set of them. A deck built on start and dropped on close; it marks through `setLearned()`, never its own store. |

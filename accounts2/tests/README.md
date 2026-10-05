@@ -8,6 +8,14 @@ npm test
 
 `npm run test:headed` to watch it happen, `npm run test:ui` to step through one.
 
+`npm run shots` captures every destination on phone, tablet and desktop, plus an
+open flashcard round and the first-run pack picker — 18 full-page PNGs in `shots/`,
+which is gitignored. (The sign-in gate itself is not among them: with no account
+backend in the harness it never appears, the same gap the suite states below.)
+Run it after any CSS or layout change and look through
+them; that is what they are for. Comparison is by eye on purpose, and a blank
+render fails the run, so a broken page cannot hide behind an empty shot.
+
 **The app still has no build step.** Everything here is development tooling: `index.html`
 opens in a browser exactly as it always did, and none of this ships. The booklet's one
 runtime dependency is still the Supabase client.

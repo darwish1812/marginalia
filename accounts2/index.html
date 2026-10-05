@@ -850,13 +850,87 @@
      order in script — a control that does nothing should not be stopped at. */
   .set-h{grid-column:1/-1; margin-bottom:9px;
          background:none; border:0; padding:0; width:100%; text-align:left; cursor:default}
-  .set-n{display:none}      /* the fold's tally: there are no folds up here */
+
   .youcard{display:none}    /* nor a card: the head has the tally, Account has the rest */
   .set-group + .set-group .set-h{margin-top:18px; padding-top:16px; border-top:1px solid var(--rule)}
   /* No hairline between the rows inside a group. Three columns holding their line is
      structure enough, and a rule every forty pixels through ten rows is a fence around
      every word. The groups keep theirs: those separate things that really are different.
      A phone has no columns to hold the line, so down there the rows do get a hairline. */
+
+  /* ---------- SET B: settings as cards on a desk ----------
+     The three groups become boxes instead of one flat list, so navigation, device
+     answers and the two finals read as different kinds of thing before a word is read.
+     A group cannot keep display:contents and draw a box, so on a desk each group is a
+     grid item of its own and the rows lay themselves out again inside it — with the
+     title column fixed at 200px, which is what keeps every row lined up with every
+     other row the way the panel-wide columns used to. Below 1023px none of this
+     applies: the narrow block further down already makes cards and folds of its own. */
+  /* The progress card carries the tally on every width now — the head on a desk,
+     the youcard on a phone — so this line would say it twice. It stays in the
+     page for readers and tests, but draws nothing. */
+  #settings #tally2{display:none}
+  .prog{grid-column:1/-1; background:var(--night-2); border:1px solid var(--rule);
+        border-radius:10px; padding:20px 24px; margin-bottom:16px}
+  .prog-top{display:flex; align-items:baseline; justify-content:space-between; gap:12px}
+  .prog-tally{font-family:"Archivo",sans-serif; font-size:20px; font-weight:600;
+              letter-spacing:.1em; text-transform:uppercase; color:rgba(241,239,233,.9)}
+  .prog-pct{font-family:"Archivo",sans-serif; font-size:10px; font-weight:600;
+            letter-spacing:.14em; text-transform:uppercase; color:var(--dim)}
+  .prog-bar{height:8px; border-radius:99px; background:var(--rule); margin-top:12px; overflow:hidden}
+  .prog-bar i{display:block; height:100%; background:var(--paper); border-radius:99px;
+              transition:width .3s ease}
+  .prog-cap{font-family:"Archivo",sans-serif; font-size:10px; font-weight:600;
+            letter-spacing:.14em; text-transform:uppercase; color:var(--ink-1);
+            margin:14px 0 0; padding:0}
+  .prog-segs{display:flex; width:100%; border-radius:99px; overflow:hidden; margin-top:8px}
+  .prog-segs i{display:block; height:10px}
+  .prog-legend{display:flex; flex-wrap:wrap; gap:8px 18px; margin-top:10px}
+  .prog-legend span{display:inline-flex; align-items:center; gap:7px;
+            font-family:"Archivo",sans-serif; font-size:10px; font-weight:600;
+            letter-spacing:.06em; color:var(--dim); text-transform:uppercase}
+  .prog-legend i{width:8px; height:8px; border-radius:99px; flex:none}
+  @media(min-width:1024px){
+    #settings{grid-template-columns:minmax(0,1fr)}
+    /* No frame of its own up here either: the panel used to draw a box round boxes,
+       a card inside a card, and neither looked like either. The narrow layout below
+       already goes without; the cards stand on the night directly. Margin and measure
+       stay — only the box goes. */
+    #settings.panel{background:none; border:0; padding:0; border-radius:0}
+    #settings .set-group{grid-column:1/-1; display:block; background:var(--night-2);
+      border:1px solid var(--rule); border-radius:10px; padding:20px 24px; margin-bottom:16px}
+    #settings .set-group.danger{border-color:rgba(196,72,92,.45)}
+    #settings .set-group .set-b{display:block}
+    #settings .set-group .set{display:grid;
+      grid-template-columns:200px minmax(0,1fr) minmax(180px,auto); column-gap:24px; align-items:center}
+    #settings .set-group .set-h{margin:0; padding:0 0 6px; border-top:0}
+    #settings .set-group + .set-group .set-h{margin-top:0; padding-top:0; border-top:0}
+  }
+  /* A switch keeps its shape everywhere: the narrow rule below strips every other
+     control down to answer-text, but a switch with no track is a word saying "On"
+     next to nothing. The id outranks the class rules on both widths. */
+  #settings .set .ctl > .btn-sw{border:0; background:none; padding:0; border-radius:0;
+    display:inline-flex; align-items:center; gap:10px; cursor:pointer}
+  #settings .set .ctl > .btn-sw .sw-state{font-size:10px; font-weight:600;
+    letter-spacing:.1em; text-transform:uppercase; color:var(--dim)}
+  #settings .set .ctl > .btn-sw[aria-pressed="true"]{background:none; color:var(--paper)}
+  #settings .set .ctl > .btn-sw[aria-pressed="true"] .sw{background:rgba(201,146,47,.4)}
+  #settings .set .ctl > .btn-sw[aria-pressed="true"] .sw::after{transform:translateX(15px);
+    background:var(--ink-1)}
+  #settings .set .ctl > .btn-sw:focus-visible{outline:2px solid var(--ink-1); outline-offset:2px}
+  /* Signed in is a fact with a door behind it: the button still opens the account
+     panel, but it wears no pill — a green eye and plain words, which is what a state
+     looks like everywhere else down here. */
+  #settings .set .ctl > .btn.is-status{border:0; background:none; padding:9px 2px;
+    display:inline-flex; align-items:center; gap:8px; cursor:pointer; color:var(--paper)}
+  #settings .set .ctl > .btn.is-status::before{content:""; width:8px; height:8px;
+    border-radius:99px; background:var(--ink-2); flex:none}
+  @media(max-width:1023px){
+    /* The account card just above already says how far along the booklet is, with its
+       own field-ink bar — the whole progress card would be the same facts twice on
+       one screen, so down here it draws nothing at all. */
+    #settings #prog{display:none}
+  }
 
   /* ---------- You, where the panel is narrow ----------
      Above this width the panel is three columns — name, reason, control — and every rule
@@ -926,30 +1000,21 @@
     .you-big i{font-style:normal; color:var(--dim)}
     .you-cap{font-family:"Archivo",sans-serif; font-size:9.5px; font-weight:600;
              letter-spacing:.15em; text-transform:uppercase; color:var(--dim)}
-    .you-bar{display:block; height:3px; border-radius:2px; overflow:hidden;
+    .you-bar{display:block; height:6px; border-radius:3px; overflow:hidden;
              background:rgba(241,239,233,.13)}
-    .you-bar i{display:block; height:100%; background:var(--ink-1); border-radius:2px;
-               transition:width .3s ease}
+    .you-segs{display:flex; width:100%; height:100%}
+    .you-segs i{display:block; height:100%}
 
-    /* ── the groups, which fold ── */
+    /* ── the groups, which no longer fold ──
+       The headings are headings on every width now: no counts, no chevrons,
+       nothing to open. The rows below them are all there is. */
     .set-group{display:block}
     .set-b{display:block; border-radius:12px; overflow:hidden}
-    .set-group.shut .set-b{display:none}
     .set-h{
       display:flex; align-items:center; gap:10px; width:100%;
-      margin:0; padding:20px 2px 9px; cursor:pointer; border-top:0;
+      margin:0; padding:20px 2px 9px; border-top:0; cursor:default;
     }
     .set-group + .set-group .set-h{margin-top:0; padding-top:20px; border-top:0}
-    .set-h:focus-visible{outline:2px solid var(--ink-1); outline-offset:2px}
-    .set-n{display:block; margin-left:auto; font-size:10px; letter-spacing:.06em;
-           color:var(--ink-0)}
-    .set-h::after{
-      content:""; flex:none; width:7px; height:7px; margin-bottom:-3px;
-      border-right:1.5px solid rgba(241,239,233,.36);
-      border-bottom:1.5px solid rgba(241,239,233,.36);
-      transform:rotate(-135deg);
-    }
-    .set-group.shut .set-h::after{transform:rotate(45deg); margin-bottom:3px}
 
     /* ── a row is one line ── */
     .set{
@@ -1732,9 +1797,23 @@
               <span class="you-big" id="youbig">0<i> / 0</i></span>
               <span class="you-cap">Learned</span>
             </span>
-            <span class="you-bar"><i id="youbar"></i></span>
+            <span class="you-bar"><span class="you-segs" id="yousegs"></span></span>
           </span>
         </button>
+
+        <!-- Progress, drawn from the same store as the tally below. The bar is how far
+             along the booklet is; the strip is what the booklet is made of, field by
+             field, so the two never claim each other's meaning. -->
+        <div class="prog" id="prog">
+          <div class="prog-top">
+            <span class="prog-tally" id="prog-tally"><b>0</b> / 0 learned</span>
+            <span class="prog-pct" id="prog-pct"></span>
+          </div>
+          <div class="prog-bar"><i id="prog-fill"></i></div>
+          <p class="prog-cap">Booklet by field</p>
+          <div class="prog-segs" id="prog-segs"></div>
+          <div class="prog-legend" id="prog-legend"></div>
+        </div>
 
         <!-- Three kinds of thing sat in one flat list here, so a reader after the download
              had to know it lived under a gear next to a voice picker. They are grouped now
@@ -1747,7 +1826,7 @@
              three cells become one line — see the media query, which is where the whole of
              the phone layout lives. -->
         <div class="set-group">
-          <button class="set-h" type="button">Your words<span class="set-n"></span></button>
+          <button class="set-h" type="button">Your words</button>
           <div class="set-b">
 
           <div class="set set-door">
@@ -1762,8 +1841,8 @@
           <div class="set" id="automerge-row" hidden>
             <p class="set-t">Merging</p>
             <p class="set-d">Enriched words can land in the booklet, or wait to be read first.</p>
-            <div class="ctl"><button class="btn" id="automerge" aria-pressed="false"
-                                     data-long="Merge automatically" data-short="Wait to read">Merge automatically</button></div>
+            <div class="ctl"><button class="btn btn-sw" id="automerge" aria-pressed="false"
+                                     data-long="Automatic" data-short="Automatic"><span class="sw" aria-hidden="true"></span><span class="sw-state">Automatic</span></button></div>
           </div>
 
           <!-- Kept for the desk, where there is a column for it. A phone reads the same fact
@@ -1800,14 +1879,14 @@
         </div>
 
         <div class="set-group">
-          <button class="set-h" type="button">This device only<span class="set-n"></span></button>
+          <button class="set-h" type="button">This device only</button>
           <div class="set-b">
 
           <div class="set">
             <p class="set-t">Pictures</p>
             <p class="set-d">A few words carry a drawing, watermarked into the card.</p>
-            <div class="ctl"><button class="btn" id="pics" aria-pressed="true"
-                                     data-long="Pictures on" data-short="On">Pictures on</button></div>
+            <div class="ctl"><button class="btn btn-sw" id="pics" aria-pressed="true"
+                                     data-long="Pictures on" data-short="On"><span class="sw" aria-hidden="true"></span><span class="sw-state">Pictures on</span></button></div>
           </div>
 
           <div class="set set-sound">
@@ -1831,8 +1910,8 @@
              as two you cannot makes the list mean less, and makes the fold in front of it
              mean less too. Reset marks has gone up to the words it acts on; what is left here
              is only what it says. -->
-        <div class="set-group">
-          <button class="set-h" type="button">No way back<span class="set-n"></span></button>
+        <div class="set-group danger">
+          <button class="set-h" type="button">No way back</button>
           <div class="set-b">
 
           <!-- The only bulk action in the app. Removing words one at a time is right for
@@ -2149,7 +2228,6 @@ function fillVoices(en){
 function showVoiceRow(on){
   const row = vSel.closest('.set');
   if(row) row.style.display = on ? '' : 'none';
-  foldSync();      /* a row coming or going changes the count on its fold */
 }
 
 if(vSel) vSel.addEventListener('change',()=>{
@@ -2380,7 +2458,45 @@ function paint(){
      and a phone shows only the second. One writer, so they cannot drift apart. */
   const t2 = document.getElementById('tally2');
   if(t2) t2.innerHTML = t;
+  paintProg();
   youCard();
+}
+/* One builder for both strips: the progress card's and the account card's. Segments
+   are booklet composition — each field's share of the words — so widths always sum
+   to the whole bar whatever is learned. */
+function paintSegs(el){
+  if(!el) return;
+  const total = W.length;
+  el.innerHTML = FIELDS.map(f=>{
+    const c = W.filter(w=>w.f===f.id).length;
+    const w = total ? (c/total*100) : 0;
+    return `<i style="width:${w}%;background-color:${f.ink}" title="${esc(f.name)}"></i>`;
+  }).join('');
+}
+/* The progress card next to the tally: how far along the booklet is, and what it
+   is made of, field by field. Drawn from the same store and the same words, in the
+   same function, so the three can never drift apart. Field names are the reader's
+   own words, so they go through esc() like everything else that reaches the page. */
+function paintProg(){
+  const card = document.getElementById('prog');
+  if(!card) return;
+  const total = W.length, n = done.size;
+  const pct = total ? Math.round(n/total*100) : 0;
+  const pt = document.getElementById('prog-tally');
+  if(pt) pt.innerHTML = `<b>${n}</b> / ${total} learned`;
+  const pp = document.getElementById('prog-pct');
+  if(pp) pp.textContent = total ? pct+'% of the booklet' : '';
+  const fill = document.getElementById('prog-fill');
+  if(fill) fill.style.width = (total ? (n/total*100) : 0)+'%';
+  const segs = document.getElementById('prog-segs');
+  paintSegs(segs);
+  const leg = document.getElementById('prog-legend');
+  if(leg){
+    leg.innerHTML = FIELDS.map(f=>{
+      const c = W.filter(w=>w.f===f.id).length;
+      return `<span><i style="background-color:${f.ink}"></i>${esc(f.name)} · ${c}</span>`;
+    }).join('');
+  }
 }
 /* Both go through the store: on this device that is still localStorage, on an account it
    is a column on the word's own row, which is what finally makes a tick on the iPad
@@ -3836,17 +3952,21 @@ function setAcctState(email){
   if(!ACCOUNTS){
     off.hidden = false;
     btn.textContent = 'Not set up';
+    btn.classList.remove('is-status');
     hint.textContent = 'No account behind this copy — words are kept in this browser, and they stay in it.';
   }else if(email){
     inn.hidden = false;
     document.getElementById('who').textContent = email;
     btn.textContent = 'Signed in';
+    /* Still the door into the account panel — only its dress changes. */
+    btn.classList.add('is-status');
     hint.textContent = email+' — your words follow you between devices.';
     const wipe = document.getElementById('wipe-row');
     if(wipe) wipe.hidden = false;
   }else{
     out.hidden = false;
     btn.textContent = 'Sign in';
+    btn.classList.remove('is-status');
     hint.textContent = 'Sign in to see your words and to keep new ones.';
     const wipe = document.getElementById('wipe-row');
     if(wipe) wipe.hidden = true;
@@ -4496,8 +4616,8 @@ document.getElementById('automerge').addEventListener('click', async ()=>{
     if(!r.ok) throw new Error('HTTP '+r.status);
     GATEWAY.auto_merge = want;
     btn.setAttribute('aria-pressed', String(want));
-    ctlLabel(btn, want ? 'Merging automatically' : 'Merge automatically',
-                  want ? 'Automatic' : 'Wait to read');
+    ctlLabel(btn, want ? 'Automatic' : 'Manual',
+                   want ? 'Automatic' : 'Manual');
     syncNote('');
   }catch(e){ syncNote('That setting did not save — '+errText(e)); }
   btn.disabled = false;
@@ -4646,16 +4766,11 @@ async function loadGateway(){
   const row = document.getElementById('automerge-row');
   /* a toggle for something that cannot happen is worse than no toggle */
   if(row) row.hidden = !GATEWAY.enabled;
-  /* And the fold above it has to be told. The count is taken from the rows that are showing,
-     and this row is hidden when the page loads and un-hidden when the gateway answers —
-     which is after foldInit() has already counted. A heading reading "Your words 3" over
-     four rows was the visible half of that. */
-  foldSync();
   const am = document.getElementById('automerge');
   if(am){
     am.setAttribute('aria-pressed', String(!!GATEWAY.auto_merge));
-    ctlLabel(am, GATEWAY.auto_merge ? 'Merging automatically' : 'Merge automatically',
-                 GATEWAY.auto_merge ? 'Automatic' : 'Wait to read');
+    ctlLabel(am, GATEWAY.auto_merge ? 'Automatic' : 'Manual',
+                 GATEWAY.auto_merge ? 'Automatic' : 'Manual');
   }
 }
 
@@ -5732,12 +5847,19 @@ function isPhone(){ return window.matchMedia(narrowQuery()).matches; }
 function ctlLabel(el, long, short){
   if(!el) return;
   el.dataset.long = long; el.dataset.short = short;
-  el.textContent = isPhone() ? short : long;
+  /* A switch wears its track beside its word: the word lives in .sw-state so the
+     track survives every relabelling, on both widths. Anything without one is
+     labelled the way it always was. */
+  const st = el.querySelector('.sw-state');
+  const t = isPhone() ? short : long;
+  if(st) st.textContent = t; else el.textContent = t;
 }
 function relabel(){
   const phone = isPhone();
   document.querySelectorAll('#settings [data-long]').forEach(el=>{
-    el.textContent = phone ? el.dataset.short : el.dataset.long;
+    const st = el.querySelector('.sw-state');
+    const t = phone ? el.dataset.short : el.dataset.long;
+    if(st) st.textContent = t; else el.textContent = t;
   });
 }
 
@@ -5751,7 +5873,7 @@ function youCard(email){
   const card = document.getElementById('youcard');
   if(!card) return;
   const who = document.getElementById('youwho'), sub = document.getElementById('yousub');
-  const big = document.getElementById('youbig'), bar = document.getElementById('youbar');
+  const big = document.getElementById('youbig');
 
   const sync = document.getElementById('sync');
   const stuck = !!(sync && sync.textContent.trim());
@@ -5775,53 +5897,17 @@ function youCard(email){
 
   const n = done.size, all = W.length;
   big.innerHTML = `${n}<i> / ${all}</i>`;
-  bar.style.width = all ? (n / all * 100) + '%' : '0%';
+  /* The bar below it is the booklet's composition, not its progress — the numbers
+     say how far along it is. Painted with the progress card's own segments. */
+  paintSegs(document.getElementById('yousegs'));
 }
 
-/* ---------- the folds ---------- */
-const FOLDKEY = 'vocab-you-folds';
-/* A function declaration, not a const holding an arrow — the same dead-zone rule that put
-   narrowQuery() in a function. foldSync() is now called from showVoiceRow(), which runs
-   while the page is still parsing, and a const up here is not initialised yet at that
-   moment. Everything foldSync() touches has to be hoisted or it throws on load. */
-function youGroups(){ return [...document.querySelectorAll('#settings .set-group')]; }
-
-/* Shut by default except the first. A reader who opens You is far likelier to be adding
-   words than changing a voice, and Starting over holds the two things there is no way back
-   from — a fold is a small piece of distance to put in front of them. */
-function foldInit(){
-  let saved = null;
-  try{ saved = JSON.parse(localStorage.getItem(FOLDKEY)); }catch(e){}
-  youGroups().forEach((g,i)=>{
-    g.classList.toggle('shut', Array.isArray(saved) ? !!saved[i] : i > 0);
-  });
-  foldSync();
-}
-
-/* The heading is a <button> because on a phone it does something. On a desk it does not, so
-   it leaves the tab order rather than stopping a keyboard on a control with no effect. */
-function foldSync(){
-  const phone = isPhone(), quiet = document.body.classList.contains('nosound');
-  youGroups().forEach(g=>{
-    const h = g.querySelector('.set-h');
-    if(h){
-      h.tabIndex = phone ? 0 : -1;
-      if(phone) h.setAttribute('aria-expanded', String(!g.classList.contains('shut')));
-      else h.removeAttribute('aria-expanded');
-    }
-    const n = g.querySelector('.set-n');
-    if(n){
-      /* Counted from the rules that hide rows rather than from the layout, so the number is
-         right while the panel is still shut and has no boxes to measure. */
-      const rows = [...g.querySelectorAll('.set')].filter(r=>
-        !r.hasAttribute('hidden') &&
-        r.style.display !== 'none' &&          /* showVoiceRow() hides its row inline */
-        !(phone && r.classList.contains('set-acct')) &&
-        !(quiet && r.classList.contains('set-sound')));
-      n.textContent = rows.length;
-    }
-  });
-}
+/* ---------- the groups, unfolded ----------
+   The headings were buttons with counts and chevrons on a narrow screen, and the
+   groups folded. They no longer fold anywhere, so there is nothing to count, to
+   open, or to remember — and the headings leave the tab order on every width,
+   the way they already did on a desk. */
+document.querySelectorAll('#settings .set-h').forEach(h=>{ h.tabIndex = -1; });
 
 /* Each row keeps its reason in the page and hands it to its own control, so a line drawing
    only the words "Reading speed" is still read out with "Slower is easier to shadow aloud
@@ -5837,17 +5923,6 @@ function youDescribe(){
 }
 
 document.getElementById('settings').addEventListener('click', e=>{
-  const h = e.target.closest('.set-h');
-  if(h){
-    if(!isPhone()) return;                 /* no folds on a desk; every row is shown */
-    const g = h.parentElement;
-    g.classList.toggle('shut');
-    h.setAttribute('aria-expanded', String(!g.classList.contains('shut')));
-    try{ localStorage.setItem(FOLDKEY,
-      JSON.stringify(youGroups().map(x=>x.classList.contains('shut')))); }catch(err){}
-    return;
-  }
-
   /* The row is the door. A chevron is fourteen pixels wide and the line it sits on is three
      hundred, so the line takes the tap — but only where there is exactly one button to send
      it to, and never on the two that ask, where a stray thumb should not land. */
@@ -5862,8 +5937,8 @@ document.getElementById('settings').addEventListener('click', e=>{
 /* The card is the account, so it is the way into it — and Sign out is what is in there. */
 document.getElementById('youcard').addEventListener('click', ()=> openPanel(acctPanel));
 
-foldInit(); youDescribe(); relabel(); youCard();
+youDescribe(); relabel(); youCard();
 /* Turning a phone sideways crosses 719px, and a panel left holding the wrong set of names
-   and an open fold nobody can close is worse than either layout. */
-window.matchMedia(narrowQuery()).addEventListener('change', ()=>{ relabel(); foldSync(); });
+   is worse than either layout. */
+window.matchMedia(narrowQuery()).addEventListener('change', ()=>{ relabel(); });
 </script>
