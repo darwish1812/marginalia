@@ -316,8 +316,8 @@ Deno.serve(async (req) => {
     // OpenAI key. The client offers the voice list only when all three hold, so a
     // reader is never offered a button that cannot work.
     const tts = cfg.tts_enabled && cfg.tts_tested_at
-      ? { enabled: true, voice: String(cfg.tts_voice || 'nova') }
-      : { enabled: false, voice: String(cfg.tts_voice || 'nova') };
+      ? { enabled: true, voice: String(cfg.tts_voice || 'cedar') }
+      : { enabled: false, voice: String(cfg.tts_voice || 'cedar') };
     return json({
       admin,
       // A reader is offered the button only when there is something behind it AND it has
@@ -583,9 +583,9 @@ Deno.serve(async (req) => {
         const c = body.config;
         const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
         for (const k of ['provider_id', 'model', 'temperature', 'max_tokens', 'batch_size',
-                         'template', 'propose_template', 'monthly_per_user', 'max_per_run',
-                         'app_budget', 'enabled', 'tts_enabled', 'tts_voice', 'tts_model',
-                         'tts_provider_id']) {
+                          'template', 'propose_template', 'monthly_per_user', 'max_per_run',
+                          'app_budget', 'enabled', 'tts_enabled', 'tts_voice', 'tts_model',
+                          'tts_provider_id', 'tts_instructions']) {
           if (k in c) patch[k] = c[k];
         }
         await db.from('app_config').update(patch).eq('app_id', APP_ID);
@@ -595,6 +595,46 @@ Deno.serve(async (req) => {
       if (body.tts_tested) await db.from('app_config').update({ tts_tested_at: new Date().toISOString() }).eq('app_id', APP_ID);
 
       return json({ ok: true, config: await config() });
+    }
+
+    // Recent failures from both gateways, newest first. Successes are not
+    // listed. Reads runs + tts_log through the service role — neither table
+    // has RLS policies, so only this function (admin-checked above) can see them.
+    if (route === '/admin/errors' && req.method === 'GET') {
+      const q = new URL(req.url).searchParams;
+      const source = q.get('source') || 'all';
+      const limit = Math.min(100, Math.max(1, Number(q.get('limit')) || 50));
+      const out: any[] = [];
+      if (source === 'all' || source === 'enrichment') {
+        const { data } = await db.from('runs')
+          .select('started_at, model, requested, returned, error, ms')
+          .eq('app_id', APP_ID).not('error', 'is', null)
+          .order('started_at', { ascending: false }).limit(limit);
+        for (const r of (data ?? [])) {
+          out.push({
+            at: (r as any).started_at,
+            source: 'enrichment',
+            detail: `${(r as any).model || 'model'} · ${(r as any).requested ?? 0} words`,
+            message: String((r as any).error || '').slice(0, 300),
+          });
+        }
+      }
+      if (source === 'all' || source === 'voice') {
+        const { data } = await db.from('tts_log')
+          .select('started_at, voice, chars, error')
+          .eq('app_id', APP_ID).not('error', 'is', null)
+          .order('started_at', { ascending: false }).limit(limit);
+        for (const r of (data ?? [])) {
+          out.push({
+            at: (r as any).started_at,
+            source: 'voice',
+            detail: `${(r as any).voice || 'voice'} · ${(r as any).chars ?? 0} chars`,
+            message: String((r as any).error || '').slice(0, 300),
+          });
+        }
+      }
+      out.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+      return json({ errors: out.slice(0, limit) });
     }
 
     // Deleting a provider deletes its key with it — provider_secrets cascades — which is the

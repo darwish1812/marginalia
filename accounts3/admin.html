@@ -64,8 +64,13 @@
   }
   button:hover:not(:disabled){color:var(--paper); border-color:rgba(241,239,233,.42)}
   button:disabled{opacity:.4; cursor:default}
+  /* In-flight HTTP: pulse so a slow TTS call or error refresh reads as
+     working, not dead. Always paired with disabled + aria-busy. */
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  button.loading{animation:pulse 1s ease-in-out infinite; pointer-events:none}
   button.go{background:var(--paper); color:var(--night); border-color:var(--paper)}
-  button.go:hover:not(:disabled){background:#fff}
+  button.go:hover:not(:disabled), button.go:active:not(:disabled){background:#fff; color:var(--night); border-color:#fff}
+  button.go:focus-visible{outline:2px solid var(--ochre); outline-offset:2px}
   button.danger{color:var(--ox); border-color:rgba(196,72,92,.45)}
 
   .stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:1px;
@@ -83,6 +88,8 @@
   .bar.bad span{background:var(--ox)}
 
   .msg{font-size:12.5px; margin-top:12px; line-height:1.55; white-space:pre-wrap}
+  /* An empty status line takes no room: success is the button at rest. */
+  .msg:empty{display:none}
   .msg.ok{color:var(--verd)} .msg.bad{color:var(--ox)} .msg.warn{color:var(--ochre)}
   .note{font-size:12px; color:var(--dim); line-height:1.55; margin:10px 0 0; max-width:70ch}
   code{font-family:ui-monospace,Menlo,monospace; font-size:12px; color:var(--ochre)}
@@ -99,6 +106,12 @@
   .dev{border:1px dashed var(--ochre); border-radius:8px; padding:14px; margin-top:14px}
 
   .tablewrap{overflow-x:auto}
+  /* Error log stays a short pane: the table scrolls inside it with the
+     header pinned, instead of pushing the page down. */
+  #errwrap{max-height:340px; overflow-y:auto}
+  #errwrap thead th{position:sticky; top:0; z-index:1}
+  /* The instructions are a paragraph, not a template: no 280px min-height. */
+  #ttsinstructions{min-height:118px}
   table.prov{width:100%; border-collapse:separate; border-spacing:1px; background:var(--rule);
              border:1px solid var(--rule); border-radius:8px; overflow:hidden}
   table.prov th{background:var(--night-3); text-align:left; font-size:10.5px; font-weight:700;
@@ -296,7 +309,13 @@ on conflict do nothing;</div>
         <div><label for="ttsvoice">Default voice</label>
           <select id="ttsvoice"></select></div>
       </div>
-      <div class="row" style="margin-top:10px">
+      <div style="margin-top:12px"><label for="ttsinstructions">Voice instructions <span id="ttscount" style="color:var(--dimmer)"></span></label>
+        <textarea id="ttsinstructions" spellcheck="false" rows="5" maxlength="1000"
+          placeholder="How the voice delivers — e.g. a clear, patient English teacher…"></textarea></div>
+      <p class="note">Sent with every synthesis. Only gpt-4o-mini-tts follows it — a tts-1
+        model answers with an error, which the error log will show.</p>
+      <div class="modelfield" style="margin-top:10px">
+        <input id="ttsword" maxlength="100" autocomplete="off" placeholder="Word to say — blank says fealty">
         <button class="go" id="ttstest">Test voice</button>
       </div>
       <p class="note" id="ttsnote">Readers choose their own voice; this is the one a new reader hears first.</p>
@@ -336,8 +355,27 @@ on conflict do nothing;</div>
       </div>
       <p class="msg" id="msg"></p>
       <div class="out" id="out" hidden></div>
-      <p class="note" id="testnote"></p>
 
+    </section>
+
+    <!-- error log: last, so status and controls stay on top -->
+    <section>
+      <h2>Error log</h2>
+      <div class="row" style="margin-bottom:12px">
+        <button class="mini" id="err-all">All</button>
+        <button class="mini" id="err-enrich">Enrichment</button>
+        <button class="mini" id="err-voice">Voice</button>
+        <button class="mini" id="err-refresh" style="margin-left:auto">Refresh</button>
+      </div>
+      <div class="tablewrap" id="errwrap">
+        <table class="prov">
+          <thead>
+            <tr><th>Time</th><th>Source</th><th>Message</th></tr>
+          </thead>
+          <tbody id="errrows"></tbody>
+        </table>
+      </div>
+      <p class="note" id="errnote">Last 50 failures, newest first. Successes are not listed.</p>
     </section>
   </div>
 </div>
@@ -509,13 +547,9 @@ function paint(d){
   }
   if(!c.template || !c.template.trim()) missing.push('a template');
   $('test').disabled = missing.length > 0;
-
-  /* A status line, not advice: what is missing, or when it last worked. */
-  $('testnote').textContent = missing.length
-    ? 'Still needed: ' + missing.join(', ')
-    : c.tested_at
-      ? 'Last tested ' + new Date(c.tested_at).toLocaleString()
-      : 'Not tested yet';
+  /* No status line: what is missing rides on the button itself, and when it
+     last worked is answered by whether Enable is offered. */
+  $('test').title = missing.length ? 'Still needed: ' + missing.join(', ') : '';
 
 }
 
@@ -881,8 +915,11 @@ function paintVoice(c){
     });
   }
   $('ttsengine').value = c.tts_enabled ? 'openai' : 'device';
-  sel.value = TTS_VOICES.includes(c.tts_voice) ? c.tts_voice : 'nova';
+  sel.value = TTS_VOICES.includes(c.tts_voice) ? c.tts_voice : 'cedar';
   sel.disabled = !c.tts_enabled;
+  $('ttsinstructions').value = c.tts_instructions || '';
+  $('ttsinstructions').disabled = !c.tts_enabled;
+  syncTtsCount();
   $('ttstest').disabled = !c.tts_enabled;
   $('ttsnote').textContent = !c.tts_enabled
     ? 'Readers hear their device voices.'
@@ -891,20 +928,37 @@ function paintVoice(c){
       : 'Not tested yet — send the test word before relying on it.');
 }
 
+/* The delivery direction, counted as it is typed. Over the cap the Test
+   button explains itself rather than offering a press that trims silently. */
+function syncTtsCount(){
+  const n = $('ttsinstructions').value.length;
+  const el = $('ttscount');
+  el.textContent = n + ' / 1000';
+  el.style.color = n > 1000 ? 'var(--ox)' : '';
+}
+$('ttsinstructions').addEventListener('input', syncTtsCount);
+
 /* The test speaks one real word through the whole chain — key, endpoint, voice —
    and plays it here, so a silent failure is heard rather than inferred. It calls
    the admin-only /test route, which bypasses the tested gate on purpose: passing
    is what marks the voice tested and offers it to readers. */
 $('ttstest').addEventListener('click', async ()=>{
-  const voice = $('ttsvoice').value;
-  say('msg', 'Saying “fealty”…');
+  const btn = $('ttstest');
+  if(btn.disabled) return;
+  const label = btn.textContent, voice = $('ttsvoice').value;
+  /* The word under test, typed here — blank falls back to fealty. */
+  const text = $('ttsword').value.trim() || 'fealty';
+  btn.disabled = true; btn.classList.add('loading'); btn.setAttribute('aria-busy','true');
+  btn.textContent = 'Saying…';
+  /* Spoken here, in the Voice section — not in Enrichment's shared line. */
+  $('ttsnote').textContent = 'Saying \u201c' + text + '\u201d…';
   try{
     const {data:{session}} = await sb.auth.getSession();
     if(!session) throw new Error('you are not signed in');
     const r = await fetch(FN_SPK + '/test', {
       method: 'POST',
       headers: {Authorization: 'Bearer ' + session.access_token, 'Content-Type': 'application/json'},
-      body: JSON.stringify({text: 'fealty', voice}),
+      body: JSON.stringify({text, voice}),
     });
     if(!r.ok){
       let said = ''; try{ said = (await r.json())?.error || ''; }catch(_){}
@@ -913,9 +967,15 @@ $('ttstest').addEventListener('click', async ()=>{
     const url = URL.createObjectURL(new Blob([await r.arrayBuffer()], {type: 'audio/mpeg'}));
     await new Audio(url).play();
     await refresh();
-    say('msg', 'Voice works and is marked tested.', 'ok');
-  }catch(e){ say('msg', 'The voice did not answer — ' + e.message, 'bad'); }
+    /* refresh() repaints the Voice note with the new "Last tested" stamp. */
+  }catch(e){ $('ttsnote').textContent = 'The voice did not answer — ' + e.message; }
+  finally{
+    btn.disabled = $('ttsengine').value !== 'openai';
+    btn.classList.remove('loading'); btn.removeAttribute('aria-busy');
+    btn.textContent = label;
+  }
 });
+$('ttsword').addEventListener('keydown', e=>{ if(e.key==='Enter') $('ttstest').click(); });
 
 /* The provider is no longer part of this. Saving settings used to write the provider row
    too, which is how one press could change an endpoint while leaving its key in place. The
@@ -932,7 +992,8 @@ function configFromForm(){
     max_per_run: Number($('perrun').value),
     app_budget: Number($('budget').value),
     tts_enabled: $('ttsengine').value === 'openai',
-    tts_voice: $('ttsvoice').value || 'nova'
+    tts_voice: $('ttsvoice').value || 'cedar',
+    tts_instructions: $('ttsinstructions').value.trim().slice(0, 1000)
   };
 }
 
@@ -944,9 +1005,20 @@ async function save(extra){
 }
 
 $('save').addEventListener('click', async ()=>{
-  say('msg','Saving…');
-  try{ await save(); say('msg','Saved.','ok'); }
+  const btn = $('save');
+  if(btn.disabled) return;
+  const label = btn.textContent;
+  btn.disabled = true; btn.classList.add('loading'); btn.setAttribute('aria-busy','true');
+  btn.textContent = 'Saving…';
+  /* No echo below: the button itself already says Saving… while it pulses. */
+  /* Success needs no line: the button is back to SAVE SETTINGS, which is
+     the confirmation. Failures still speak below. */
+  try{ await save(); say('msg',''); }
   catch(e){ say('msg','Could not save — '+e.message,'bad'); }
+  finally{
+    btn.disabled = false; btn.classList.remove('loading'); btn.removeAttribute('aria-busy');
+    btn.textContent = label;
+  }
 });
 
 $('toggle').addEventListener('click', async ()=>{
@@ -1161,8 +1233,53 @@ $('devtest').addEventListener('click', async ()=>{
   }
 });
 
+/* ---------- error log ----------
+   Recent provider failures from runs + tts_log, newest first. */
+let ERRSRC = 'all', ERRBUSY = false;
+async function loadErrors(){
+  if(ERRBUSY) return;
+  ERRBUSY = true;
+  const btn = $('err-refresh'), box = $('errrows'), note = $('errnote');
+  const label = btn ? btn.textContent : '';
+  if(btn){ btn.disabled = true; btn.classList.add('loading'); btn.setAttribute('aria-busy','true'); }
+  const hadRows = box && box.rows && box.rows.length > 0
+    && !(box.rows.length === 1 && /Could not load|No failures/.test(box.rows[0].textContent || ''));
+  if(!hadRows) box.innerHTML = '<tr><td colspan="3" style="color:var(--dim); font-size:12.5px">Loading…</td></tr>';
+  note.textContent = 'Loading…';
+  try{
+    const t = await token();
+    const r = await fetch(FN + '/admin/errors?source=' + ERRSRC + '&limit=50', {
+      headers:{'Authorization':'Bearer '+t}
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const j = await r.json();
+    const rows = j.errors || [];
+    box.innerHTML = rows.map(e =>
+      '<tr><td class="mono" style="white-space:nowrap">' + esc(new Date(e.at).toLocaleString()) + '</td>'
+      + '<td style="color:' + (e.source === 'voice' ? 'var(--ochre)' : 'var(--ox)') + '">' + esc(e.source) + '</td>'
+      + '<td class="mono">' + esc(e.detail + ' — ' + e.message) + '</td></tr>'
+    ).join('') || '<tr><td colspan="3" style="color:var(--dim); font-size:12.5px">No failures — the table stays empty until a provider refuses, limits, or cannot be reached.</td></tr>';
+    $('errnote').textContent = rows.length
+      ? 'Last ' + rows.length + ' failures, newest first. Successes are not listed.'
+      : 'No failures recorded.';
+  }catch(e){
+    const hint = /404/.test(e.message)
+      ? ' Needs the new function deployed: supabase functions deploy enrich'
+      : '';
+    box.innerHTML = '<tr><td colspan="3" style="color:var(--dim); font-size:12.5px">Could not load the error log — ' + esc(e.message) + esc(hint) + '</td></tr>';
+    note.textContent = 'Last 50 failures, newest first. Successes are not listed.';
+  }finally{
+    ERRBUSY = false;
+    if(btn){ btn.disabled = false; btn.classList.remove('loading'); btn.removeAttribute('aria-busy'); btn.textContent = label; }
+  }
+}
+$('err-all').addEventListener('click', ()=>{ ERRSRC='all'; loadErrors(); });
+$('err-enrich').addEventListener('click', ()=>{ ERRSRC='enrichment'; loadErrors(); });
+$('err-voice').addEventListener('click', ()=>{ ERRSRC='voice'; loadErrors(); });
+$('err-refresh').addEventListener('click', loadErrors);
+
 /* ---------- boot ---------- */
-async function refresh(){ paint(await api('/admin/config')); }
+async function refresh(){ paint(await api('/admin/config')); loadErrors(); }
 
 async function boot(){
   const {data:{session}} = await sb.auth.getSession();
@@ -1171,7 +1288,7 @@ async function boot(){
   try{
     const d = await api('/admin/config');
     $('gate').hidden=true; $('denied').hidden=true; $('console').hidden=false;
-    paint(d);
+    paint(d); loadErrors();
   }catch(e){
     if(e.status===403){ $('gate').hidden=true; $('console').hidden=true; $('denied').hidden=false; return; }
     $('gate').hidden=true; $('denied').hidden=true; $('console').hidden=false;

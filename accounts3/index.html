@@ -549,6 +549,12 @@
   .say-ex:hover{color:var(--c); border-color:var(--c)}
   .say-ex:focus-visible{outline:2px solid var(--c); outline-offset:2px}
   .say-ex.speaking{background:var(--c); border-color:var(--c); color:var(--paper)}
+  /* Fetching the bytes, not playing them: a pulsing ghost, distinct from the
+     solid speaking fill. Covers the voice select too, which is the preview's
+     only button. Cache hits resolve before the delay and never flash. */
+  @keyframes ttsload{0%,100%{opacity:1}50%{opacity:.4}}
+  .say.loading,.say-ex.loading,#voice.loading{animation:ttsload 1s ease-in-out infinite}
+  @media (prefers-reduced-motion:reduce){.say.loading,.say-ex.loading,#voice.loading{animation:none; opacity:.6}}
   body.nosound .say,body.nosound .say-ex{display:none}
   body.nopics .pic{display:none}
   .mark:hover{border-color:var(--c)}
@@ -2258,7 +2264,8 @@ if(vSel) vSel.addEventListener('change',()=>{
     aiVoice = v;
     try{ localStorage.setItem(AIKEY, v); }catch(e){}
     stopSpeech(); current = null;
-    speakCloud('marginalia', null);   // hear it, don't guess from the name
+    /* The select is the preview's button: it pulses while fetching. */
+    speakCloud('marginalia', vSel);   // hear it, don't guess from the name
     return;
   }
   const en = enVoices();
@@ -2333,7 +2340,7 @@ function speakOS(text, btn){
 function stopSpeech(){
   try{ speechSynthesis.cancel(); }catch(e){}
   if(aiAudio){ try{ aiAudio.pause(); }catch(e){} }
-  if(current){ current.classList.remove('speaking'); }
+  if(current){ current.classList.remove('speaking'); current.classList.remove('loading'); try{ current.removeAttribute('aria-busy'); }catch(e){} }
 }
 async function cloudSession(){
   if(testSession) return testSession();
@@ -2350,11 +2357,12 @@ function ttsHash(s){
 }
 /* Repeats are the whole game here — a learner replays the same words for
    months — so bytes are kept in Cache Storage and the network is only ever
-   asked once per text, voice and rate. */
+   asked once per text, voice and rate. v2: the voice instructions changed what
+   the same text sounds like, so bytes cached under v1 must be fetched again. */
 async function cloudUrl(text, voice, rate){
-  const key = '/__tts__/v1/' + voice + '/' + rate + '/' + ttsHash(text);
+  const key = '/__tts__/v2/' + voice + '/' + rate + '/' + ttsHash(text);
   try{
-    const c = await caches.open('tts-v1');
+    const c = await caches.open('tts-v2');
     const hit = await c.match(key);
     if(hit) return URL.createObjectURL(await hit.blob());
   }catch(e){ /* no cache, no problem — fetch direct */ }
@@ -2368,7 +2376,7 @@ async function cloudUrl(text, voice, rate){
   if(!r.ok) throw new Error('it answered ' + r.status);
   const bytes = await r.arrayBuffer();
   try{
-    const c = await caches.open('tts-v1');
+    const c = await caches.open('tts-v2');
     await c.put(key, new Response(bytes, {headers:{'Content-Type':'audio/mpeg'}}));
   }catch(e){ /* caching is a kindness, not a promise */ }
   return URL.createObjectURL(new Blob([bytes], {type:'audio/mpeg'}));
@@ -2377,15 +2385,26 @@ async function speakCloud(text, btn){
   /* The server says no to the same shapes; asking anyway would spend a request
      to hear it. Anything the gateway would refuse goes straight to the device. */
   if(!text || !aiVoice || text.length > 2000 || /[<>]/.test(text)){ speakOS(text, btn); return; }
-  current = btn; if(btn) btn.classList.add('speaking');
-  const clear = ()=>{ if(btn) btn.classList.remove('speaking'); if(current===btn) current = null; };
+  current = btn;
+  /* Loading shows only when the fetch is actually slow: cache hits resolve
+     before the delay and go straight to speaking with no flash. */
+  const show = ()=>{ if(current !== btn || !btn) return;
+    btn.classList.add('loading'); try{ btn.setAttribute('aria-busy','true'); }catch(e){} };
+  const timer = setTimeout(show, 150);
+  const unmark = ()=>{ clearTimeout(timer);
+    if(btn){ btn.classList.remove('loading'); btn.classList.remove('speaking');
+      try{ btn.removeAttribute('aria-busy'); }catch(e){} } };
+  const clear = ()=>{ unmark(); if(current===btn) current = null; };
+  const play = ()=>{ clearTimeout(timer);
+    if(btn){ btn.classList.remove('loading'); btn.classList.add('speaking'); } };
   try{
     const url = await cloudUrl(text, aiVoice, rate);
-    if(current !== btn) return;   // stopped while fetching
+    if(current !== btn){ clearTimeout(timer); return; }   // stopped while fetching
     stopAudioOnly();
     aiAudio = aiAudio || new Audio();
     aiAudio.src = url; aiAudio.playbackRate = rate;
     aiAudio.onended = aiAudio.onerror = ()=>clear();
+    play();
     await aiAudio.play();
   }catch(e){ clear(); speakOS(text, btn); }
 }
@@ -2404,12 +2423,20 @@ function fillAiVoices(){
   });
 }
 /* Called once the gateway has answered, and again if it ever changes: the
-   reader's saved voice wins, then the administrator's default, then Nova. */
+   reader's saved voice wins, then the administrator's default, then Nova.
+   When the engine is off the cloud list is removed and device voices return,
+   so disabling in admin is immediately heard on open clients. */
 function applyCloudVoice(){
-  if(!vSel || !cloudOn()) return;
+  if(!vSel) return;
+  if(!cloudOn()){
+    stopSpeech();
+    if(TTS){ pickVoice(); }
+    else showVoiceRow(false);
+    return;
+  }
   if(!aiVoice || !AI_VOICES.includes(aiVoice)){
     const d = GATEWAY.tts && GATEWAY.tts.voice;
-    aiVoice = (d && AI_VOICES.includes(d)) ? d : 'nova';
+    aiVoice = (d && AI_VOICES.includes(d)) ? d : 'cedar';
   }
   fillAiVoices();
   showVoiceRow(true);
@@ -4045,6 +4072,7 @@ async function enter(session){
       try{ stocked = await store.seeded(); }catch(e){}
       if(!stocked){ await showFirstRun(); return; }
       await apply(SEED);
+      subscribeGateway();
       if(offline) syncNote('Offline — showing the last copy saved on this device.');
       else syncNote('');
     }catch(e){
@@ -4064,6 +4092,7 @@ async function enter(session){
     document.getElementById('firstrun').hidden = true;
     document.getElementById('book').innerHTML = '';
     setAcctState(null);
+    unsubscribeGateway();
     openPanel(null);
   }
 }
@@ -4902,7 +4931,37 @@ async function loadGateway(){
                  GATEWAY.auto_merge ? 'Automatic' : 'Manual');
   }
   applyCloudVoice();
+  gatewayAt = Date.now();
 }
+
+/* Live settings: admin changes (voice engine, provider, limits) reach open
+   clients without a reload. Realtime on app_config is the instant path;
+   visibility/focus re-fetch is the safety net for missed events (offline,
+   paused project, dropped socket). */
+let gatewayAt = 0, gatewayCh = null, gatewayPending = false;
+async function refreshGatewaySoon(){
+  if(gatewayPending) return;
+  gatewayPending = true;
+  try{ await loadGateway(); }
+  finally{ gatewayPending = false; }
+}
+function subscribeGateway(){
+  if(!ACCOUNTS || !sb || gatewayCh) return;
+  try{
+    gatewayCh = sb.channel('app_config_live')
+      .on('postgres_changes', {event:'UPDATE', schema:'public', table:'app_config'}, ()=>{ refreshGatewaySoon(); })
+      .subscribe();
+  }catch(e){ gatewayCh = null; }
+}
+function unsubscribeGateway(){
+  if(!gatewayCh) return;
+  try{ sb.removeChannel(gatewayCh); }catch(e){}
+  gatewayCh = null;
+}
+function gatewayStale(){ return Date.now() - gatewayAt > 30000; }
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && gatewayStale()) refreshGatewaySoon(); });
+window.addEventListener('pageshow', ()=>{ if(gatewayStale()) refreshGatewaySoon(); });
+window.addEventListener('focus', ()=>{ if(gatewayStale()) refreshGatewaySoon(); });
 
 /* Words already captured but not yet enriched are offered again rather than
    dropped as duplicates — otherwise nothing in the panel could ever reach them. */

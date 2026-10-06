@@ -117,6 +117,11 @@ Deno.serve(async (req) => {
   async function callSpeech(text: string, voice: string): Promise<ArrayBuffer> {
     const resolved = await ttsKey(cfg);
     if ('error' in resolved) throw new Error(resolved.error);
+    // The delivery direction, written in the console's Voice block. Sent only
+    // when set — and only the gpt-4o-mini-tts family follows it. A tts-1 model
+    // answers with an error, which the Test voice button surfaces before any
+    // reader is offered the voice.
+    const instructions = String((cfg as any)?.tts_instructions ?? '').trim().slice(0, 1000);
     const res = await fetch(resolved.endpoint + '/audio/speech', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + resolved.key },
@@ -124,6 +129,7 @@ Deno.serve(async (req) => {
         model: resolved.model,
         input: text,
         voice,
+        ...(instructions ? { instructions } : {}),
         response_format: 'mp3',
       }),
     });
@@ -160,8 +166,8 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => null);
     const text = typeof body?.text === 'string' && body.text.trim() ? body.text.trim() : 'fealty';
     let voice = typeof body?.voice === 'string' ? body.voice.toLowerCase() : '';
-    if (!VOICES.has(voice)) voice = String(cfg?.tts_voice || 'nova');
-    if (!VOICES.has(voice)) voice = 'nova';
+    if (!VOICES.has(voice)) voice = String(cfg?.tts_voice || 'cedar');
+    if (!VOICES.has(voice)) voice = 'cedar';
     if (!text || !TEXT.test(text)) return json({ error: 'bad request' }, 400);
     try {
       const audio = await callSpeech(text, voice);
