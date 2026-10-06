@@ -553,8 +553,11 @@
      solid speaking fill. Covers the voice select too, which is the preview's
      only button. Cache hits resolve before the delay and never flash. */
   @keyframes ttsload{0%,100%{opacity:1}50%{opacity:.4}}
-  .say.loading,.say-ex.loading,#voice.loading{animation:ttsload 1s ease-in-out infinite}
-  @media (prefers-reduced-motion:reduce){.say.loading,.say-ex.loading,#voice.loading{animation:none; opacity:.6}}
+  .say.loading,.say-ex.loading,#voice.loading,.fc-replay.loading,#fc-say.loading{animation:ttsload 1s ease-in-out infinite}
+  @media (prefers-reduced-motion:reduce){.say.loading,.say-ex.loading,#voice.loading,.fc-replay.loading,#fc-say.loading{animation:none; opacity:.6}}
+  /* The Study deck's own speakers: the same two phases, in the deck's ink. */
+  .fc-replay.speaking{background:var(--c,var(--ink-1)); border-color:var(--c,var(--ink-1)); color:var(--paper)}
+  #fc-say.speaking{background:rgba(201,146,47,.32); border-color:var(--c,var(--ink-1))}
   body.nosound .say,body.nosound .say-ex{display:none}
   body.nopics .pic{display:none}
   .mark:hover{border-color:var(--c)}
