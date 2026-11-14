@@ -1025,6 +1025,14 @@ whether that job is running are the same question asked twice, so they are next 
 other. Both rows are drawn by one function — the moment two controls answering the same
 question are drawn by different code they start answering it differently.
 
+**The word under test folds away.** An input asking which word to say sat permanently in
+the Voice row, posing a question nobody had yet decided to ask, and — being an input among
+buttons — it pushed that row's controls left of the text row's, so the two rows never lined
+up. Test voice opens a panel under the row instead: the word, then the press that spends the
+money, which is the press that should have to be aimed at. The switches carry a 112px floor,
+wide enough for the longest thing one ever says, so a button does not resize under the
+cursor mid-press and the button beside it lands in the same column on both rows.
+
 Three things follow. **Save settings can no longer turn the voice on by accident**:
 `tts_enabled` used to ride along in `configFromForm()` with the voice and the instructions,
 so changing the delivery note and pressing Save could switch the engine with it. A switch is

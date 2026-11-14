@@ -185,9 +185,18 @@
   .job .by .note{margin-top:3px}
   .job .acts{display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;
              min-height:21px}
-  /* Narrow, because it holds one word. Wider and the voice row's buttons sit noticeably
-     left of the text row's, which is the imbalance this block exists to avoid. */
-  .job .acts input{width:118px}
+  /* A floor wide enough for the longest thing a switch ever says — Disabling… — so the
+     button does not change size under the cursor mid-press, and so the button to its left
+     lands in the same column on both rows. The group is right-aligned, so without this the
+     wider word on one row pushes that row's other button out of line with its neighbour. */
+  .job .acts .switch{min-width:112px}
+  /* The unfolded tester, spanning the row it belongs to so it reads as that row's
+     business and not as a new section of the page. */
+  .tester{grid-column:1 / -1; margin-top:14px; padding:14px 16px 16px;
+          border:1px solid var(--rule); border-radius:8px; background:var(--night-2)}
+  .tester label{display:block}
+  .tester input{width:100%; max-width:280px}
+  .tester .note{margin-top:8px}
 
   /* On a phone the three columns become three stacked lines in the same order, so the row
      still reads name, state, who, then what you can do about it. */
@@ -195,7 +204,7 @@
     .job{grid-template-columns:1fr; gap:8px}
     .job .by, .job .acts{min-height:0}
     .job .acts{justify-content:flex-start}
-    .job .acts input{width:100%}
+    .tester input{max-width:none}
   }
 
   .modelfield{display:flex; gap:8px; align-items:stretch}
@@ -372,7 +381,7 @@ on conflict do nothing;</div>
           </div>
           <div class="acts">
             <button id="texttest">Send one word</button>
-            <button id="texttoggle">Enable</button>
+            <button class="switch" id="texttoggle">Enable</button>
           </div>
         </div>
 
@@ -386,10 +395,24 @@ on conflict do nothing;</div>
             <p class="note" id="ttsnote"></p>
           </div>
           <div class="acts">
-            <input id="ttsword" maxlength="100" autocomplete="off" placeholder="Word to say"
-               title="Leave it blank and the voice says fealty.">
-            <button id="ttstest">Test voice</button>
-            <button id="ttstoggle">Enable</button>
+            <button id="ttstest" aria-expanded="false" aria-controls="ttstester">Test voice</button>
+            <button class="switch" id="ttstoggle">Enable</button>
+          </div>
+
+          <!-- The word under test used to sit in the row, always open, asking a question
+               nobody had yet decided to ask — and it pushed the voice's buttons left of the
+               text row's, so the two rows never lined up. It unfolds under the row when Test
+               voice is pressed, and the press that actually spends money is the one inside
+               it, which is the press that should have to be aimed at. -->
+          <div class="tester" id="ttstester" hidden>
+            <label for="ttsword">Word to say</label>
+            <input id="ttsword" maxlength="100" autocomplete="off" placeholder="fealty">
+            <p class="note">Left blank it says <b>fealty</b>. One word goes to the provider
+              and is played here, so a silence is heard rather than inferred.</p>
+            <div class="row" style="margin-top:12px">
+              <button class="go" id="ttssay">Say it</button>
+              <button id="ttsclose">Close</button>
+            </div>
           </div>
         </div>
       </div>
@@ -1153,6 +1176,12 @@ function paintVoice(c){
   /* Testable whether or not it is on — that is how a voice earns its mark, the same way
      Send one word works on a text job that has never been enabled. */
   $('ttstest').disabled = missing.length > 0;
+  /* Nothing to test with means nothing to type into: the panel shuts rather than sitting
+     open above a Say it that can only fail. Say it is disabled as well as hidden, because
+     a panel that was already open when the provider was deleted would otherwise still hold
+     a live button for the half-second before the repaint lands. */
+  $('ttssay').disabled = missing.length > 0;
+  if(missing.length) showTester(false);
 
   paintJob('tts', {
     on: !!c.tts_enabled,
@@ -1179,12 +1208,27 @@ function syncTtsCount(){
 }
 $('ttsinstructions').addEventListener('input', syncTtsCount);
 
+/* Test voice opens the panel rather than firing; nothing is spent until Say it. The
+   button says which way it will go, so it is not a control you have to press to learn what
+   it does. */
+function showTester(open){
+  $('ttstester').hidden = !open;
+  $('ttstest').setAttribute('aria-expanded', open ? 'true' : 'false');
+  $('ttstest').textContent = open ? 'Hide the test' : 'Test voice';
+  if(open) $('ttsword').focus();
+}
+$('ttstest').addEventListener('click', ()=>{
+  if($('ttstest').disabled) return;
+  showTester($('ttstester').hidden);
+});
+$('ttsclose').addEventListener('click', ()=> showTester(false));
+
 /* The test speaks one real word through the whole chain — key, endpoint, voice —
    and plays it here, so a silent failure is heard rather than inferred. It calls
    the admin-only /test route, which bypasses the tested gate on purpose: passing
    is what marks the voice tested and offers it to readers. */
-$('ttstest').addEventListener('click', async ()=>{
-  const btn = $('ttstest');
+$('ttssay').addEventListener('click', async ()=>{
+  const btn = $('ttssay');
   if(btn.disabled) return;
   const label = btn.textContent, voice = $('ttsvoice').value;
   /* The word under test, typed here — blank falls back to fealty. */
@@ -1207,6 +1251,9 @@ $('ttstest').addEventListener('click', async ()=>{
     }
     const url = URL.createObjectURL(new Blob([await r.arrayBuffer()], {type: 'audio/mpeg'}));
     await new Audio(url).play();
+    /* Folded away on success only. A failure leaves it open with the word still in it,
+       because the next thing wanted is another go, not to find the button again. */
+    showTester(false);
     await refresh();
     /* refresh() repaints the Voice note with the new "Last tested" stamp. */
   }catch(e){ say('ttsnote','The voice did not answer — '+e.message,'bad'); }
@@ -1219,7 +1266,10 @@ $('ttstest').addEventListener('click', async ()=>{
     btn.textContent = label;
   }
 });
-$('ttsword').addEventListener('keydown', e=>{ if(e.key==='Enter') $('ttstest').click(); });
+$('ttsword').addEventListener('keydown', e=>{
+  if(e.key === 'Enter')  $('ttssay').click();
+  if(e.key === 'Escape') showTester(false);
+});
 
 /* The voice's own switch, in the same shape and with the same guard as enrichment's: a job
    that has never answered must not be turned on, because enabling an untested one makes
