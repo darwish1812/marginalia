@@ -731,13 +731,13 @@ Deno.serve(async (req) => {
       }
 
       // Speech is switched on and off by app_config.tts_enabled, which is what `speak`
-      // actually gates its reader route on and what the console's Voice switch writes.
+      // actually gates its reader route on and what the console's Voice row writes.
       // Accepting it here as well would set a second flag that nothing reads, and leave two
       // answers to "is the voice on" for someone to find them disagreeing.
       if ('enabled' in body && job === 'speech') {
         return json({
           error: 'wrong switch',
-          message: 'Spoken words are turned on with the Enable button in the Voice block, not here.',
+          message: 'Spoken words are turned on by the Voice row under What is on, not here.',
         }, 400);
       }
 

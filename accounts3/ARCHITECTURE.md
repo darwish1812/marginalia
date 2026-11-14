@@ -1009,14 +1009,31 @@ absorbed them into the capability row and dropped them, which would have taken t
 from every reader and emptied the console's Voice block. The table routes; it does not
 describe the job.
 
-**Two switches, one shape.** The console has two jobs it can turn on, and until 2026-11-14
-they were turned on by two different kinds of control: enrichment by an **Enable** button in
-a row of actions, the voice by a select labelled *Engine* offering "Device voices" or "OpenAI
-voice". The select said off and on without using either word, sat among the settings rather
-than among the actions, and so the two halves of the gateway never read as the pair they are.
-Both are an **Enable / Disable** button at the end of their own section now, each next to the
-test that earns it the right to be pressed, and each refusing to switch on a job that has
-never answered — because enabling an untested one makes every reader the test.
+**What is on.** The console has two jobs it can turn on, and until 2026-11-14 they were
+turned on by two different kinds of control in two different places: enrichment by an
+**Enable** button at the foot of the page, the voice by a select labelled *Engine* offering
+"Device voices" or "OpenAI voice", buried among the voice settings. Giving them the same
+shape was the first attempt and it was not enough — the two buttons ended up **823px apart**,
+with Template and Limits between them, so on a 1100×900 window there was no scroll position
+that showed both. A console that cannot answer "what is on?" in one look is not telling you
+what it is for.
+
+Both now live in a **What is on** block directly under the providers table, one row each:
+the job's name, whether it is on, who is about to be billed and on which model, how it last
+went, and the test that earns the switch beside it. Choosing who does a job and seeing
+whether that job is running are the same question asked twice, so they are next to each
+other. Both rows are drawn by one function — the moment two controls answering the same
+question are drawn by different code they start answering it differently.
+
+Three things follow. **Save settings can no longer turn the voice on by accident**:
+`tts_enabled` used to ride along in `configFromForm()` with the voice and the instructions,
+so changing the delivery note and pressing Save could switch the engine with it. A switch is
+written on its own click. **The voice's settings stay editable while it is off** — they
+greyed out with it, which made setting it up a loop, since you could not choose a voice until
+it was on and turning it on untested is what the test exists to prevent. **Each row reports
+on its own line** rather than into the page's shared one, so two jobs cannot overwrite each
+other; the shared line moved up with the block, and the template test, which used to report
+from the foot of the page 1,300px from the button that caused it, got a line of its own.
 
 Where the two answers live is still not symmetrical, and deliberately so. Enrichment's is
 `app_capabilities.translate.enabled`; the voice's is `app_config.tts_enabled`, because that
@@ -1024,12 +1041,7 @@ is the flag `speak` reads on every call and the one `tts-voice.sql` created. Mov
 be a migration run purely to make two column names match, against a schema that had just been
 deployed. `/admin/capability` refuses `enabled` for the `speech` job rather than accepting it
 into a second flag nothing reads, which is how you end up with two answers to "is the voice
-on" and someone finding them disagreeing.
-
-Turning the voice on is also no longer something **Save settings** can do by accident: it
-used to ride along in `configFromForm()` with the voice and the instructions, so changing the
-delivery note and pressing Save could switch the engine with it. The switch is written on its
-own click.
+on" and someone finding them disagreeing. The row does not care which it reads.
 
 **There are no character ceilings.** `tts_log` records what each call cost and whether it
 worked, which is what a quota would bill when one is wanted; a failure row is also how a

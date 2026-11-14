@@ -23,10 +23,10 @@ project. The four that remain (`tts_enabled`, `tts_voice`, `tts_instructions`,
 
 Without a reader session there is nothing to prove it with from here — sign in
 as the administrator, open `admin.html`, give a provider the **Voice** dot and
-a voice model, and press **Test voice** — which works whether or not the voice
-is switched on, because passing it is what earns the right to switch it on.
-Hearing *fealty* means the key, the endpoint, the voice and the log row all
-worked. Then press **Enable** beside it.
+a voice model, and press **Test voice** on the Voice row under **What is on** —
+which works whether or not the voice is switched on, because passing it is what
+earns the right to switch it on. Hearing *fealty* means the key, the endpoint,
+the voice and the log row all worked. Then press **Enable** beside it.
 
 ## Which provider speaks
 

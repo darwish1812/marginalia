@@ -14,3 +14,6 @@ index.local.html
 test-results/
 playwright-report/
 shots/
+
+# design mockups, served locally and never published
+admin.mock*.html

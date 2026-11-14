@@ -91,6 +91,8 @@
   /* An empty status line takes no room: success is the button at rest. */
   .msg:empty{display:none}
   .msg.ok{color:var(--verd)} .msg.bad{color:var(--ox)} .msg.warn{color:var(--ochre)}
+  /* A note can carry a verdict too, now that a job row reports on its own line. */
+  .note.ok{color:var(--verd)} .note.bad{color:var(--ox)} .note.warn{color:var(--ochre)}
   .note{font-size:12px; color:var(--dim); line-height:1.55; margin:10px 0 0; max-width:70ch}
   code{font-family:ui-monospace,Menlo,monospace; font-size:12px; color:var(--ochre)}
 
@@ -147,6 +149,54 @@
   .mdl .none{color:var(--dimmer)}
   .mdl .live{color:var(--paper)}
   .mdl .idle{color:var(--dim)}
+
+  /* ---- what is on ----
+     One row per job the gateway can run. Both switches used to be 823px apart — enrichment's
+     at the foot of Enrichment, the voice's at the foot of Voice, with Template and Limits
+     between them — so there was no scroll position that answered "what is on?". Giving them
+     the same shape was not enough; they had to be in the same place. Each row says what the
+     job is, who is about to be billed for it, how it last went, and carries the test that
+     earns the switch beside it. */
+  .jobs{display:grid}
+  .job{display:grid; grid-template-columns:126px minmax(0,1fr) auto; gap:18px;
+       align-items:start; padding:14px 0; border-top:1px solid var(--rule)}
+  .job:first-child{border-top:0}
+  /* Name and state on one line. They were stacked, which gave the first column two lines
+     against the other columns' one or two and left the row looking bottom-heavy, and made
+     the two rows different heights depending on what each had to say. */
+  .jobname{display:flex; align-items:center; gap:10px; min-height:21px}
+  /* A floor, not a width: "Voice" is wider than "Text", so without one the two badges
+     start at different x and the column reads ragged. Wide enough for the longer name,
+     and it still grows if a third job ever needs a longer one. */
+  .job .what{font-size:13.5px; font-weight:600; min-width:40px}
+  /* The state is written out, not implied by the colour of a dot: a reader who cannot tell
+     the green from the grey still gets the word. */
+  .state{flex:none; font-size:10px; font-weight:700;
+         letter-spacing:.09em; text-transform:uppercase; padding:1px 7px;
+         border-radius:99px; border:1px solid; line-height:1.5}
+  .state.on{color:var(--verd); border-color:rgba(63,154,133,.5); background:rgba(63,154,133,.12)}
+  .state.off{color:var(--dimmer); border-color:var(--rule)}
+  /* Every column starts on the same baseline as the name, so the three read as one line
+     across before any of them wraps. */
+  .job .by{font-size:12.5px; color:var(--dim); min-height:21px; display:flex;
+           flex-direction:column; justify-content:center}
+  .job .by b{color:var(--paper); font-weight:600}
+  .job .by .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11.5px}
+  .job .by .note{margin-top:3px}
+  .job .acts{display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;
+             min-height:21px}
+  /* Narrow, because it holds one word. Wider and the voice row's buttons sit noticeably
+     left of the text row's, which is the imbalance this block exists to avoid. */
+  .job .acts input{width:118px}
+
+  /* On a phone the three columns become three stacked lines in the same order, so the row
+     still reads name, state, who, then what you can do about it. */
+  @media (max-width:640px){
+    .job{grid-template-columns:1fr; gap:8px}
+    .job .by, .job .acts{min-height:0}
+    .job .acts{justify-content:flex-start}
+    .job .acts input{width:100%}
+  }
 
   .modelfield{display:flex; gap:8px; align-items:stretch}
   .modelfield input{flex:1}
@@ -306,6 +356,52 @@ on conflict do nothing;</div>
       </div>
     </section>
 
+    <!-- what is on: directly under the providers table, because choosing who does a job
+         and seeing whether that job is running are the same question asked twice. -->
+    <section>
+      <h2>What is on</h2>
+      <div class="jobs">
+        <div class="job">
+          <div class="jobname">
+            <span class="what">Text</span>
+            <span class="state off" id="textstate">Off</span>
+          </div>
+          <div class="by">
+            <div id="textby"></div>
+            <p class="note" id="textnote"></p>
+          </div>
+          <div class="acts">
+            <button id="texttest">Send one word</button>
+            <button id="texttoggle">Enable</button>
+          </div>
+        </div>
+
+        <div class="job">
+          <div class="jobname">
+            <span class="what">Voice</span>
+            <span class="state off" id="ttsstate">Off</span>
+          </div>
+          <div class="by">
+            <div id="ttsby"></div>
+            <p class="note" id="ttsnote"></p>
+          </div>
+          <div class="acts">
+            <input id="ttsword" maxlength="100" autocomplete="off" placeholder="Word to say"
+               title="Leave it blank and the voice says fealty.">
+            <button id="ttstest">Test voice</button>
+            <button id="ttstoggle">Enable</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- The page's one status line lives here now. Four of its five writers are this
+           block and the providers table immediately above it; the template test used to
+           report from here too, 1,300px from the button that caused it, and now has its
+           own line beside its own button. -->
+      <p class="msg" id="msg"></p>
+      <div class="out" id="out" hidden></div>
+    </section>
+
     <!-- 3. request -->
     <section>
       <h2>Request</h2>
@@ -322,11 +418,10 @@ on conflict do nothing;</div>
     <!-- voice -->
     <section>
       <h2>Voice</h2>
-      <!-- The Engine select was this section's on/off switch wearing a different hat:
-           "Device voices" meant off and "OpenAI voice" meant on. It sat among the settings
-           while enrichment's switch sat in a row of actions, so the two never read as the
-           pair they are. One shape for both now — an Enable button at the end of each
-           section — and the note still says what readers hear when the voice is off. -->
+      <!-- How the voice sounds, and nothing about whether there is one. An Engine select
+           offering "Device voices" or "OpenAI voice" used to be this section's on/off
+           switch in disguise; it, the test and the switch have all gone up to What is on,
+           where the same question is asked about the words. -->
       <div class="grid">
         <div><label for="ttsvoice">Default voice</label>
           <select id="ttsvoice"></select></div>
@@ -336,12 +431,8 @@ on conflict do nothing;</div>
           placeholder="How the voice delivers — e.g. a clear, patient English teacher…"></textarea></div>
       <p class="note">Sent with every synthesis. Only gpt-4o-mini-tts follows it — a tts-1
         model answers with an error, which the error log will show.</p>
-      <div class="modelfield" style="margin-top:10px">
-        <input id="ttsword" maxlength="100" autocomplete="off" placeholder="Word to say — blank says fealty">
-        <button class="go" id="ttstest">Test voice</button>
-        <button id="ttstoggle">Enable</button>
-      </div>
-      <p class="note" id="ttsnote">Readers choose their own voice; this is the one a new reader hears first.</p>
+      <p class="note">Readers choose their own voice; this is the one a new reader hears
+        first. Whether readers get it at all is settled under <b>What is on</b>.</p>
     </section>
 
     <!-- 3. template -->
@@ -354,6 +445,8 @@ on conflict do nothing;</div>
         <button class="go" id="savetpl">Test &amp; save</button>
       </div>
       <p class="note">Saving sends one real word through first and shows the reply.</p>
+      <p class="msg" id="tplmsg"></p>
+      <div class="out" id="tplout" hidden></div>
     </section>
 
     <!-- 4. limits -->
@@ -367,18 +460,18 @@ on conflict do nothing;</div>
       <p class="note">Both are checked on every request.</p>
     </section>
 
-    <!-- actions -->
+    <!-- The foot of the page. It was headed "Enrichment" and held that job's test and
+         switch; both are in What is on now, and what is left is not enrichment but the one
+         press that keeps every box above. No heading, because a heading reading SAVE over a
+         button reading Save settings says the word twice. -->
     <section>
-      <h2>Enrichment</h2>
       <div class="row">
         <button class="go" id="save">Save settings</button>
-        <button id="test">Send one word</button>
-        <button id="toggle">Enable</button>
         <button id="signout" style="margin-left:auto">Sign out</button>
       </div>
-      <p class="msg" id="msg"></p>
-      <div class="out" id="out" hidden></div>
-
+      <p class="note">Everything on this page, in one press. Turning a job on or off is not
+        a setting and does not wait for it.</p>
+      <p class="msg" id="savemsg"></p>
     </section>
 
     <!-- error log: last, so status and controls stay on top -->
@@ -447,7 +540,17 @@ const PRESETS = {
 const $ = id => document.getElementById(id);
 let STATE = null;
 
-function say(el, text, kind){ const e=$(el); e.className='msg'+(kind?' '+kind:''); e.textContent=text||''; }
+/* One status line, wherever it is. The element keeps whatever class it was written with —
+   a .note inside a job row, a .modelnote under a model field, a .msg at the foot of a
+   section — and only gains the kind. It used to overwrite the class with `msg` outright,
+   which silently restyled every target that was not a .msg: the model and voice list counts
+   have been rendering a point too large and with the wrong margin since they were added. */
+function say(el, text, kind){
+  const e = $(el);
+  const base = e.dataset.base || (e.dataset.base = (e.className.split(' ')[0] || 'msg'));
+  e.className = base + (kind ? ' ' + kind : '');
+  e.textContent = text || '';
+}
 
 async function token(){
   const {data:{session}} = await sb.auth.getSession();
@@ -533,11 +636,36 @@ function stat(n, l, cls){
    voice *sounds* is still on the config, and still read from there. */
 function capOf(d, job){ return (d.capabilities||[]).find(x=>x.job===job) || {job:job}; }
 
+/* A job's row in What is on. Both rows are drawn by the same four lines, because the two
+   halves of the gateway are the same question asked about different material and the moment
+   they are drawn by different code they start answering it differently. `on` is read from
+   two different places — the capability row for the words, app_config for the voice — which
+   is deliberate and explained at /admin/capability; the row does not care which. */
+function paintJob(key, {on, by, note, missing}){
+  const chip = $(key + 'state');
+  chip.textContent = on ? 'On' : 'Off';
+  chip.className = 'state ' + (on ? 'on' : 'off');
+  $(key + 'by').innerHTML = by;
+  /* The note is the row's own status line. Everything a press on this row produces is
+     written here rather than into the page's shared line, so two jobs reporting at once
+     cannot overwrite each other. */
+  $(key + 'note').textContent = note;
+  $(key + 'note').className = 'note' + (missing ? ' warn' : '');
+  $(key + 'toggle').textContent = on ? 'Disable' : 'Enable';
+}
+
+/* `who` and `what` differ per job; the shape does not. An unheld job says so in the same
+   place the held one names its provider, rather than leaving the line blank. */
+function jobBy(prov, model, verb, nobody){
+  if(!prov) return '<span style="color:var(--dimmer)">' + nobody + '</span>';
+  return verb + ' <b>' + esc(prov.name) + '</b>'
+       + (model ? ' · <span class="mono">' + esc(model) + '</span>' : '');
+}
+
 function paint(d){
   STATE = d;
   const c = d.config, u = d.usage;
   const tcap = capOf(d,'translate'), scap = capOf(d,'speech');
-  $('toggle').textContent = tcap.enabled ? 'Disable' : 'Enable';
 
   const pct = u.budget ? Math.min(100, Math.round(u.words / u.budget * 100)) : 0;
   $('stats').innerHTML =
@@ -554,6 +682,31 @@ function paint(d){
   const prov = (d.providers||[]).find(p=>p.id===tcap.provider_id) || null;
   paintProviders(d);
 
+  /* What is still missing, named before anything is pressed. A button that can only fail
+     should say so on its face rather than waiting to be clicked and answering with a status
+     code. This used to hide in the Send one word button's tooltip; it is on the row now. */
+  const tmiss = [];
+  if(!prov) tmiss.push('a provider holding the words');
+  else{
+    if(!(d.keys||[]).some(k=>k.provider_id===prov.id) && !isLocal(prov.endpoint))
+      tmiss.push('a key');
+    if(!prov.model) tmiss.push('a model');
+  }
+  if(!c.template || !c.template.trim()) tmiss.push('a template');
+
+  paintJob('text', {
+    on: !!tcap.enabled,
+    by: jobBy(prov, prov && prov.model, 'Written by', 'No provider holds the words.'),
+    missing: tmiss.length > 0,
+    note: tmiss.length ? 'Still needed: ' + tmiss.join(', ')
+      : tcap.enabled
+        ? (tcap.tested_at ? 'Last tested ' + new Date(tcap.tested_at).toLocaleString()
+                          : 'On, but never tested.')
+        : (tcap.tested_at ? 'Off — readers copy the prompt and paste the reply back.'
+                          : 'Off, and never tested — send one word, then Enable.'),
+  });
+  $('texttest').disabled = tmiss.length > 0;
+
   /* left blank on purpose when unset: newer models refuse a request that carries a
      temperature at all, so "no value" has to survive a round trip through this form */
   $('temp').value     = (c.temperature ?? '') === '' ? '' : c.temperature;
@@ -564,22 +717,6 @@ function paint(d){
   $('budget').value   = c.app_budget;
   $('template').value = c.template || '';
   paintVoice(c);
-
-  /* What is missing, named before anything is pressed. A button that can only fail should
-     say so on its face rather than waiting to be clicked and answering with a status code. */
-  const missing = [];
-  if(!prov) missing.push('a provider');
-  else{
-    if(!(d.keys||[]).some(k=>k.provider_id===prov.id) && !isLocal(prov.endpoint))
-      missing.push('a key');
-    if(!prov.model) missing.push('a model');
-  }
-  if(!c.template || !c.template.trim()) missing.push('a template');
-  $('test').disabled = missing.length > 0;
-  /* No status line: what is missing rides on the button itself, and when it
-     last worked is answered by whether Enable is offered. */
-  $('test').title = missing.length ? 'Still needed: ' + missing.join(', ') : '';
-
 }
 
 /* ---------- the providers table ----------
@@ -1001,7 +1138,6 @@ function paintVoice(c){
   sel.value = TTS_VOICES.includes(c.tts_voice) ? c.tts_voice : 'cedar';
   $('ttsinstructions').value = c.tts_instructions || '';
   syncTtsCount();
-  $('ttstoggle').textContent = c.tts_enabled ? 'Disable' : 'Enable';
 
   /* The settings stay editable while the voice is off. They used to grey out with it, which
      made setting it up a loop: you could not choose a voice until it was on, and turning it
@@ -1015,22 +1151,22 @@ function paintVoice(c){
       missing.push('a key');
   }
   /* Testable whether or not it is on — that is how a voice earns its mark, the same way
-     Send one word works on an enrichment that has never been enabled. */
+     Send one word works on a text job that has never been enabled. */
   $('ttstest').disabled = missing.length > 0;
-  $('ttstest').title = missing.length ? 'Still needed: ' + missing.join(', ') : '';
 
-  /* Said before anything is pressed, the way Enrichment names what it still needs. An
-     untested voice used to read the same as a tested one that was merely off, so the only
-     way to learn the test was outstanding was to press Enable and be turned down. */
-  $('ttsnote').textContent = missing.length
-    ? 'Still needed: ' + missing.join(', ')
-    : !c.tts_enabled
-      ? (c.tts_tested_at
-        ? 'Off — readers hear their device voices.'
-        : 'Off, and never tested — send the test word, then Enable.')
-      : (c.tts_tested_at
-        ? 'Last tested ' + new Date(c.tts_tested_at).toLocaleString()
-        : 'Not tested yet — send the test word before relying on it.');
+  paintJob('tts', {
+    on: !!c.tts_enabled,
+    by: jobBy(prov, prov && prov.voice_model, 'Spoken by', 'No provider holds the voice.'),
+    missing: missing.length > 0,
+    note: missing.length ? 'Still needed: ' + missing.join(', ')
+      : !c.tts_enabled
+        ? (c.tts_tested_at
+          ? 'Off — readers hear their device voices.'
+          : 'Off, and never tested — send the test word, then Enable.')
+        : (c.tts_tested_at
+          ? 'Last tested ' + new Date(c.tts_tested_at).toLocaleString()
+          : 'On, but never tested — send the test word before relying on it.'),
+  });
 }
 
 /* The delivery direction, counted as it is typed. Over the cap the Test
@@ -1056,7 +1192,7 @@ $('ttstest').addEventListener('click', async ()=>{
   btn.disabled = true; btn.classList.add('loading'); btn.setAttribute('aria-busy','true');
   btn.textContent = 'Saying…';
   /* Spoken here, in the Voice section — not in Enrichment's shared line. */
-  $('ttsnote').textContent = 'Saying \u201c' + text + '\u201d…';
+  say('ttsnote','Saying \u201c' + text + '\u201d…');
   try{
     const {data:{session}} = await sb.auth.getSession();
     if(!session) throw new Error('you are not signed in');
@@ -1073,7 +1209,7 @@ $('ttstest').addEventListener('click', async ()=>{
     await new Audio(url).play();
     await refresh();
     /* refresh() repaints the Voice note with the new "Last tested" stamp. */
-  }catch(e){ $('ttsnote').textContent = 'The voice did not answer — ' + e.message; }
+  }catch(e){ say('ttsnote','The voice did not answer — '+e.message,'bad'); }
   finally{
     /* Re-enabled explicitly. This used to read the Engine select, and when that select went
        the line went with it — leaving the button dead after its first press on the failure
@@ -1091,17 +1227,14 @@ $('ttsword').addEventListener('keydown', e=>{ if(e.key==='Enter') $('ttstest').c
 $('ttstoggle').addEventListener('click', async ()=>{
   const c = (STATE && STATE.config) || {};
   const want = !c.tts_enabled;
-  if(want && !c.tts_tested_at){
-    $('ttsnote').textContent = 'Send the test word through first.';
-    return;
-  }
+  if(want && !c.tts_tested_at) return say('ttsnote','Send the test word through first.','warn');
   const btn = $('ttstoggle'), label = btn.textContent;
   btn.disabled = true; btn.textContent = want ? 'Enabling…' : 'Disabling…';
   try{
     await api('/admin/config', {method:'POST', body: JSON.stringify({config:{tts_enabled: want}})});
     await refresh();
   }catch(e){
-    $('ttsnote').textContent = 'Could not change that — ' + e.message;
+    say('ttsnote','Could not change that — '+e.message,'bad');
     btn.textContent = label;
   }finally{ btn.disabled = false; }
 });
@@ -1143,26 +1276,25 @@ $('save').addEventListener('click', async ()=>{
   /* No echo below: the button itself already says Saving… while it pulses. */
   /* Success needs no line: the button is back to SAVE SETTINGS, which is
      the confirmation. Failures still speak below. */
-  try{ await save(); say('msg',''); }
-  catch(e){ say('msg','Could not save — '+e.message,'bad'); }
+  try{ await save(); say('savemsg',''); }
+  catch(e){ say('savemsg','Could not save — '+e.message,'bad'); }
   finally{
     btn.disabled = false; btn.classList.remove('loading'); btn.removeAttribute('aria-busy');
     btn.textContent = label;
   }
 });
 
-$('toggle').addEventListener('click', async ()=>{
+/* Both switches now report on their own row rather than into the page's shared line, so
+   turning the voice on cannot overwrite what the words just said. */
+$('texttoggle').addEventListener('click', async ()=>{
   const cap = STATE ? capOf(STATE,'translate') : {};
   const want = !cap.enabled;
-  if(want && !cap.tested_at){
-    return say('msg','Send one word through first.','warn');
-  }
-  say('msg', want ? 'Enabling…' : 'Disabling…');
+  if(want && !cap.tested_at) return say('textnote','Send one word through first.','warn');
+  say('textnote', want ? 'Enabling…' : 'Disabling…');
   try{
     await api('/admin/capability', {method:'POST', body: JSON.stringify({job:'translate', enabled:want})});
     await refresh();
-    say('msg', want ? 'Enrichment is on.' : 'Enrichment is off.', 'ok');
-  }catch(e){ say('msg','Could not change that — '+e.message,'bad'); }
+  }catch(e){ say('textnote','Could not change that — '+e.message,'bad'); }
 });
 
 /* The same substitution the function performs, so a prompt tried here and a prompt sent to
@@ -1234,8 +1366,11 @@ function localTarget(){
   return (prov && isLocal(prov.endpoint)) ? prov : null;
 }
 
-async function runTest(word){
-  const out = $('out');
+/* `where` names the output box. The template's test and the words' test are two different
+   presses in two different places on the page, and before this they both filled the one box
+   at the foot of it — so a press at the top answered 1,300px away. */
+async function runTest(word, where){
+  const out = $(where || 'out');
   out.hidden = false; out.textContent = 'Asking the model…';
   const fields = [{id:1, name:'The Feudal World', note:'Castles, guilds, gutters and archaic speech.'}];
   const direct = localTarget();
@@ -1292,8 +1427,8 @@ async function runTest(word){
 }
 const esc = s => String(s).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
 
-$('test').addEventListener('click', async ()=>{
-  say('msg','Sending one word…');
+$('texttest').addEventListener('click', async ()=>{
+  say('textnote','Sending one word…');
   try{
     const r = await runTest();
     if(r.ok){
@@ -1301,17 +1436,17 @@ $('test').addEventListener('click', async ()=>{
          takes, which is the whole meaning of tested_at — so it does not set it, and the
          gateway stays unenabled rather than vouching for something never tried. */
       if(r.direct){
-        say('msg','Complete — called from this page, so it does not count as tested.','ok');
+        say('textnote','Complete — called from this page, so it does not count as tested.','ok');
       }else{
         await api('/admin/config', {method:'POST', body: JSON.stringify({tested:true})});
         await refresh();
-        say('msg','Complete. Readers can be offered automatic merging now.','ok');
+        say('textnote','Complete. It can be turned on now.','ok');
       }
     }else{
-      say('msg','It answered, but without: '+r.miss.join(', ')+'. Read the reply below before enabling.','warn');
+      say('textnote','It answered, but without: '+r.miss.join(', ')+'. Read the reply below before enabling.','warn');
     }
   }catch(e){
-    say('msg', e.status===502 ? 'The model refused or could not be reached — '+e.message
+    say('textnote', e.status===502 ? 'The model refused or could not be reached — '+e.message
              : 'Test failed — '+e.message, 'bad');
     if(e.body && e.body.detail){ $('out').hidden=false; $('out').textContent = e.body.detail; }
   }
@@ -1321,19 +1456,19 @@ $('test').addEventListener('click', async ()=>{
 $('savetpl').addEventListener('click', async ()=>{
   const tpl = $('template').value;
   if(tpl.indexOf('{{WORDS}}') === -1)
-    return say('msg','That template never asks for the words — {{WORDS}} is missing.','bad');
-  say('msg','Saving the template, then testing it…');
+    return say('tplmsg','That template never asks for the words — {{WORDS}} is missing.','bad');
+  say('tplmsg','Saving the template, then testing it…');
   try{
     await api('/admin/config', {method:'POST', body: JSON.stringify({config:{template: tpl}})});
-    const r = await runTest();
+    const r = await runTest(undefined, 'tplout');
     await refresh();
-    if(r.ok) say('msg','Saved, and it answers completely.'
+    if(r.ok) say('tplmsg','Saved, and it answers completely.'
                     + (r.direct ? ' Called from this page.' : ''),'ok');
-    else say('msg','Saved — but the reply came back without: '+r.miss.join(', ')
+    else say('tplmsg','Saved — but the reply came back without: '+r.miss.join(', ')
                  +'. Edit it and test again.','warn');
   }catch(e){
-    say('msg','Saved, but the test failed — '+e.message,'bad');
-    if(e.body && e.body.detail){ $('out').hidden=false; $('out').textContent = e.body.detail; }
+    say('tplmsg','Saved, but the test failed — '+e.message,'bad');
+    if(e.body && e.body.detail){ $('tplout').hidden=false; $('tplout').textContent = e.body.detail; }
   }
 });
 
