@@ -322,12 +322,12 @@ on conflict do nothing;</div>
     <!-- voice -->
     <section>
       <h2>Voice</h2>
+      <!-- The Engine select was this section's on/off switch wearing a different hat:
+           "Device voices" meant off and "OpenAI voice" meant on. It sat among the settings
+           while enrichment's switch sat in a row of actions, so the two never read as the
+           pair they are. One shape for both now — an Enable button at the end of each
+           section — and the note still says what readers hear when the voice is off. -->
       <div class="grid">
-        <div><label for="ttsengine">Engine</label>
-          <select id="ttsengine">
-            <option value="device">Device voices</option>
-            <option value="openai">OpenAI voice</option>
-          </select></div>
         <div><label for="ttsvoice">Default voice</label>
           <select id="ttsvoice"></select></div>
       </div>
@@ -339,6 +339,7 @@ on conflict do nothing;</div>
       <div class="modelfield" style="margin-top:10px">
         <input id="ttsword" maxlength="100" autocomplete="off" placeholder="Word to say — blank says fealty">
         <button class="go" id="ttstest">Test voice</button>
+        <button id="ttstoggle">Enable</button>
       </div>
       <p class="note" id="ttsnote">Readers choose their own voice; this is the one a new reader hears first.</p>
     </section>
@@ -997,18 +998,39 @@ function paintVoice(c){
       sel.appendChild(o);
     });
   }
-  $('ttsengine').value = c.tts_enabled ? 'openai' : 'device';
   sel.value = TTS_VOICES.includes(c.tts_voice) ? c.tts_voice : 'cedar';
-  sel.disabled = !c.tts_enabled;
   $('ttsinstructions').value = c.tts_instructions || '';
-  $('ttsinstructions').disabled = !c.tts_enabled;
   syncTtsCount();
-  $('ttstest').disabled = !c.tts_enabled;
-  $('ttsnote').textContent = !c.tts_enabled
-    ? 'Readers hear their device voices.'
-    : (c.tts_tested_at
-      ? 'Last tested ' + new Date(c.tts_tested_at).toLocaleString()
-      : 'Not tested yet — send the test word before relying on it.');
+  $('ttstoggle').textContent = c.tts_enabled ? 'Disable' : 'Enable';
+
+  /* The settings stay editable while the voice is off. They used to grey out with it, which
+     made setting it up a loop: you could not choose a voice until it was on, and turning it
+     on before it had answered once is exactly what the test is for. */
+  const prov = STATE ? (STATE.providers||[]).find(p => p.id === capOf(STATE,'speech').provider_id) : null;
+  const missing = [];
+  if(!prov) missing.push('a provider holding the voice');
+  else{
+    if(!prov.voice_model) missing.push('a voice model on it');
+    if(!(STATE.keys||[]).some(k=>k.provider_id===prov.id) && !isLocal(prov.endpoint))
+      missing.push('a key');
+  }
+  /* Testable whether or not it is on — that is how a voice earns its mark, the same way
+     Send one word works on an enrichment that has never been enabled. */
+  $('ttstest').disabled = missing.length > 0;
+  $('ttstest').title = missing.length ? 'Still needed: ' + missing.join(', ') : '';
+
+  /* Said before anything is pressed, the way Enrichment names what it still needs. An
+     untested voice used to read the same as a tested one that was merely off, so the only
+     way to learn the test was outstanding was to press Enable and be turned down. */
+  $('ttsnote').textContent = missing.length
+    ? 'Still needed: ' + missing.join(', ')
+    : !c.tts_enabled
+      ? (c.tts_tested_at
+        ? 'Off — readers hear their device voices.'
+        : 'Off, and never tested — send the test word, then Enable.')
+      : (c.tts_tested_at
+        ? 'Last tested ' + new Date(c.tts_tested_at).toLocaleString()
+        : 'Not tested yet — send the test word before relying on it.');
 }
 
 /* The delivery direction, counted as it is typed. Over the cap the Test
@@ -1053,12 +1075,36 @@ $('ttstest').addEventListener('click', async ()=>{
     /* refresh() repaints the Voice note with the new "Last tested" stamp. */
   }catch(e){ $('ttsnote').textContent = 'The voice did not answer — ' + e.message; }
   finally{
-    btn.disabled = $('ttsengine').value !== 'openai';
+    /* Re-enabled explicitly. This used to read the Engine select, and when that select went
+       the line went with it — leaving the button dead after its first press on the failure
+       path, where no refresh runs to repaint it. */
+    btn.disabled = false;
     btn.classList.remove('loading'); btn.removeAttribute('aria-busy');
     btn.textContent = label;
   }
 });
 $('ttsword').addEventListener('keydown', e=>{ if(e.key==='Enter') $('ttstest').click(); });
+
+/* The voice's own switch, in the same shape and with the same guard as enrichment's: a job
+   that has never answered must not be turned on, because enabling an untested one makes
+   every reader the test. */
+$('ttstoggle').addEventListener('click', async ()=>{
+  const c = (STATE && STATE.config) || {};
+  const want = !c.tts_enabled;
+  if(want && !c.tts_tested_at){
+    $('ttsnote').textContent = 'Send the test word through first.';
+    return;
+  }
+  const btn = $('ttstoggle'), label = btn.textContent;
+  btn.disabled = true; btn.textContent = want ? 'Enabling…' : 'Disabling…';
+  try{
+    await api('/admin/config', {method:'POST', body: JSON.stringify({config:{tts_enabled: want}})});
+    await refresh();
+  }catch(e){
+    $('ttsnote').textContent = 'Could not change that — ' + e.message;
+    btn.textContent = label;
+  }finally{ btn.disabled = false; }
+});
 
 /* The provider is no longer part of this. Saving settings used to write the provider row
    too, which is how one press could change an endpoint while leaving its key in place. The
@@ -1074,7 +1120,8 @@ function configFromForm(){
     monthly_per_user: Number($('peruser').value),
     max_per_run: Number($('perrun').value),
     app_budget: Number($('budget').value),
-    tts_enabled: $('ttsengine').value === 'openai',
+    /* tts_enabled is not here. It is a switch, written on its own click like enrichment's,
+       so that Save settings cannot turn the voice on as a side effect of changing a word. */
     tts_voice: $('ttsvoice').value || 'cedar',
     tts_instructions: $('ttsinstructions').value.trim().slice(0, 1000)
   };

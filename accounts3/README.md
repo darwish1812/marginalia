@@ -261,7 +261,7 @@ bump it by hand when you publish or every fault will claim to come from the same
   page can reach them.
 - **Audio** uses your device's built-in speech engine, so voices differ between iPad and
   laptop. Rare words are occasionally mispronounced — verify anything that sounds odd.
-  If the administrator switches the Voice engine on, readers hear OpenAI voices instead
+  If the administrator switches the voice on, readers hear OpenAI voices instead
   (their own choice, in settings) and the device engine becomes the silent fallback.
   Single words cost fractions of a cent and repeats are served from the browser cache,
   never re-fetched; every synthesis is logged with its character count, so there is

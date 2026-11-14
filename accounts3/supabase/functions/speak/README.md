@@ -22,10 +22,11 @@ project. The four that remain (`tts_enabled`, `tts_voice`, `tts_instructions`,
 ## Prove it
 
 Without a reader session there is nothing to prove it with from here — sign in
-as the administrator, open `admin.html`, set the Voice engine to OpenAI, and
-press **Test voice**. Hearing *fealty* means the key, the endpoint, the voice
-and the log row all worked. That press also marks the voice tested, which is
-what offers it to readers.
+as the administrator, open `admin.html`, give a provider the **Voice** dot and
+a voice model, and press **Test voice** — which works whether or not the voice
+is switched on, because passing it is what earns the right to switch it on.
+Hearing *fealty* means the key, the endpoint, the voice and the log row all
+worked. Then press **Enable** beside it.
 
 ## Which provider speaks
 

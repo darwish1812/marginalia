@@ -45,7 +45,7 @@ without being translated on the way, and the only mapping code in the app
 | **Backend** | Supabase — Postgres for data, GoTrue for auth. No server of the project’s own and no Edge Functions; the only server-side code is three Postgres functions, for writes that must happen all at once. |
 | **Storage** | Postgres when signed in; `localStorage` when not, and as an offline mirror when signed in. |
 | **Speech** | The browser's own `speechSynthesis` — and, when the administrator switches
-the Voice engine on, OpenAI voices through the `speak` Edge Function, cached in
+the voice on, OpenAI voices through the `speak` Edge Function, cached in
 Cache Storage per text, voice and rate, with the device voice as the silent
 fallback. No quota; every synthesis is logged in `tts_log` for the day one is wanted. |
 | **Offline** | A hand-rolled cache in `localStorage`. There is no service worker; the app is *installable* via `manifest.json` but not precached. |
@@ -921,7 +921,7 @@ changes, and a banner comment is not. Search for the name.
 |---|---|
 | **accounts** | The two Supabase constants, the `ACCOUNTS` flag, `FN_BASE`, the client, and the globals `FIELDS`, `W`, `SEED`, `CORRECTIONS`. |
 | **faults** | `VERSION`, `fault()`, and the two window listeners. Writes what broke to the `faults` table: uncaught errors, unhandled rejections, the two sync failures the reader is already shown, and a booklet that would not open. Signed in only, twelve rows a session, deduplicated, and never a word of anybody's content. Never throws and never blocks: a reporter that can break the app is a second fault, not a first. |
-| **speech** | Voice discovery and filtering, the remembered choice, rate, and `speak()`. `refreshVoices()` re-reads the list when the app returns to the front and when You opens — it was read twice in the life of a page, which is not enough on a phone that downloads voices and resumes rather than reloads. `pickVoice()` also has to call `showVoiceRow(true)`: the row only ever knew how to take itself away, and Chrome answers the first `getVoices()` with an empty list, so the row hid itself during load and stayed hidden for the life of the page while `refreshVoices()` refilled a `<select>` nobody could see. Degrades to nothing where `speechSynthesis` is absent. When the administrator enables the Voice engine, `speak()` hands off to `speakCloud()`: MP3 bytes through the `speak` function, cached per text, voice and rate, played on one shared `<audio>` element with the same toggle-and-`.speaking` contract, and the reader's OpenAI voice is their own choice kept in `vocab-voice-ai`. |
+| **speech** | Voice discovery and filtering, the remembered choice, rate, and `speak()`. `refreshVoices()` re-reads the list when the app returns to the front and when You opens — it was read twice in the life of a page, which is not enough on a phone that downloads voices and resumes rather than reloads. `pickVoice()` also has to call `showVoiceRow(true)`: the row only ever knew how to take itself away, and Chrome answers the first `getVoices()` with an empty list, so the row hid itself during load and stayed hidden for the life of the page while `refreshVoices()` refilled a `<select>` nobody could see. Degrades to nothing where `speechSynthesis` is absent. When the administrator enables the voice, `speak()` hands off to `speakCloud()`: MP3 bytes through the `speak` function, cached per text, voice and rate, played on one shared `<audio>` element with the same toggle-and-`.speaking` contract, and the reader's OpenAI voice is their own choice kept in `vocab-voice-ai`. |
 | **You, where the panel is narrow** | `isPhone()`, `ctlLabel()`, `relabel()`, `youCard()`, `youDescribe()`. Below 1024px the settings panel is a card and three open groups of one-line rows; the stylesheet draws it and this does the three things a stylesheet cannot — one control name in two lengths, the card's contents, and the hidden reasons kept reachable through `aria-describedby`. The width lives in `narrowQuery()` and must match the media query. |
 | **render** | `esc()`, `posTags()`, `render()`, and the ink index. Rebuilds the whole book from `W`. |
 | **what is on the page** | `applyFilters()`, `markFilter`, `fieldFilter`, and the `.seg` control. The single owner of card `display`: the search text, the ✓ filter and the chosen field, answered together. |
@@ -940,7 +940,7 @@ changes, and a banner comment is not. Search for the name.
 | **fields** | `renderFields()`, the inline editor, the ink palette and the eight-field cap. |
 | **emptying the booklet** | The one bulk action, behind the same two-button confirmation Reset marks uses. It asked you to type the word `empty` until 2026-08-29; the count on the button does that work now. |
 | **add words** | `check`, `renderReport()`, `artToSrc()`, and the panel plumbing. |
-| **automatic or by hand** | `GATEWAY`, `setEnrichMode()`, `showQuota()`. Every failure path returns to the manual loop with the reason written where the reader is already looking. |
+| **automatic or by hand** | `GATEWAY`, `setEnrichMode()`, `showQuota()`. Every failure path returns to the manual loop with the reason written where the reader is already looking. `showQuota()` stopped showing the running count on 2026-11-14: a line reading *489 of your 500 words left this month* sat under a button on every load, inviting a reader who was in no danger of the ceiling to ration against it, and the ceiling is the administrator's number rather than theirs. What it still says is the one thing only it can say — that the month's words are gone, when they are, and that the manual loop is still there. The quota is enforced in `enrich`, as it always was, and is untouched by this. |
 | **a model on this machine** | `localTarget()` and `askLocal()`. An Edge Function cannot dial your desk, so a provider on localhost is unreachable through the gateway however it is configured; this page calls it directly instead — but only from localhost, only for an administrator, and only when the provider in use is itself local. No key is involved, because a local endpoint has nobody to present one to. |
 | **the prompt** | `promptText()` and `buildPrompt()`. The one place a prompt is assembled, so the button, the direct call and the gateway cannot disagree about what it says. |
 | **what came back** | `previewProblems()`, `previewRow()`, the preview and its keep/discard. |
@@ -989,7 +989,7 @@ administrator sets it — and `speak` reads that row and never writes the choice
 
 It has two routes: `POST /test`, the administrator's own ears and how a voice earns its
 mark, and `POST /`, the reader's, gated on spoken words being both on and tested. **Readers
-do reach it**: `speakCloud()` in the booklet hands off to it whenever the Voice engine is on,
+do reach it**: `speakCloud()` in the booklet hands off to it whenever the voice is on,
 falling back to the device's own `speechSynthesis` otherwise.
 
 **Only the routing moved here, and that is the whole of the change.** `speak` resolved its
@@ -1008,6 +1008,28 @@ as who produces it, and readers depend on all four. An earlier draft of this mig
 absorbed them into the capability row and dropped them, which would have taken the voice away
 from every reader and emptied the console's Voice block. The table routes; it does not
 describe the job.
+
+**Two switches, one shape.** The console has two jobs it can turn on, and until 2026-11-14
+they were turned on by two different kinds of control: enrichment by an **Enable** button in
+a row of actions, the voice by a select labelled *Engine* offering "Device voices" or "OpenAI
+voice". The select said off and on without using either word, sat among the settings rather
+than among the actions, and so the two halves of the gateway never read as the pair they are.
+Both are an **Enable / Disable** button at the end of their own section now, each next to the
+test that earns it the right to be pressed, and each refusing to switch on a job that has
+never answered — because enabling an untested one makes every reader the test.
+
+Where the two answers live is still not symmetrical, and deliberately so. Enrichment's is
+`app_capabilities.translate.enabled`; the voice's is `app_config.tts_enabled`, because that
+is the flag `speak` reads on every call and the one `tts-voice.sql` created. Moving it would
+be a migration run purely to make two column names match, against a schema that had just been
+deployed. `/admin/capability` refuses `enabled` for the `speech` job rather than accepting it
+into a second flag nothing reads, which is how you end up with two answers to "is the voice
+on" and someone finding them disagreeing.
+
+Turning the voice on is also no longer something **Save settings** can do by accident: it
+used to ride along in `configFromForm()` with the voice and the instructions, so changing the
+delivery note and pressing Save could switch the engine with it. The switch is written on its
+own click.
 
 **There are no character ceilings.** `tts_log` records what each call cost and whether it
 worked, which is what a quota would bill when one is wanted; a failure row is also how a
