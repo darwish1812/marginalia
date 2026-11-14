@@ -4896,10 +4896,16 @@ function showQuota(){
   if(!el) return;
   if(!GATEWAY.enabled || !GATEWAY.quota_limit){ el.textContent=''; el.className='note'; return; }
   const left = Math.max(0, GATEWAY.quota_limit - GATEWAY.quota_used);
-  el.textContent = left
-    ? `${left} of your ${GATEWAY.quota_limit} words left this month. Resets ${GATEWAY.resets}.`
-    : `You have used this month's ${GATEWAY.quota_limit} words. It resets ${GATEWAY.resets} — until then the prompt above still works.`;
-  el.className = left > GATEWAY.quota_limit*0.15 ? 'note' : 'note warn';
+  /* The running count is gone. A number that only ever goes down, under a button nobody
+     pressed yet, is an invitation to ration something nobody was short of — and the ceiling
+     is the administrator's concern, not the reader's.
+
+     The last message stays, and has to: it is the only thing that explains why a button
+     that worked this morning has stopped. A limit that enforces itself in silence is a
+     broken app, not a tidy one. The quota itself is unchanged and still enforced where it
+     always was, in the function. */
+  el.textContent = left ? '' : `You have used this month's ${GATEWAY.quota_limit} words. It resets ${GATEWAY.resets} — until then the prompt above still works.`;
+  el.className = left ? 'note' : 'note warn';
 }
 
 /* Never fatal. A gateway that cannot be reached, or was never configured, leaves the
