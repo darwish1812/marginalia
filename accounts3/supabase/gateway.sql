@@ -156,7 +156,11 @@ on conflict (app_id) do nothing;
 --
 -- `enabled` and `tested_at` are enrichment's, moved off app_config for the same reason as
 -- provider_id. Speech keeps its own pair in tts_enabled / tts_tested_at, which is where the
--- reader-facing gate in `speak` reads them.
+-- reader-facing gate in `speak` reads them — so the speech row's own `enabled` is not a
+-- switch and nothing reads it. /admin/capability refuses to write it rather than leaving a
+-- second answer to "is the voice on" lying around for someone to find disagreeing with the
+-- first. `tested_at` on the speech row is real: the console records a passed voice test
+-- there as well, beside the provider it was earned on.
 create table if not exists public.app_capabilities (
   app_id      text not null,
   job         text not null,

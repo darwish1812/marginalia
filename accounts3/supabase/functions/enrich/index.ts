@@ -716,10 +716,29 @@ Deno.serve(async (req) => {
           }
         }
         patch.provider_id = id;
-        // Moving a job to a different provider un-tests it. The previous test proved the
-        // old provider answered; carrying the tick across would be a claim nobody made.
-        patch.tested_at = null;
-        patch.enabled = false;
+        // Moving a job to a DIFFERENT provider un-tests it: the previous test proved the
+        // old provider answered, and carrying the tick across would be a claim nobody made.
+        //
+        // Re-choosing the one already set is not a move. It used to be treated as one, which
+        // meant clicking a dot that was already filled switched the job off and sent you back
+        // through a test you had already passed — easy to do while looking at the table, and
+        // the symptom is a gateway that quietly stops serving readers.
+        const current = await capability(job);
+        if (current?.provider_id !== id) {
+          patch.tested_at = null;
+          patch.enabled = false;
+        }
+      }
+
+      // Speech is switched on and off by app_config.tts_enabled, which is what `speak`
+      // actually gates its reader route on and what the console's Engine control writes.
+      // Accepting it here as well would set a second flag that nothing reads, and leave two
+      // answers to "is the voice on" for someone to find them disagreeing.
+      if ('enabled' in body && job === 'speech') {
+        return json({
+          error: 'wrong switch',
+          message: 'Spoken words are turned on with the Engine control in the Voice block, not here.',
+        }, 400);
       }
 
       if ('enabled' in body) {
