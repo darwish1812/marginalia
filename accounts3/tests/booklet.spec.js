@@ -390,16 +390,65 @@ test.describe('the deck', () => {
 });
 
 test.describe('the add loop', () => {
-  test('checks a list and builds the prompt', async ({ page }) => {
+  /* The fault: Check list was a mandatory press whose only product was a sentence. It is
+     gone, and the sentence writes itself — so nothing is clicked here between filling the
+     box and reading the summary. If the live listener is ever lost this test fails on the
+     report being empty, which is exactly the symptom a reader would meet. */
+  test('the summary and the prompt arrive without a press', async ({ page }) => {
     await page.setViewportSize(DESKTOP);
     await stock(page);
     await page.locator('.dest[data-dest="add"]').click();
     await page.locator('#raw').fill('zeugma, apophasis, holdfast, litotes');
-    await page.locator('#check').click();
     await expect(page.locator('#report')).toContainText('3 to enrich');
     await expect(page.locator('#report')).toContainText('holdfast');
     await expect(page.locator('#copyp')).toBeEnabled();
     await expect(page.locator('#prompt')).toContainText('JSON');
+  });
+
+  /* The fault: a dead grey Enrich these sat under an empty box on every visit, offering
+     something it could not do. It is absent until there is a list, and it says how many
+     words it is about to spend — so the press is never a guess. */
+  test('the one button is absent until there is something to send', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await stock(page);
+    await page.locator('.dest[data-dest="add"]').click();
+    await expect(page.locator('#enrich')).toBeHidden();
+
+    /* The harness has no gateway, so the booklet is in manual mode and the button stays
+       away whatever is typed. What must still happen is the summary and the prompt. */
+    await page.locator('#raw').fill('zeugma');
+    await expect(page.locator('#report')).toContainText('1 to enrich');
+
+    await page.evaluate(() => { setEnrichMode('auto'); });
+    await expect(page.locator('#enrich')).toBeVisible();
+    await expect(page.locator('#enrich')).toHaveText('Enrich 1 word');
+
+    await page.locator('#raw').fill('zeugma, apophasis, litotes');
+    await expect(page.locator('#enrich')).toHaveText('Enrich 3 words');
+
+    /* Emptying the box takes the button away again rather than leaving it to be pressed
+       against nothing. */
+    await page.locator('#raw').fill('');
+    await expect(page.locator('#enrich')).toBeHidden();
+  });
+
+  /* The fault this guards against is a behaviour change dressed up as a tidy-up. A word
+     that merely resembles one you have is a warning, not a filter: it is still sent. Only
+     an exact duplicate is withheld. The report lists both under headings that read like
+     exclusions, which is how the distinction gets lost. */
+  test('a near-match is warned about and still sent; a duplicate is not', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await stock(page);
+    await page.locator('.dest[data-dest="add"]').click();
+
+    const have = await page.evaluate(() => W.filter(x => x.d).slice(0, 1).map(x => x.w)[0]);
+    await page.locator('#raw').fill(`${have}, ${have}s, zeugma`);
+
+    const state = await page.evaluate(() => ({ fresh: fresh.slice(), report: document.getElementById('report').textContent }));
+    expect(state.report, 'the duplicate is not named').toContain(have);
+    expect(state.fresh, 'the exact duplicate was sent anyway').not.toContain(have);
+    expect(state.fresh, 'the near-match was silently dropped').toContain(`${have}s`);
+    expect(state.fresh).toContain('zeugma');
   });
 });
 

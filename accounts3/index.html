@@ -1736,14 +1736,15 @@
           <span class="stepno">Step 1 — paste your English words</span>
           <p>Any format: commas, new lines, numbered. Duplicates are removed automatically.</p>
           <textarea id="raw"></textarea>
-          <div class="row">
-            <button class="btn" id="check">Check list</button>
-          </div>
+          <!-- The summary is a property of the box, not the result of a press. Check list
+               used to stand here, and with the gateway on it was a mandatory press whose
+               only product was this sentence: setReady(true) was reached from renderReport
+               and nowhere else, so Enrich these could not be enabled any other way. You
+               pressed a button to be told what would be skipped, then pressed another to do
+               it. The same sentence now writes itself as you type. -->
           <div id="report"></div>
-          <!-- Both act on the list just checked, so they belong beside it rather than under
-               a heading about carrying a prompt somewhere. -->
           <div class="row">
-            <button class="btn" id="enrich" disabled hidden>Enrich these</button>
+            <button class="btn" id="enrich" hidden>Enrich these</button>
           </div>
           <p class="note" id="quota"></p>
         </div>
@@ -4785,14 +4786,42 @@ document.getElementById('automerge').addEventListener('click', async ()=>{
 });
 
 let fresh=[];
+/* Declared here rather than beside showPreview(), where it used to live, because
+   paintEnrich() above reads it and a `let` read before its declaration throws — `typeof`
+   does not shield a temporal dead zone the way it shields an undeclared name. The two are
+   the whole of this panel's state and belong together anyway: what is about to be sent,
+   and what has come back and is waiting to be kept or discarded. */
+let PENDING = null;
 
 /* Steps 2 and 3 are always on screen; this is what turns them from a preview of what is
    coming into something you can actually use. */
 const IDLEPROMPT='The prompt is written here once you check a list above.';
 function setReady(on){
   ['s2','s3'].forEach(id=>document.getElementById(id).classList.toggle('waiting', !on));
-  ['copyp','merge','incoming','enrich'].forEach(id=>document.getElementById(id).disabled = !on);
+  ['copyp','merge','incoming'].forEach(id=>document.getElementById(id).disabled = !on);
   if(!on) document.getElementById('prompt').textContent=IDLEPROMPT;
+  paintEnrich();
+}
+
+/* One owner for the one button. It used to be disabled by setReady and hidden by
+   setEnrichMode, which between them could leave a dead grey button sitting under an empty
+   box on every visit to the panel — a control offering something it could not do. It is
+   simply absent until there is a list to send, and it says how many words that is, so the
+   press is never a guess about what it is about to spend. */
+function paintEnrich(){
+  const btn = document.getElementById('enrich');
+  if(!btn) return;
+  const auto = document.body.classList.contains('auto-enrich');
+  const n = (typeof fresh === 'undefined' ? [] : fresh).length;
+  /* Words already fetched and waiting to be read are not swept aside by a new list. They
+     were paid for out of a monthly allowance, and stacking a fresh list above a stale
+     preview is how this panel stopped making sense — two unrelated things on screen with
+     no stated relationship between them. The guard used to live on Check list; with that
+     button gone it lives here, where it takes the button away rather than refusing a press
+     after the fact. */
+  btn.hidden = !auto || !n || !!PENDING;
+  btn.disabled = false;
+  btn.textContent = `Enrich ${n} word${n===1?'':'s'}`;
 }
 
 /* ---------- automatic or by hand ----------
@@ -4887,8 +4916,7 @@ async function askLocal(t, prompt){
 
 function setEnrichMode(mode){
   document.body.classList.toggle('auto-enrich', mode === 'auto');
-  const btn = document.getElementById('enrich');
-  if(btn) btn.hidden = mode !== 'auto';
+  paintEnrich();
 }
 
 function showQuota(){
@@ -5001,18 +5029,14 @@ function renderReport(dups, nears, again){
   if(fresh.length) buildPrompt();
 }
 
-document.getElementById('check').addEventListener('click',()=>{
-  /* Words already fetched and waiting to be looked at are not swept aside by a new list.
-     They were paid for out of a monthly allowance, and stacking a fresh list above a stale
-     preview is how the panel stopped making sense — two unrelated things on screen with no
-     stated relationship between them. */
-  if(PENDING){
-    const msg=document.getElementById('mergemsg');
-    msg.className='note warn';
-    msg.textContent = `${PENDING.arr.length} word${PENDING.arr.length===1?' is':'s are'} already waiting below — keep ${PENDING.arr.length===1?'it':'them'} or throw ${PENDING.arr.length===1?'it':'them'} away first.`;
-    document.getElementById('s2b').scrollIntoView({behavior:'smooth', block:'nearest'});
-    return;
-  }
+/* What Check list used to do on a press, now run on every keystroke. It is pure — it reads
+   the box and the booklet and writes the summary — so there is nothing to undo if it runs a
+   hundred times while a list is pasted and edited.
+
+   Cost: it rebuilds three Maps over the whole booklet each time. At a few hundred words
+   that is nothing. Past a few thousand it wants debouncing, or the Maps want hoisting out
+   and rebuilding only when the booklet itself changes. */
+function examineList(){
   const raw=document.getElementById('raw').value;
   /* De-duplicated on norm, not on the raw string. "fealty" and "Fealty!" are two different
      strings and one word, and letting both through sent both to the model, which sent two
@@ -5034,10 +5058,17 @@ document.getElementById('check').addEventListener('click',()=>{
     else if(stems.has(stem(t))) nears.push({t, like:stems.get(stem(t))});
     else fresh.push(t);
   });
+  /* Both of these are warnings, not filters: a word that merely resembles one you have,
+     or that is already waiting for detail, still goes to the model. Only an exact duplicate
+     is withheld. Said here because the report lists them under headings that read like
+     exclusions, and more than one reader of this code has taken them for exclusions. */
   again.forEach(t=>fresh.push(t));
   nears.forEach(nx=>fresh.push(nx.t));
   renderReport(dups, nears, again);
-});
+}
+
+/* Live. The one listener that retired a button. */
+document.getElementById('raw').addEventListener('input', examineList);
 
 /* ---------- the prompt ----------
    Both templates live here as constants, and the gateway keeps its own copies in the
@@ -5129,7 +5160,6 @@ function buildPrompt(){
    chat window — the same reason the cards are. Shown as words rather than as the JSON they
    travelled in: reviewing before merging is the only guard against a bad batch, and nobody
    reviews a wall of escaped quotes. */
-let PENDING = null;                       // the parsed array waiting to be kept or discarded
 
 /* Whether a word came back looking wrong. Kept next to the renderer because the summary
    above the list and the note under each row have to agree about what "doubtful" means. */
