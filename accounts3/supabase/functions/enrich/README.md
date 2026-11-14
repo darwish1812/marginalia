@@ -65,9 +65,17 @@ keep the key already stored, and omit `id` to create a row rather than edit one.
 
 | Route | Body | What it does |
 |---|---|---|
-| `POST /admin/config` | `{"provider":{…}}` | Creates or edits one provider. |
-| `POST /admin/config` | `{"config":{"provider_id":3}}` | Chooses the provider in use. |
-| `POST /admin/config` | `{"config":{"enabled":true}}` | The switch readers see. |
+| `POST /admin/config` | `{"provider":{…}}` | Creates or edits one provider. `model` is what it uses for the words, `voice_model` for speech; blank means it cannot do that job. |
+| `POST /admin/capability` | `{"job":"translate","provider_id":3}` | Gives a job to a provider. Refused if that provider has no model for the job. Moving a job clears its tick and switches it off — the old test proved the old provider answered. |
+| `POST /admin/capability` | `{"job":"translate","enabled":true}` | The switch readers see. Refused until the job has answered once. |
+| `POST /admin/capability` | `{"job":"speech","voice":"alloy"}` | The provider's own name for a voice. |
+
+
+Speech is **not** a route here. It is its own function, `supabase/functions/speak`, because
+it answers with audio rather than JSON — `POST /test` for an administrator, `POST /` for a
+reader, both gated on the `speech` row this gateway owns. The console's **Say one word**
+calls it directly. `index.html` does not call it at all yet; the booklet still uses the
+device's own voice.
 | `POST /admin/config` | `{"config":{"template":"…"}}` | The prompt. Must contain `{{WORDS}}`. |
 | `POST /admin/provider/delete` | `{"id":3}` | Deletes it, and its key with it. Deleting the one in use clears the choice and switches enrichment off rather than leaving it pointed at nothing. |
 | `POST /admin/provider/forget-key` | `{"id":3}` | Removes a key without removing the provider. |
@@ -131,6 +139,10 @@ These matter as much as the success, because each is a decision the design turns
 | Set `enabled: false`, then `/run` as a reader | `503` with the administrator message |
 | A deliberately wrong key | `502` *The key was refused* — with `detail` present for an admin and **absent** for a reader |
 | Delete the provider in use | `200`, and `/me` now reports `enabled:false` |
+| `POST /admin/capability` with a provider that has no model for that job | `400` |
+| `POST /admin/capability` `{"enabled":true}` on a job that has never answered | `400` |
+| `POST /test` on `speak` with no provider holding the voice | `502`, saying no provider holds the voice |
+| `POST /` on `speak` while the speech row is off | `409` |
 
 That wrong-key row is the one to actually check with two accounts. The detail can carry the
 provider, the account, sometimes the key's own prefix.

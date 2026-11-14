@@ -138,6 +138,16 @@
   .editor h3{font-size:11px; font-weight:700; letter-spacing:.12em; text-transform:uppercase;
              color:var(--ochre); margin:0 0 14px}
 
+  table.prov th.job{text-align:center; width:48px}
+  table.prov td.job{text-align:center}
+  .radio:disabled{border-color:rgba(241,239,233,.16); cursor:not-allowed}
+  .mdl{font:12px/1.5 ui-monospace,Menlo,monospace; white-space:nowrap}
+  .mdl .lbl{font-family:system-ui,sans-serif; font-size:9.5px; letter-spacing:.09em;
+            text-transform:uppercase; color:var(--dimmer); margin-right:7px}
+  .mdl .none{color:var(--dimmer)}
+  .mdl .live{color:var(--paper)}
+  .mdl .idle{color:var(--dim)}
+
   .modelfield{display:flex; gap:8px; align-items:stretch}
   .modelfield input{flex:1}
   .modelfield button{padding:8px 12px}
@@ -223,7 +233,8 @@ on conflict do nothing;</div>
       <div class="tablewrap">
         <table class="prov">
           <thead>
-            <tr><th style="width:34px">Use</th><th>Provider</th><th>Model</th><th>Key</th><th></th></tr>
+            <tr><th class="job">Text</th><th class="job">Voice</th>
+                <th>Provider</th><th>Model</th><th>Key</th><th></th></tr>
           </thead>
           <tbody id="provrows"></tbody>
         </table>
@@ -256,13 +267,24 @@ on conflict do nothing;</div>
         </div>
         <div style="margin-top:12px"><label for="endpoint">Endpoint</label><input id="endpoint"></div>
         <div class="grid" style="margin-top:12px">
-          <div><label for="model">Model</label>
+          <div><label for="model">Model <span style="color:var(--dimmer)">— for the words</span></label>
             <div class="modelfield">
               <input id="model" autocomplete="off">
               <button id="fetchmodels">Fetch</button>
             </div>
             <div class="suggest" id="modellist" hidden></div>
             <span class="modelnote" id="modelnote"></span>
+          </div>
+          <!-- Blank is meaningful: it is how the table knows not to offer this provider the
+               voice. The same catalogue fills both lists; which half of it counts as usable
+               is the only difference between them. -->
+          <div><label for="voicemodel">Voice model <span style="color:var(--dimmer)">— blank if it cannot speak</span></label>
+            <div class="modelfield">
+              <input id="voicemodel" autocomplete="off" placeholder="none">
+              <button id="fetchvoices">Fetch</button>
+            </div>
+            <div class="suggest" id="voicelist" hidden></div>
+            <span class="modelnote" id="voicenote"></span>
           </div>
           <div id="keywrap"><label for="apikey">API key <span id="keyhas"></span></label>
             <input id="apikey" type="password" placeholder="blank keeps the current key"></div>
@@ -505,10 +527,16 @@ function stat(n, l, cls){
   return `<div class="stat ${cls||''}"><div class="n">${n}</div><div class="l">${l}</div></div>`;
 }
 
+/* Which provider holds a job is a row per job now rather than a column on the config.
+   Everything that used to read c.provider_id or c.enabled reads one of these two. How the
+   voice *sounds* is still on the config, and still read from there. */
+function capOf(d, job){ return (d.capabilities||[]).find(x=>x.job===job) || {job:job}; }
+
 function paint(d){
   STATE = d;
   const c = d.config, u = d.usage;
-  $('toggle').textContent = c.enabled ? 'Disable' : 'Enable';
+  const tcap = capOf(d,'translate'), scap = capOf(d,'speech');
+  $('toggle').textContent = tcap.enabled ? 'Disable' : 'Enable';
 
   const pct = u.budget ? Math.min(100, Math.round(u.words / u.budget * 100)) : 0;
   $('stats').innerHTML =
@@ -522,7 +550,7 @@ function paint(d){
   bar.firstElementChild.style.width = pct+'%';
   $('budgetnote').textContent = `${u.words} of ${u.budget} this month. Resets ${u.resets}.`;
 
-  const prov = (d.providers||[]).find(p=>p.id===c.provider_id) || null;
+  const prov = (d.providers||[]).find(p=>p.id===tcap.provider_id) || null;
   paintProviders(d);
 
   /* left blank on purpose when unset: newer models refuse a request that carries a
@@ -559,18 +587,33 @@ function paint(d){
    so a key issued for one endpoint quietly became the key for the next one. Identity per
    provider is what makes switching safe, and it is what lets Delete and Forget key exist. */
 function paintProviders(d){
-  const c = d.config;
+  const tcap = capOf(d,'translate'), scap = capOf(d,'speech');
   const rows = (d.providers||[]).map(p=>{
     const hasKey = (d.keys||[]).some(k=>k.provider_id===p.id);
-    const inUse  = c.provider_id === p.id;
+    const isText  = tcap.provider_id === p.id;
+    const isVoice = scap.provider_id === p.id;
+    const inUse   = isText || isVoice;
     const local  = isLocal(p.endpoint);
     return '<tr'+(inUse?' class="using"':'')+'>'
-      + '<td><input class="radio" type="radio" name="use" data-use="'+p.id+'"'+(inUse?' checked':'')+'></td>'
+      /* A provider with no voice model cannot be given the voice, so the dot is not offered
+         rather than offered and refused — the function turns the choice down anyway, and a
+         control that exists only to produce an error message is worse than none. */
+      + '<td class="job"><input class="radio" type="radio" name="use" data-use="'+p.id+'"'
+        + (isText?' checked':'') + ' aria-label="Use '+esc(p.name||'provider')+' for the words"></td>'
+      + '<td class="job">' + (p.voice_model
+          ? '<input class="radio" type="radio" name="voice" data-voice="'+p.id+'"'
+            + (isVoice?' checked':'') + ' aria-label="Use '+esc(p.name||'provider')+' for the voice">'
+          : '<input class="radio" type="radio" name="voice" disabled'
+            + ' title="this provider has no voice model set"'
+            + ' aria-label="'+esc(p.name||'provider')+' has no voice model">') + '</td>'
       + '<td><div class="pname">'+esc(p.name||'provider')
         + ' <span class="shape">'+esc(p.adapter||'openai')+'</span></div>'
         + '<div class="pend">'+esc(p.endpoint||'')+'</div></td>'
-      + '<td class="mono" style="color:'+(p.model?'var(--paper)':'var(--dimmer)')+'">'
-        + esc(p.model||'no model set')+'</td>'
+      + '<td><div class="mdl"><span class="lbl">Text</span><span class="'
+        + (isText?'live':'idle')+'">'+esc(p.model||'—')+'</span></div>'
+        + '<div class="mdl"><span class="lbl">Voice</span>'
+        + (p.voice_model ? '<span class="'+(isVoice?'live':'idle')+'">'+esc(p.voice_model)+'</span>'
+                         : '<span class="none">none</span>')+'</div></td>'
       + '<td>'+(hasKey
           ? '<span class="keyset">•••• '+esc(p.key_last4||'????')+'</span>'
           : '<span class="keynone">'+(local?'none needed':'none set')+'</span>')+'</td>'
@@ -579,7 +622,7 @@ function paintProviders(d){
       + '</tr>';
   });
   $('provrows').innerHTML = rows.join('') ||
-    '<tr><td colspan="5" style="color:var(--dim); font-size:12.5px">'
+    '<tr><td colspan="6" style="color:var(--dim); font-size:12.5px">'
     + 'No providers yet. Add one to begin.</td></tr>';
 }
 
@@ -635,6 +678,21 @@ const KINDS = [
 ];
 const kindOf = id => (KINDS.find(([re]) => re.test(String(id)))||[])[1] || '';
 
+/* Speaking and listening are both `audio` to the rule above, and only one of them can read
+   a card. whisper-1 matches `audio` and would otherwise be offered as a voice — a mistake
+   found only by pressing play, which is the worst moment to find it. */
+const speaks = id => /\btts\b|speech/i.test(String(id)) && !/whisper|transcribe/i.test(String(id));
+
+/* The two model fields, and the only two things that differ between them: which half of
+   the catalogue counts as usable, and what the seam between the halves says. One fetch
+   fills both, because it is one catalogue — the provider is asked once. */
+const JOBS = {
+  text:  { field:'model',      list:'modellist', note:'modelnote', btn:'fetchmodels',
+           usable:m => !m.kind,      seam:'not chat models' },
+  voice: { field:'voicemodel', list:'voicelist', note:'voicenote', btn:'fetchvoices',
+           usable:m => speaks(m.id), seam:'cannot read a card aloud' },
+};
+
 /* The catalogue sits where the verb was. Every endpoint carried here ends in one — chat,
    completions, messages — so those are dropped and `models` put in their place, which leaves
    whatever prefix the provider uses untouched:
@@ -661,8 +719,9 @@ function modelsUrl(endpoint){
 /* `all` is the press of Fetch: the question then is "what is there", not "what matches the
    name already in the box" — which would narrow the catalogue to the one line you can already
    see. Typing afterwards filters as usual. */
-function paintModels(all){
-  const box = $('modellist'), typed = all ? '' : $('model').value.trim().toLowerCase();
+function paintModels(all, job){
+  const J = JOBS[job || 'text'];
+  const box = $(J.list), typed = all ? '' : $(J.field).value.trim().toLowerCase();
   if(!MODELS.length){ box.hidden = true; return; }
   const hit = MODELS.filter(m => !typed || m.id.toLowerCase().includes(typed));
   if(!hit.length){
@@ -670,24 +729,27 @@ function paintModels(all){
                   + 'still what will be saved.</div>';
     box.hidden = false; return;
   }
-  const usable = hit.filter(m => !m.kind), other = hit.filter(m => m.kind);
-  const row = m => '<div class="r'+(m.kind?' muted':'')+'" data-pick="'+esc(m.id)+'">'
+  const usable = hit.filter(J.usable), other = hit.filter(m => !J.usable(m));
+  /* A model's label is still its kind — what it is does not change with the question. What
+     changes is which side of the seam it falls on. */
+  const row = (m, muted) => '<div class="r'+(muted?' muted':'')+'" data-pick="'+esc(m.id)+'">'
     + '<span class="nm">'+esc(m.id)+'</span>'
     + (m.kind ? '<span class="kind">'+esc(m.kind)+'</span>' : '') + '</div>';
-  box.innerHTML = usable.map(row).join('')
-    + (other.length ? '<div class="seam"><i></i><span>not chat models</span><i></i></div>' : '')
-    + other.map(row).join('');
+  box.innerHTML = usable.map(m=>row(m,false)).join('')
+    + (other.length ? '<div class="seam"><i></i><span>'+esc(J.seam)+'</span><i></i></div>' : '')
+    + other.map(m=>row(m,true)).join('');
   box.hidden = false;
 }
 
 /* Local providers are asked straight from here — no credential exists to withhold. Remote
    ones are asked through the function, which is the only thing holding the key. */
-async function loadModels(){
+async function loadModels(which){
+  which = which === 'voice' ? 'voice' : 'text';
   const endpoint = $('endpoint').value.trim();
-  const btn = $('fetchmodels');
-  if(!endpoint) return say('modelnote','','');
+  const btn = $(JOBS[which].btn);
+  if(!endpoint) return say(JOBS[which].note,'','');
   let url; try{ url = modelsUrl(endpoint); }
-  catch(e){ return say('modelnote','That endpoint is not a URL yet.','bad'); }
+  catch(e){ return say(JOBS[which].note,'That endpoint is not a URL yet.','bad'); }
 
   btn.disabled = true; btn.textContent = '…';
   say('modelnote','');
@@ -707,12 +769,19 @@ async function loadModels(){
     }
     MODELS = ids.map(id => ({id, kind: kindOf(id)}));
     if(!MODELS.length) throw new Error('it answered with an empty list');
-    const usable = MODELS.filter(m => !m.kind).length;
-    say('modelnote', MODELS.length + ' models, ' + usable + ' usable.', 'ok');
-    paintModels(true);
+    /* Both counts, because one catalogue answers two questions and "24 usable" means
+       nothing without saying usable for what. A provider with nothing that speaks says so
+       here, rather than leaving the voice field looking merely unfilled. */
+    const chat = MODELS.filter(JOBS.text.usable).length;
+    const said = MODELS.filter(JOBS.voice.usable).length;
+    say('modelnote', MODELS.length + ' models, ' + chat + ' can answer a prompt.', 'ok');
+    say('voicenote', said ? MODELS.length + ' models, ' + said + ' can speak.'
+                          : 'Nothing here can speak — leave this blank.', said ? 'ok' : '');
+    paintModels(true, which);
   }catch(e){
-    MODELS = []; $('modellist').hidden = true;
+    MODELS = []; $('modellist').hidden = true; $('voicelist').hidden = true;
     say('modelnote','No list — type the name.','bad');
+    say('voicenote','');
   }finally{
     btn.disabled = false;
     btn.textContent = MODELS.length ? MODELS.length + ' found' : 'Fetch';
@@ -723,14 +792,14 @@ async function loadModels(){
 /* A remote provider will not list anything for a caller with no credential, so the button
    says why rather than offering a press that can only be refused. */
 function syncFetchButton(){
-  const btn = $('fetchmodels'), endpoint = $('endpoint').value.trim();
+  const endpoint = $('endpoint').value.trim();
   const local = isLocal(endpoint);
   const hasKey = !!$('apikey').value.trim()
     || (EDITING !== 'new' && (STATE.keys||[]).some(k => k.provider_id === EDITING));
   const ok = !!endpoint && (local || hasKey);
-  btn.disabled = !ok;
-  btn.title = ok ? '' : (endpoint ? 'a key is needed before the list can be asked for'
+  const why = ok ? '' : (endpoint ? 'a key is needed before the list can be asked for'
                                   : 'an endpoint is needed first');
+  ['fetchmodels','fetchvoices'].forEach(id => { $(id).disabled = !ok; $(id).title = why; });
 }
 
 /* A key field on a provider that cannot use one is furniture. It goes, and so does the
@@ -743,17 +812,22 @@ function syncKeyField(){
   $('forgetkey').hidden = local;
 }
 
-$('fetchmodels').addEventListener('click', loadModels);
-$('model').addEventListener('input', ()=>paintModels());
-$('model').addEventListener('focus', ()=>paintModels());
-$('modellist').addEventListener('mousedown', e => {
-  const r = e.target.closest('[data-pick]'); if(!r) return;
-  e.preventDefault();
-  $('model').value = r.dataset.pick;
-  $('modellist').hidden = true;
+/* The same five behaviours on both fields, from one place: a hand-written second copy is
+   how the voice list ends up not closing on Escape six months from now. */
+Object.keys(JOBS).forEach(job => {
+  const J = JOBS[job];
+  $(J.btn).addEventListener('click', () => loadModels(job));
+  $(J.field).addEventListener('input', ()=>paintModels(false, job));
+  $(J.field).addEventListener('focus', ()=>paintModels(false, job));
+  $(J.list).addEventListener('mousedown', e => {
+    const r = e.target.closest('[data-pick]'); if(!r) return;
+    e.preventDefault();
+    $(J.field).value = r.dataset.pick;
+    $(J.list).hidden = true;
+  });
+  $(J.field).addEventListener('blur', ()=> setTimeout(()=>{ $(J.list).hidden = true; }, 120));
+  $(J.field).addEventListener('keydown', e => { if(e.key === 'Escape') $(J.list).hidden = true; });
 });
-$('model').addEventListener('blur', ()=> setTimeout(()=>{ $('modellist').hidden = true; }, 120));
-$('model').addEventListener('keydown', e => { if(e.key === 'Escape') $('modellist').hidden = true; });
 $('apikey').addEventListener('input', syncFetchButton);
 
 function openEditor(prov){
@@ -763,6 +837,7 @@ function openEditor(prov){
   $('adapter').value  = prov ? (prov.adapter||'openai') : 'openai';
   $('endpoint').value = prov ? (prov.endpoint||'') : '';
   $('model').value    = prov ? (prov.model||'') : '';
+  $('voicemodel').value = prov ? (prov.voice_model||'') : '';
   $('apikey').value   = '';
   /* A saved provider keeps the name it was saved with. Deriving it here instead would let
      merely opening a row rename it, since two presets can share an endpoint and nothing in
@@ -778,9 +853,11 @@ function openEditor(prov){
   $('keyhas').style.color = hasKey ? 'var(--verd)' : (local ? 'var(--dim)' : 'var(--ox)');
   $('forgetkey').disabled = !hasKey;
   /* the catalogue belongs to the provider being edited, so it does not survive the switch */
-  MODELS = []; $('modellist').hidden = true;
+  MODELS = []; $('modellist').hidden = true; $('voicelist').hidden = true;
   $('fetchmodels').textContent = 'Fetch';
+  $('fetchvoices').textContent = 'Fetch';
   say('modelnote','');
+  say('voicenote','');
   syncKeyField();
   syncFetchButton();
   syncDevBox();
@@ -798,20 +875,25 @@ $('provrows').addEventListener('click', async e=>{
 
   /* One field, chosen deliberately, with nothing else on the page waiting to be saved
      alongside it — so it is written on the click, the way Enable and Disable already are. */
-  if(t.dataset.use){
-    const id = Number(t.dataset.use);
+  /* Moving a job to another provider clears its tick and switches it off, server-side:
+     the old test proved the old provider answered, and carrying that across would be a
+     claim nobody made. The console says so rather than letting it be noticed later. */
+  const job = t.dataset.use ? 'translate' : t.dataset.voice ? 'speech' : null;
+  if(job){
+    const id = Number(t.dataset.use || t.dataset.voice);
+    const name = (byId(id)||{}).name || 'that provider';
     say('msg','Choosing…');
     try{
-      await api('/admin/config', {method:'POST', body: JSON.stringify({config:{provider_id:id}})});
+      await api('/admin/capability', {method:'POST', body: JSON.stringify({job, provider_id:id})});
       await refresh();
-      say('msg','Enrichment now uses ' + ((byId(id)||{}).name || 'that provider') + '.','ok');
+      say('msg', (job==='speech' ? 'The voice now uses ' : 'The words now use ') + name + '.', 'ok');
     }catch(err){ await refresh(); say('msg','Could not change that — '+err.message,'bad'); }
     return;
   }
 
   if(t.dataset.del){
     const id = Number(t.dataset.del), prov = byId(id) || {};
-    const inUse = STATE.config.provider_id === id;
+    const inUse = (STATE.capabilities||[]).some(x=>x.provider_id === id);
     if(!confirm('Delete ' + (prov.name || 'this provider')
               + '? Its API key is deleted with it and cannot be recovered.'
               + (inUse ? '\n\nIt is the one in use, so enrichment will be switched off '
@@ -839,7 +921,8 @@ $('saveprov').addEventListener('click', async ()=>{
     name: $('pname').value.trim() || 'provider',
     adapter: $('adapter').value,
     endpoint: $('endpoint').value.trim(),
-    model: $('model').value.trim()
+    model: $('model').value.trim(),
+    voice_model: $('voicemodel').value.trim()
   };
   if(!prov.endpoint) return say('msg','A provider needs an endpoint.','bad');
   if(EDITING !== 'new') prov.id = EDITING;
@@ -1022,13 +1105,14 @@ $('save').addEventListener('click', async ()=>{
 });
 
 $('toggle').addEventListener('click', async ()=>{
-  const want = !(STATE && STATE.config.enabled);
-  if(want && !(STATE && STATE.config.tested_at)){
+  const cap = STATE ? capOf(STATE,'translate') : {};
+  const want = !cap.enabled;
+  if(want && !cap.tested_at){
     return say('msg','Send one word through first.','warn');
   }
   say('msg', want ? 'Enabling…' : 'Disabling…');
   try{
-    await api('/admin/config', {method:'POST', body: JSON.stringify({config:{enabled:want}})});
+    await api('/admin/capability', {method:'POST', body: JSON.stringify({job:'translate', enabled:want})});
     await refresh();
     say('msg', want ? 'Enrichment is on.' : 'Enrichment is off.', 'ok');
   }catch(e){ say('msg','Could not change that — '+e.message,'bad'); }
@@ -1099,7 +1183,7 @@ async function callDirect({endpoint, adapter, model, prompt, temperature, maxTok
    prompt, and says so rather than letting a direct call pass for the real one. */
 function localTarget(){
   if(!DEV_DIRECT || !STATE) return null;
-  const prov = (STATE.providers||[]).find(p => p.id === STATE.config.provider_id);
+  const prov = (STATE.providers||[]).find(p => p.id === capOf(STATE,'translate').provider_id);
   return (prov && isLocal(prov.endpoint)) ? prov : null;
 }
 

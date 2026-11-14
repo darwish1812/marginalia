@@ -96,6 +96,10 @@ alter table public.provider_secrets enable row level security;
 --
 -- `enabled` defaults FALSE. A freshly run gateway does nothing at all until an
 -- administrator has set a key, chosen a model, and watched a test come back correct.
+--
+-- provider_id, model, enabled and tested_at are dropped further down this file: they were
+-- one answer each for as long as the gateway did one thing, and they are per job now. See
+-- app_capabilities.
 create table if not exists public.app_config (
   app_id           text primary key,
   provider_id      integer references public.providers,
@@ -134,6 +138,53 @@ create policy "read config" on public.app_config
 
 insert into public.app_config (app_id) values ('marginalia')
 on conflict (app_id) do nothing;
+
+-- ---------------------------------------------------------------- app_capabilities
+-- Which provider does which job.
+--
+-- There was one answer to this and it lived in app_config.provider_id, because the gateway
+-- only ever did one thing with a model. Asking a provider for speech as well as for words
+-- makes that one column wrong in a way a second column would not fix: translation might sit
+-- on Anthropic while the voice sits on OpenAI, each with its own endpoint, its own key, and
+-- its own reasons to be swapped out. A row per job says that; a pair of columns says it
+-- until the third job arrives.
+--
+-- This table answers one question: which provider does which job. It deliberately does not
+-- describe the job. How the voice sounds — which voice, what instructions, whether spoken
+-- words are on at all — stays on app_config in the tts_ columns that have always held it,
+-- because those are properties of the app and not of whoever is billed for it.
+--
+-- `enabled` and `tested_at` are enrichment's, moved off app_config for the same reason as
+-- provider_id. Speech keeps its own pair in tts_enabled / tts_tested_at, which is where the
+-- reader-facing gate in `speak` reads them.
+create table if not exists public.app_capabilities (
+  app_id      text not null,
+  job         text not null,
+  provider_id integer references public.providers,
+  enabled     boolean not null default false,
+  tested_at   timestamptz,
+  updated_at  timestamptz not null default now(),
+  primary key (app_id, job),
+  constraint app_capabilities_job_known check (job in ('translate', 'speech'))
+);
+
+alter table public.app_capabilities enable row level security;
+
+-- A reader is told whether enrichment is on, and that answer comes from here now. They may
+-- read the row and nothing else: no policy for insert, update or delete, so the console
+-- writes it through the function like everything else.
+--
+-- The provider id is not a secret, and would be useless without the key, which lives in a
+-- table no reader can read at all (F4).
+drop policy if exists "read capabilities" on public.app_capabilities;
+create policy "read capabilities" on public.app_capabilities
+  for select to authenticated
+  using (true);
+
+insert into public.app_capabilities (app_id, job) values
+  ('marginalia', 'translate'),
+  ('marginalia', 'speech')
+on conflict (app_id, job) do nothing;
 
 -- ---------------------------------------------------------------- runs
 -- Quota accounting. NOT observability.
@@ -203,13 +254,28 @@ notify pgrst, 'reload schema';
 -- name only means anything to the provider serving it, so it belongs on the provider —
 -- which also lets an administrator keep several ready and switch between them in one click.
 --
--- app_config.model is left in place and is read as a fallback, so a gateway that has not
--- run this migration keeps working.
+-- app_config.model was left in place as a fallback so a gateway that had not run this
+-- migration kept working. That is no longer true: the migration at the end of this file
+-- drops it, along with provider_id, enabled and tested_at. Nothing reads it now.
 alter table public.providers add column if not exists model text not null default '';
 
-update public.providers p set model = c.model
-  from public.app_config c
- where c.provider_id = p.id and p.model = '' and c.model <> '';
+-- Guarded because the migration further down drops both columns this reads. Reapplying
+-- the schema is routine, and an unguarded reference to a dropped column makes the second
+-- run fail at a line that had already done its work.
+do $$
+begin
+  if exists (select 1 from information_schema.columns
+              where table_schema = 'public' and table_name = 'app_config'
+                and column_name in ('provider_id', 'model')
+              group by table_name having count(*) = 2)
+  then
+    execute $m$
+      update public.providers p set model = c.model
+        from public.app_config c
+       where c.provider_id = p.id and p.model = '' and c.model <> ''
+    $m$;
+  end if;
+end $$;
 
 notify pgrst, 'reload schema';
 
@@ -219,5 +285,105 @@ notify pgrst, 'reload schema';
 -- the slot and the pair simply alternated — the version before last was already unreachable.
 -- One editable field does not need a history mechanism of its own.
 alter table public.app_config drop column if exists template_prev;
+
+notify pgrst, 'reload schema';
+
+-- ---------------------------------------------------------------- a job at a time
+-- Which provider to call, and whether the job is on, were a column and a switch on
+-- app_config. That was right while the only thing the gateway did with a model was turn a
+-- word list into definitions. Asking one for speech as well makes both wrong: the voice may
+-- sit on a different provider from the words, with its own endpoint and its own key, and it
+-- has to be able to be off while words keep working.
+--
+-- A second pair of columns would have carried this version and no more. app_capabilities is
+-- a row per job, so the third job is an insert.
+--
+-- The translate row inherits exactly what was in use, so a gateway that was working before
+-- this migration is working after it, pointed at the same provider with the same switch in
+-- the same position. Nothing a reader can see changes.
+alter table public.providers add column if not exists voice_model text not null default '';
+
+-- Guarded for the same reason, and on the same columns: once they are dropped there is
+-- nothing left to move and this must not be the line that fails. `where provider_id is
+-- null` means a second run before the drop cannot overwrite a choice made since.
+do $$
+begin
+  if exists (select 1 from information_schema.columns
+              where table_schema = 'public' and table_name = 'app_config'
+                and column_name = 'provider_id')
+  then
+    execute $m$
+      insert into public.app_capabilities (app_id, job, provider_id, enabled, tested_at)
+      select c.app_id, 'translate', c.provider_id, c.enabled, c.tested_at
+        from public.app_config c
+      on conflict (app_id, job) do update
+        set provider_id = excluded.provider_id,
+            enabled     = excluded.enabled,
+            tested_at   = excluded.tested_at
+        where public.app_capabilities.provider_id is null
+    $m$;
+  end if;
+end $$;
+
+insert into public.app_capabilities (app_id, job)
+select c.app_id, 'speech' from public.app_config c
+on conflict (app_id, job) do nothing;
+
+-- ---------------------------------------------------------------- the voice's provider
+-- `speak` was deployed before it was committed and resolved its provider as
+-- [tts_provider_id, provider_id]: the one named for speech, falling back to whichever
+-- provider was doing the words. That fallback walked a key towards Anthropic, which has no
+-- /audio/speech at all, and meant nobody could tell by looking which provider was about to
+-- be charged.
+--
+-- Only the routing moves. tts_voice, tts_instructions, tts_enabled and tts_tested_at stay
+-- exactly where they are and keep doing exactly what they did — they describe how the voice
+-- sounds and whether it is on, which is not the same question.
+--
+-- tts_model moves to the provider as voice_model, beside the model it uses for words: a
+-- model name only means anything to whoever serves it, and that is already where `model`
+-- lives.
+--
+-- Guarded, like every other migration in this file, so reapplying the schema does not fail
+-- on a column that has already gone.
+do $$
+begin
+  if exists (select 1 from information_schema.columns
+              where table_schema = 'public' and table_name = 'app_config'
+                and column_name = 'tts_provider_id')
+  then
+    execute $m$
+      update public.app_capabilities c
+         set provider_id = coalesce(c.provider_id, f.tts_provider_id),
+             updated_at  = now()
+        from public.app_config f
+       where c.app_id = f.app_id and c.job = 'speech'
+    $m$;
+
+    -- Only where the provider has none, so a model chosen in the console since is not
+    -- overwritten by the old single default.
+    execute $m$
+      update public.providers p
+         set voice_model = coalesce(nullif(f.tts_model, ''), 'gpt-4o-mini-tts')
+        from public.app_config f, public.app_capabilities c
+       where c.app_id = f.app_id and c.job = 'speech'
+         and p.id = c.provider_id and p.voice_model = ''
+    $m$;
+  end if;
+end $$;
+
+-- Dropped rather than left as a fallback. Two places that answer "which provider" is how
+-- the console and the function come to disagree, and the backfill above has already moved
+-- the answer. app_config keeps the prompt and the ceilings, which are about the app.
+--
+-- Two of speech's columns go with them, and only two: the provider it names, and the model
+-- that belongs on the provider. `speak` reads neither any more — redeploy it before running
+-- these. The rest of the tts_ columns stay; readers depend on them.
+alter table public.app_config drop column if exists provider_id;
+alter table public.app_config drop column if exists model;
+alter table public.app_config drop column if exists enabled;
+alter table public.app_config drop column if exists tested_at;
+alter table public.app_config drop column if exists tts_provider_id;
+alter table public.app_config drop column if exists tts_model;
 
 notify pgrst, 'reload schema';

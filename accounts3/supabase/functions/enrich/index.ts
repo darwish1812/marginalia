@@ -226,14 +226,66 @@ async function config() {
   return data;
 }
 
-// The model belongs to the provider now. app_config.model is the pre-migration fallback and
-// is read only when the provider carries none, so a gateway that has not run the migration
-// keeps working. Everything that asks "is there a model" asks here, because two gates that
-// answer differently is how a reader gets offered a button that cannot work.
-async function modelFor(cfg: any): Promise<string> {
-  if (!cfg?.provider_id) return '';
-  const { data } = await db.from('providers').select('model').eq('id', cfg.provider_id).maybeSingle();
-  return (data?.model || cfg.model || '');
+// Speech is not here. It is its own function — supabase/functions/speak — because it
+// answers with audio rather than text, bills in characters rather than words, and keeps an
+// allowlist of voice names this file has no use for. What this file owns is the speech
+// *row* in app_capabilities, because that is where an administrator sets it; `speak` reads
+// that row and never writes the choice.
+//
+// ---------------------------------------------------------------- capabilities
+//
+// Which provider does a job, which of its two models that job uses, and whether the job is
+// on. This replaced app_config.provider_id, which could only name one provider for an app
+// that now asks for two different things — the words may come from Anthropic while the
+// voice comes from OpenAI, each with its own key.
+//
+// Returned together with the provider row and the resolved model, because every caller
+// wants all three and fetching them separately is how two gates come to answer differently.
+// `model` is the answer to "is there a model for THIS job": a provider serving the words
+// has `model`, one serving the voice has `voice_model`, and one doing both has both.
+//
+// Read without PostgREST's embedding on purpose. The relationship would have to be named
+// correctly and present in a reloaded schema cache, and a wrong guess there fails at
+// runtime in a sentence about relationships rather than about providers.
+type Capability = {
+  job: string;
+  provider_id: number | null;
+  enabled: boolean;
+  tested_at: string | null;
+  provider: any | null;
+  model: string;
+};
+
+// Both rows as the console wants them: plain, ordered, no provider attached. `capability`
+// is the one that resolves a job; this is the one that answers "what is set".
+async function caps() {
+  const { data } = await db.from('app_capabilities').select('*').eq('app_id', APP_ID).order('job');
+  return data ?? [];
+}
+
+async function capability(job: 'translate' | 'speech'): Promise<Capability | null> {
+  const { data: cap } = await db.from('app_capabilities')
+    .select('*').eq('app_id', APP_ID).eq('job', job).maybeSingle();
+  if (!cap) return null;
+
+  let provider: any = null;
+  if (cap.provider_id) {
+    const { data } = await db.from('providers').select('*').eq('id', cap.provider_id).maybeSingle();
+    provider = data ?? null;
+  }
+  const model = job === 'speech' ? (provider?.voice_model || '') : (provider?.model || '');
+  return { ...cap, provider, model } as Capability;
+}
+
+// Own key first, shared key second. Lifted out of /run because speech needs exactly the
+// same answer, and a second copy of this is a second place for the precedence to be wrong.
+async function keyFor(providerId: number, userId: string): Promise<string> {
+  const own = await db.from('provider_secrets').select('api_key')
+    .eq('provider_id', providerId).eq('user_id', userId).maybeSingle();
+  if (own.data?.api_key) return own.data.api_key;
+  const shared = await db.from('provider_secrets').select('api_key')
+    .eq('provider_id', providerId).is('user_id', null).maybeSingle();
+  return shared.data?.api_key ?? '';
 }
 
 function monthStart() {
@@ -311,10 +363,16 @@ Deno.serve(async (req) => {
     const admin = await isAdmin(user.id);
     const u = await usage(user.id, cfg);
     const prof = await db.from('profiles').select('auto_merge').eq('id', user.id).maybeSingle();
-    const meModel = await modelFor(cfg);
+    // Enrichment's two answers come from its own row now rather than from app_config.
+    // Nothing a reader sees changes shape; only where it is read from.
+    const tcap = await capability('translate');
     // Spoken words ride the same flags pattern: on, tested, and resolvable to an
     // OpenAI key. The client offers the voice list only when all three hold, so a
     // reader is never offered a button that cannot work.
+    //
+    // These stay on app_config. They describe how the voice sounds and whether it is on,
+    // which is not the same question as which provider produces it — that one moved to
+    // app_capabilities, and it is the only part of speech that did.
     const tts = cfg.tts_enabled && cfg.tts_tested_at
       ? { enabled: true, voice: String(cfg.tts_voice || 'cedar') }
       : { enabled: false, voice: String(cfg.tts_voice || 'cedar') };
@@ -322,8 +380,8 @@ Deno.serve(async (req) => {
       admin,
       // A reader is offered the button only when there is something behind it AND it has
       // answered correctly once. Enabling an untested gateway makes every reader the test.
-      enabled: cfg.enabled && !!meModel && !!cfg.provider_id && !!cfg.tested_at,
-      tested: !!cfg.tested_at,
+      enabled: !!(tcap?.enabled && tcap.provider_id && tcap.model && tcap.tested_at),
+      tested: !!tcap?.tested_at,
       tts,
       auto_merge: !!prof.data?.auto_merge,
       quota_used: u.used,
@@ -348,17 +406,18 @@ Deno.serve(async (req) => {
     // correctly, and nothing can answer while it is disabled. So an admin runs regardless.
     const runAdmin = await isAdmin(user.id);
 
+    const tcap = await capability('translate');
     // These two are not a switch — without them there is nothing to call.
-    const runModel = await modelFor(cfg);
-    if (!cfg.provider_id || !runModel) {
+    const runModel = tcap?.model ?? '';
+    if (!tcap?.provider_id || !runModel) {
       return json({
         error: 'unconfigured',
-        message: !cfg.provider_id
-          ? 'No provider is set. Choose one, paste a key, and save.'
+        message: !tcap?.provider_id
+          ? 'No provider is set for the words. Choose one, paste a key, and save.'
           : 'No model is set on that provider. Edit it, type a model name and save.',
       }, 503);
     }
-    if (!cfg.enabled && !runAdmin) {
+    if (!tcap.enabled && !runAdmin) {
       return json({ error: 'disabled', message: 'Your administrator has not finished setting this up.' }, 503);
     }
 
@@ -383,21 +442,15 @@ Deno.serve(async (req) => {
       return json({ error: 'budget', message: 'This booklet has reached its monthly ceiling. Ask your administrator.' }, 429);
     }
 
-    const prov = await db.from('providers').select('*').eq('id', cfg.provider_id).maybeSingle();
+    const prov = { data: tcap.provider };
     if (!prov.data) return json({ error: 'no provider' }, 500);
 
-    // Own key first, shared key second — the column exists today so this is a coalesce
-    // rather than a migration later.
-    const own = await db.from('provider_secrets').select('api_key')
-      .eq('provider_id', cfg.provider_id).eq('user_id', user.id).maybeSingle();
-    const shared = own.data ? null : await db.from('provider_secrets').select('api_key')
-      .eq('provider_id', cfg.provider_id).is('user_id', null).maybeSingle();
     // A model on the administrator's own machine has no credential to present, and demanding
     // one made a local provider impossible to use at all. Everything reachable over the
     // network still needs one: a missing key there is a misconfiguration, and letting it
     // through only trades a clear sentence for somebody else's 401.
     const local = isLocalEndpoint(prov.data.endpoint);
-    const apiKey = own.data?.api_key ?? shared?.data?.api_key ?? '';
+    const apiKey = await keyFor(tcap.provider_id, user.id);
     if (!apiKey && !local) {
       return json({ error: 'no key', message: 'No API key is set for this provider.' }, 503);
     }
@@ -531,8 +584,13 @@ Deno.serve(async (req) => {
       const runs = await db.from('runs').select('requested, subject, started_at, error')
         .eq('app_id', APP_ID).gte('started_at', since);
       const rows = runs.data ?? [];
+      // Both jobs, always, even the one with no provider yet: the console draws a row per
+      // job and an absent row would read as "this gateway cannot do that" rather than
+      // "nobody has chosen one".
+      const caps = await db.from('app_capabilities').select('*').eq('app_id', APP_ID).order('job');
       return json({
         config: cfg,
+        capabilities: caps.data ?? [],
         providers: provs.data ?? [],
         // presence only, never the value (F4)
         keys: (secrets.data ?? []).map((s: any) => ({ provider_id: s.provider_id, shared: s.user_id === null })),
@@ -562,6 +620,9 @@ Deno.serve(async (req) => {
           adapter: p.adapter === 'anthropic' ? 'anthropic' : 'openai',
           endpoint: String(p.endpoint ?? ''),
           model: String(p.model ?? ''),
+          // Blank is meaningful: it is how the console knows this provider cannot be given
+          // the voice, and it is the right answer for Anthropic, which serves no speech.
+          voice_model: String(p.voice_model ?? ''),
         };
         if (p.id) await db.from('providers').update(row).eq('id', p.id);
         else {
@@ -574,27 +635,109 @@ Deno.serve(async (req) => {
           await db.from('provider_secrets').insert({ provider_id: p.id, user_id: null, api_key: key });
           await db.from('providers').update({ key_last4: key.slice(-4) }).eq('id', p.id);
         }
-        // The first provider to exist is adopted, because a gateway with exactly one and
-        // none selected is a puzzle rather than a choice. After that, selection is explicit.
-        if (!cfg.provider_id) body.config = { ...(body.config ?? {}), provider_id: p.id };
+        // The first provider to exist is adopted for the words, because a gateway with
+        // exactly one and none selected is a puzzle rather than a choice. After that,
+        // selection is explicit. Only the words: a provider is not given the voice by
+        // default, because most providers cannot do it and a wrong default here is
+        // discovered by pressing play.
+        const firstTranslate = await capability('translate');
+        if (!firstTranslate?.provider_id) {
+          await db.from('app_capabilities')
+            .update({ provider_id: p.id, updated_at: new Date().toISOString() })
+            .eq('app_id', APP_ID).eq('job', 'translate');
+        }
       }
 
       if (body.config) {
         const c = body.config;
         const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
-        for (const k of ['provider_id', 'model', 'temperature', 'max_tokens', 'batch_size',
-                          'template', 'propose_template', 'monthly_per_user', 'max_per_run',
-                          'app_budget', 'enabled', 'tts_enabled', 'tts_voice', 'tts_model',
-                          'tts_provider_id', 'tts_instructions']) {
+        // Four names have left this list. provider_id, model and enabled are per job now
+        // and are written through /admin/capability; tts_provider_id went the same way,
+        // because which provider speaks is the same question as which provider writes and
+        // deserved the same answer. tts_model went to the provider as voice_model, beside
+        // the model it uses for words.
+        //
+        // What stays is how the voice sounds and whether it is on, which is genuinely a
+        // property of the app rather than of a provider.
+        for (const k of ['temperature', 'max_tokens', 'batch_size',
+                         'template', 'propose_template', 'monthly_per_user', 'max_per_run',
+                         'app_budget', 'tts_enabled', 'tts_voice', 'tts_instructions']) {
           if (k in c) patch[k] = c[k];
         }
         await db.from('app_config').update(patch).eq('app_id', APP_ID);
       }
 
-      if (body.tested) await db.from('app_config').update({ tested_at: new Date().toISOString() }).eq('app_id', APP_ID);
+      // A successful enrichment test is a fact about that job, not about the app.
+      if (body.tested) {
+        await db.from('app_capabilities')
+          .update({ tested_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+          .eq('app_id', APP_ID).eq('job', body.tested === 'speech' ? 'speech' : 'translate');
+      }
+      // The voice keeps its own mark where the reader-facing gate reads it. `speak` writes
+      // this itself when its /test passes; the console asserts it too, because the console
+      // is the one that knows a human just heard it.
       if (body.tts_tested) await db.from('app_config').update({ tts_tested_at: new Date().toISOString() }).eq('app_id', APP_ID);
 
-      return json({ ok: true, config: await config() });
+      return json({ ok: true, config: await config(), capabilities: await caps() });
+    }
+
+    // ---- POST /admin/capability ------------------------------------------
+    // Which provider holds a job, and whether the job is on. Its own route rather than a
+    // corner of /admin/config, because it is the one write here that decides where a
+    // reader's words — or a reader's voice — are sent.
+    //
+    // Not which voice. That is on app_config with the rest of how the voice sounds, and is
+    // written through /admin/config like every other setting of that kind.
+    if (route === '/admin/capability' && req.method === 'POST') {
+      const body = await req.json().catch(() => null);
+      const job = body?.job === 'speech' ? 'speech' : body?.job === 'translate' ? 'translate' : null;
+      if (!job) return json({ error: 'bad request', message: 'job must be translate or speech' }, 400);
+
+      const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+
+      if ('provider_id' in body) {
+        const id = body.provider_id === null ? null : Number(body.provider_id);
+        if (id !== null && !Number.isFinite(id)) return json({ error: 'bad request' }, 400);
+
+        // A provider with no model for this job cannot do it, and accepting the choice here
+        // would put the console and the function into disagreement about whether the job is
+        // configured: the console would show a provider, /me would say unconfigured.
+        if (id !== null) {
+          const { data: prov } = await db.from('providers').select('*').eq('id', id).maybeSingle();
+          if (!prov) return json({ error: 'no such provider' }, 400);
+          const has = job === 'speech' ? prov.voice_model : prov.model;
+          if (!has) {
+            return json({
+              error: 'no model',
+              message: job === 'speech'
+                ? 'That provider has no voice model set. Edit it, choose one, and save.'
+                : 'That provider has no model set. Edit it, choose one, and save.',
+            }, 400);
+          }
+        }
+        patch.provider_id = id;
+        // Moving a job to a different provider un-tests it. The previous test proved the
+        // old provider answered; carrying the tick across would be a claim nobody made.
+        patch.tested_at = null;
+        patch.enabled = false;
+      }
+
+      if ('enabled' in body) {
+        const want = !!body.enabled;
+        if (want) {
+          const cap = await capability(job);
+          if (!cap?.provider_id || !cap.model) {
+            return json({ error: 'unconfigured', message: 'Choose a provider and a model first.' }, 400);
+          }
+          if (!cap.tested_at) {
+            return json({ error: 'untested', message: 'Send one through first — an untested job makes every reader the test.' }, 400);
+          }
+        }
+        patch.enabled = want;
+      }
+
+      await db.from('app_capabilities').update(patch).eq('app_id', APP_ID).eq('job', job);
+      return json({ ok: true, capabilities: await caps() });
     }
 
     // Recent failures from both gateways, newest first. Successes are not
@@ -643,18 +786,19 @@ Deno.serve(async (req) => {
       const body = await req.json().catch(() => null);
       const id = Number(body?.id);
       if (!id) return json({ error: 'bad request' }, 400);
-      // app_config.provider_id references this row and the reference is not ON DELETE, so
-      // the delete would be refused by the database rather than by us. Clearing the choice
-      // first is what makes deleting the provider in use possible at all — and enrichment
-      // goes off with it, because a gateway that is enabled and pointed at nothing answers
+      // app_capabilities.provider_id references this row and the reference is not ON
+      // DELETE, so the delete would be refused by the database rather than by us. Clearing
+      // the choice first is what makes deleting a provider in use possible at all — and the
+      // job goes off with it, because a job that is enabled and pointed at nothing answers
       // every reader with a 500 instead of the manual fallback it is supposed to offer.
-      if (cfg.provider_id === id) {
-        await db.from('app_config')
-          .update({ provider_id: null, enabled: false })
-          .eq('app_id', APP_ID);
-      }
+      //
+      // Every job it held, not just one: a provider can be doing both, and leaving the
+      // other row pointing at a deleted id is the same fault with a longer fuse.
+      await db.from('app_capabilities')
+        .update({ provider_id: null, enabled: false, tested_at: null, updated_at: new Date().toISOString() })
+        .eq('app_id', APP_ID).eq('provider_id', id);
       await db.from('providers').delete().eq('id', id);
-      return json({ ok: true, config: await config() });
+      return json({ ok: true, config: await config(), capabilities: await caps() });
     }
 
     // What does this provider actually serve? A model name means nothing to a provider that

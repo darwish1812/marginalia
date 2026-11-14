@@ -78,7 +78,45 @@
   const leaked = JSON.stringify(cfg.body || {}).match(/sk-[A-Za-z0-9_-]{8,}/);
   check('no API key in the response (F4)', null, leaked, leaked ? 'LEAKED: ' + leaked[0] : 'only presence and last four');
 
+  // ---- a job at a time --------------------------------------------------
+  // Both rows exist whether or not anyone has chosen a provider for them. An absent row is
+  // the console drawing "this gateway cannot speak" when it means "nobody has picked one".
+  const caps = cfg.body?.capabilities || [];
+  const jobs = caps.map((c) => c.job).sort().join(',');
+  check('both capability rows exist', 'speech,translate', jobs);
+
+  const translate = caps.find((c) => c.job === 'translate') || {};
+  check('the words have a provider', true, !!translate.provider_id,
+        translate.provider_id ? 'provider ' + translate.provider_id : 'none chosen — /run will say unconfigured');
+
+  // The migration moved the switch off app_config. If it is still there, something ran the
+  // old schema over the new one and two places now disagree about whether enrichment is on.
+  check('enabled has left app_config', undefined, cfg.body?.config?.enabled,
+        'it lives on the translate row now');
+  check('provider_id has left app_config', undefined, cfg.body?.config?.provider_id);
+
+  // A job cannot be given a provider that has no model for it: the console would show a
+  // provider while /me said unconfigured, which is the disagreement this check exists for.
+  const voiceless = (cfg.body?.providers || []).find((p) => !p.voice_model);
+  if (voiceless) {
+    const r = await call('/admin/capability', {
+      method: 'POST',
+      body: JSON.stringify({ job: 'speech', provider_id: voiceless.id }),
+    });
+    check('a provider with no voice model is refused the voice', 400, r.status, r.body?.message);
+  }
+
+  // Switching a job on before it has ever answered makes every reader the test.
+  const speech = caps.find((c) => c.job === 'speech') || {};
+  if (!speech.tested_at) {
+    const r = await call('/admin/capability', {
+      method: 'POST', body: JSON.stringify({ job: 'speech', enabled: true }),
+    });
+    check('an untested job cannot be switched on', 400, r.status, r.body?.message);
+  }
+
   console.table(rows);
+  console.log('caps  :', caps);
   console.log('config:', cfg.body?.config);
   console.log('usage :', cfg.body?.usage);
   console.log('keys  :', cfg.body?.keys);

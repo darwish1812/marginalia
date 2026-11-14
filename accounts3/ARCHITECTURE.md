@@ -893,12 +893,13 @@ matter. There is no build artefact and nothing to invalidate.
 |---|---|
 | `index.html` | The booklet — markup, CSS and JavaScript in one file. Everything a reader touches. |
 | `index.legacy.html` | The same file before the shell, kept whole: one sticky toolbar, panels dropping out of it, the ink strip on the cover. Nothing links to it and nothing serves it; it is there to diff against. |
-| `admin.html` | The gateway console. One administrator's page: providers, the prompt template, the ceilings, and the switch. Never served to readers, and holds no secret of its own. |
+| `admin.html` | The gateway console. One administrator's page: providers, which provider does which job, the prompt template, the ceilings, and the switches. Never served to readers, and holds no secret of its own. |
 | `tests/` | The harness. A Playwright suite run against `index.html` with the accounts blanked at run time — built each run, never a copy kept in the repo, because a copy goes stale and then passes while testing an app that no longer exists. |
 | `words.json` | The literary starter pack — 150 words, 8 fields, 5 corrections. Kept at the root under its own name so a booklet can still trade files with the original. |
 | `packs/` | The other starter packs, same shape. A new one is a file; nothing in the app needs changing. |
 | `supabase/schema.sql` | Four tables, four RLS policies, one index, one signup trigger, and three functions for the writes that must happen all at once. Idempotent. |
-| `supabase/gateway.sql` | The gateway's own tables — providers, their secrets, and `app_config` — plus the migrations applied since. Four of them have no RLS policies at all: only the service role reads them, and it exists only inside the function. Idempotent. |
+| `supabase/functions/speak/` | Spoken words. OpenAI text-to-speech, so the administrator's key never reaches a reader's browser. Reads the `speech` row of `app_capabilities`; writes only `tts_log`. |
+| `supabase/gateway.sql` | The gateway's own tables — providers, their secrets, `app_config`, and `app_capabilities` — plus the migrations applied since. Four of them have no RLS policies at all: only the service role reads them, and it exists only inside the function. Idempotent, and the migrations that read columns a later migration drops are guarded so a second run does not fail at a line that has already done its work. |
 | `supabase/functions/enrich/` | The Edge Function that holds the API key and calls the model, with the README that deploys and proves it. |
 | `extension/` | The capture extension. Its own spec, its own storage; it adds words and never enriches. |
 | `img/` | Optional drawings for a few concrete words. A missing file removes the figure rather than showing a broken icon. |
@@ -948,6 +949,70 @@ changes, and a banner comment is not. Search for the name.
 | **turning a reply into an array** | `parseReply()`, and the search filter. |
 
 ---
+
+### A job at a time
+
+The gateway asked a model for one thing — turn a word list into definitions — so one column
+answered "which provider", one switch answered "is it on", and the model name sat on the
+provider because a model name only means anything to whoever serves it.
+
+Asking the same gateway for **speech** breaks all three. The voice may come from a different
+company than the words: Anthropic has no speech endpoint at all, so a booklet whose glosses
+come from Claude cannot have its voice from the same key, the same endpoint, or the same
+bill. And speech has to be able to be off while words keep working.
+
+**`app_capabilities` is a row per job** — `translate` and `speech` today — carrying which
+provider holds it, whether it is on, and when it last answered. A second pair of columns on
+`app_config` would have carried this version and no more; a row makes the third job an
+insert. What stays on `app_config` is the prompt and the ceilings, which are facts about the
+app rather than about any one job.
+
+**The model stayed on the provider**, as a second column rather than a second row:
+`providers.model` for words, `providers.voice_model` for speech. One provider can hold both
+jobs with one key and one endpoint, and `voice_model` being blank is itself the answer to
+"can this one speak" — which is how the console knows not to offer Anthropic the voice
+rather than offering it and having the function refuse.
+
+Two rules exist because without them the console and the function come to disagree, which is
+the failure this design is most prone to:
+
+- **A job cannot be given a provider with no model for it.** Otherwise the console shows a
+  provider while `/me` reports `unconfigured`.
+- **Moving a job to another provider clears its tick and switches it off.** The previous test
+  proved the *old* provider answered. Carrying that across is a claim nobody made.
+
+**Speech is its own function**, `supabase/functions/speak`, not a route on the gateway: it
+answers with audio rather than JSON, bills in characters rather than words, and keeps an
+allowlist of voice names the gateway has no use for. One route on it would have broken the
+shape of every other route beside it. The gateway owns the speech *row* — that is where an
+administrator sets it — and `speak` reads that row and never writes the choice.
+
+It has two routes: `POST /test`, the administrator's own ears and how a voice earns its
+mark, and `POST /`, the reader's, gated on spoken words being both on and tested. **Readers
+do reach it**: `speakCloud()` in the booklet hands off to it whenever the Voice engine is on,
+falling back to the device's own `speechSynthesis` otherwise.
+
+**Only the routing moved here, and that is the whole of the change.** `speak` resolved its
+provider as `[tts_provider_id, provider_id]` — the one named for speech, falling back to
+whichever provider was doing the words. That fallback was wrong in both directions: it walked
+a key towards Anthropic, which has no `/audio/speech` at all, and it meant nobody could tell
+by looking which provider was about to be charged. Which provider does which job is one
+question with one answer now, and `tts_provider_id` retires into the speech row.
+
+`tts_model` moves too, onto the provider as `voice_model`, because a model name only means
+anything to whoever serves it and that is already where `model` lives.
+
+**`tts_voice`, `tts_instructions`, `tts_enabled` and `tts_tested_at` stay exactly where they
+are.** They describe how the voice sounds and whether it is on, which is not the same question
+as who produces it, and readers depend on all four. An earlier draft of this migration
+absorbed them into the capability row and dropped them, which would have taken the voice away
+from every reader and emptied the console's Voice block. The table routes; it does not
+describe the job.
+
+**There are no character ceilings.** `tts_log` records what each call cost and whether it
+worked, which is what a quota would bill when one is wanted; a failure row is also how a
+broken provider is found. Nothing enforces a limit today, and the text cap in `speak` —
+sentences, not chapters — is what currently bounds one call's spending.
 
 ## 6. Data shape
 

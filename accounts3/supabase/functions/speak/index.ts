@@ -82,21 +82,43 @@ function speechBase(endpoint: string): string {
 // provider in use when that one speaks OpenAI. Anything else — Anthropic,
 // local — has no /audio/speech to call, and saying so plainly beats sending
 // the key somewhere it does not belong.
-async function ttsKey(cfg: any): Promise<{ key: string; endpoint: string; model: string } | { error: string }> {
-  const ids = [cfg?.tts_provider_id, cfg?.provider_id].filter((n) => Number.isInteger(n));
-  for (const id of ids) {
-    const { data: p } = await db.from('providers').select('*').eq('id', id).maybeSingle();
-    if (!p || p.adapter !== 'openai') continue;
-    const { data: s } = await db.from('provider_secrets')
-      .select('api_key').eq('provider_id', p.id).is('user_id', null).maybeSingle();
-    if (!s?.api_key) continue;
-    return {
-      key: s.api_key as string,
-      endpoint: speechBase(p.endpoint),
-      model: String(cfg?.tts_model || 'gpt-4o-mini-tts'),
-    };
+// Which provider speaks, from the speech row of app_capabilities.
+//
+// This used to be `[tts_provider_id, provider_id]` — the one named for speech, falling back
+// to whichever provider was doing the words. The fallback was wrong in both directions: it
+// walked a key towards Anthropic, which has no /audio/speech to call at all, and it meant
+// nobody could tell by looking which provider was about to be charged. Which provider does
+// which job is one question with one answer now, and it is answered in one place.
+//
+// How the voice sounds — the voice name, the instructions, whether it is on — is a
+// different question and stays on app_config where it always was. Only the routing moved.
+//
+// The model comes from the provider, as `voice_model`, beside the `model` it uses for
+// words: a model name only means anything to whoever serves it, and one provider can hold
+// both jobs on one key.
+async function ttsKey(_cfg: unknown): Promise<{ key: string; endpoint: string; model: string } | { error: string }> {
+  const { data: cap } = await db.from('app_capabilities')
+    .select('provider_id').eq('app_id', APP_ID).eq('job', 'speech').maybeSingle();
+  if (!cap?.provider_id) {
+    return { error: 'no provider holds the voice — give one the Voice column in the console' };
   }
-  return { error: 'no OpenAI provider with a key is available for speech — name one in the Voice block' };
+  const { data: p } = await db.from('providers').select('*').eq('id', cap.provider_id).maybeSingle();
+  if (!p) return { error: 'the provider holding the voice no longer exists' };
+  if (p.adapter !== 'openai') {
+    return { error: 'that provider does not speak the OpenAI shape, and has no /audio/speech to call' };
+  }
+  if (!p.voice_model) {
+    return { error: 'that provider has no voice model set — edit it and choose one' };
+  }
+  const { data: s } = await db.from('provider_secrets')
+    .select('api_key').eq('provider_id', p.id).is('user_id', null).maybeSingle();
+  if (!s?.api_key) return { error: 'that provider has no key' };
+
+  return {
+    key: s.api_key as string,
+    endpoint: speechBase(p.endpoint),
+    model: String(p.voice_model),
+  };
 }
 
 Deno.serve(async (req) => {
