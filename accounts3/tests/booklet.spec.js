@@ -499,6 +499,84 @@ test.describe('the add loop', () => {
   });
 });
 
+/* Back. None of this existed until 2026-11-14: nothing was ever pushed, so the browser's
+   back button left the site from wherever you were. On a laptop that was blunt. Added to a
+   home screen — and in a Trusted Web Activity, where there is no browser chrome at all —
+   it is the Android back gesture, and it closed the app out of a half-typed word list. */
+test.describe('back', () => {
+  /* Coerced. Without the !! an empty history yields null rather than false, and every
+     assertion about *not* being deep fails against an app behaving perfectly. */
+  const deep = page => page.evaluate(() => !!(history.state && history.state.mg === 1));
+
+  test('back from a room returns to the book instead of leaving', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await stock(page);
+
+    await page.locator('.dest[data-dest="add"]').click();
+    await expect(page.locator('#panel')).toHaveClass(/on/);
+    await expect.poll(() => deep(page), { message: 'nothing was pushed' }).toBe(true);
+
+    await page.goBack();
+    await expect(page.locator('#panel')).not.toHaveClass(/on/);
+    await expect(page.locator('.dest[data-dest="book"]')).toHaveAttribute('aria-current', 'true');
+  });
+
+  /* The fault this guards against is a stack rather than a step. Walking Add → You → Fields
+     and then pressing back three times to escape is its own kind of trap, and the reason
+     the lens and the confirmation sheet get no entry either. */
+  test('moving between rooms stays one press from leaving', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await stock(page);
+
+    await page.locator('.dest[data-dest="add"]').click();
+    await page.locator('.dest[data-dest="you"]').click();
+    await page.locator('#fldbtn').click();
+    await expect(page.locator('#fields')).toHaveClass(/on/);
+
+    await page.goBack();
+    await expect(page.locator('#fields')).not.toHaveClass(/on/);
+    await expect(page.locator('#panel')).not.toHaveClass(/on/);
+    await expect(page.locator('#settings')).not.toHaveClass(/on/);
+    await expect.poll(() => deep(page), { message: 'an entry survived the way out' }).toBe(false);
+  });
+
+  /* The deck is an overlay rather than a panel, so it does not go through openPanel() and
+     was the one place Escape never reached either. */
+  test('back closes the study deck', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await stock(page);
+
+    await page.locator('.dest[data-dest="study"]').click();
+    await expect(page.locator('#fc')).toBeVisible();
+    await expect.poll(() => deep(page)).toBe(true);
+
+    await page.goBack();
+    await expect(page.locator('#fc')).toBeHidden();
+  });
+
+  /* The fault: leaving a room by tapping Book has to spend the entry too, or the stack
+     grows a step behind the screen and back starts doing nothing visible. */
+  test('walking out by the rail spends the entry', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await stock(page);
+
+    await page.locator('.dest[data-dest="you"]').click();
+    await expect.poll(() => deep(page)).toBe(true);
+
+    await page.locator('.dest[data-dest="book"]').click();
+    await expect(page.locator('#settings')).not.toHaveClass(/on/);
+    await expect.poll(() => deep(page), { message: 'the entry outlived the room' }).toBe(false);
+  });
+
+  /* At the book there is nothing of ours to unwind, so back belongs to the browser — which
+     is what someone who meant to return to wherever they came from is expecting. */
+  test('the book holds nothing back', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await stock(page);
+    expect(await deep(page)).toBe(false);
+  });
+});
+
 test.describe('the destinations', () => {
   test('each takes the page, and the book comes back', async ({ page }) => {
     await page.setViewportSize(DESKTOP);

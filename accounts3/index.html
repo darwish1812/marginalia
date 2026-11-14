@@ -3390,6 +3390,7 @@ function fcOpen(){
   fcEl.hidden = false;
   document.body.classList.add('fc-on');
   fcPickScreen();
+  histSync();
 }
 function fcClose(){
   document.querySelectorAll('.dest').forEach(b=>
@@ -3398,6 +3399,8 @@ function fcClose(){
   document.body.classList.remove('fc-on');
   fcDeck = [];
   if(TTS) speechSynthesis.cancel();
+  /* The deck is a room too — closed by its own ✕, by the rail, or by back. */
+  histSync();
 }
 
 /* The deck opens from the Study destination in the rail — see go() — rather than from a
@@ -4661,6 +4664,7 @@ function openPanel(which){
   }
   window.scrollTo({top:0});
   closeLens();
+  histSync();
 }
 /* The four destinations. Study is the deck, which is an overlay rather than a view, so it
    opens over whatever you were reading and gives the tab back when it closes. */
@@ -4707,6 +4711,58 @@ document.getElementById('fldbtn').addEventListener('click',()=>{
 /* The ⋯ sheet that used to hold half the toolbar under 720px is gone, and nothing took
    its place: Study and the Arabic moved into the View lens, Settings became a tab, and
    what is left in the head — the search box and the lens — fits a phone in one row.
+
+/* ---------- the back button ----------
+   Nothing here was in the browser's history, so back left the site from wherever you were.
+   On the web that was merely blunt. Added to a home screen — and in a Trusted Web Activity,
+   where there is no browser chrome at all — it is the Android back gesture, and it closed
+   the app out of a half-typed word list.
+
+   One entry, not a stack. Opening any room from the book pushes it; moving between rooms
+   keeps it; returning to the book spends it. So back is never more than one press from
+   leaving, which is what a plain web page does and what someone who meant to go back to
+   wherever they came from expects. The lens, a card's menu and the confirmation sheet get
+   no entry of their own: they close on Escape or a tap away, they hold no work, and three
+   presses to get out of a booklet is its own kind of trap.
+
+   Driven off the state of the page rather than from the callers. go() is not the only way
+   in — the Add button, the three ← Settings buttons and the Fields button all call
+   openPanel() directly — so asking "is anything open?" after the fact is the only version
+   that cannot be bypassed by a route somebody adds later. */
+let histDeep = false;   // one of our entries is on the stack
+let histOurs = false;   // the next popstate is one we caused by closing a room ourselves
+let histBusy = false;   // we are inside a popstate; do not touch history from in here
+let histSoon = false;
+
+function histApply(){
+  const open = panelOpen() || !fcEl.hidden;
+  if(open === histDeep) return;
+  try{
+    if(open){ history.pushState({mg:1}, ''); histDeep = true; }
+    else { histDeep = false; histOurs = true; history.back(); }
+  }catch(e){ histOurs = false; }   // never fatal: a booklet that cannot push still works
+}
+
+/* Deferred by a tick on purpose. go('add') closes the deck and then opens a panel, so a
+   history call made inside each step would push and pop in the same breath and leave the
+   stack disagreeing with the screen. Running once, after the whole action has settled,
+   there is only ever one answer to apply. */
+function histSync(){
+  if(histBusy || histSoon) return;
+  histSoon = true;
+  setTimeout(()=>{ histSoon = false; if(!histBusy) histApply(); }, 0);
+}
+
+addEventListener('popstate', ()=>{
+  /* Ours, from closing a room by tapping Book — the screen is already right. */
+  if(histOurs){ histOurs = false; return; }
+  histDeep = false;
+  histBusy = true;
+  try{
+    if(!fcEl.hidden) fcClose();
+    openPanel(null);
+  }finally{ histBusy = false; }
+});
 
 /* A menu closes the way menus do — Escape, or a click anywhere off it. The rooms inside
    obey both too, and Escape hands focus back to the button. */
