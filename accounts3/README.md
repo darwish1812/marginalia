@@ -20,7 +20,7 @@ the moment it is merged, and it is there on the other device too.
 |---|---|
 | `index.html` | The whole app. One dependency, loaded from a CDN: the Supabase client. |
 | `index.legacy.html` | The booklet as it was before the shell — one sticky toolbar, panels dropping out of it, the ink strip on the cover. Kept as it was, and not served. |
-| `words.json` | The literary starter pack — 150 words and eight fields. Read once, to stock a new booklet. |
+| `words.json` | The starter pack — six fields and a handful of example words. Read once, to stock a new booklet. |
 | `packs/` | The other starter packs. Same shape as `words.json`; add your own by dropping a file in. |
 | `supabase/schema.sql` | Tables and the security policies that keep accounts apart, including the `faults` table the app reports into. |
 | `img/` | Optional pictures for the few words that can have one. |
@@ -74,9 +74,9 @@ and that is that. **Forgot password?** sends a reset link that brings you back h
 choose a new one.
 
 The first sign-in asks one question — **what do you read?** — and stocks the booklet from
-the pack you pick: the original 150 words on castles and scripture and rhetoric, a set of
-fields fitted to business or to exam writing, or nothing at all if you would rather name
-your own. After that everything in it is yours, and editing, filing, marking or removing
+the pack you pick: six fields for reading and conversation with a few example words in
+them, a set of fields fitted to business or to exam writing, or nothing at all if you would
+rather name your own. After that everything in it is yours, and editing, filing, marking or removing
 affects nobody else's copy. Nothing is chosen for you and every answer is a good one.
 
 If you start blank, the prompt in step 2 changes: it asks the model to **propose** your

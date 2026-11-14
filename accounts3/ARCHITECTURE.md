@@ -861,7 +861,7 @@ There is no test suite, no linter and no CI. This is a stated fact, not an overs
 inferred: nothing in the repo runs anything. The manual round-trip that exercises the most
 code is worth knowing —
 
-1. Sign in on a fresh account; confirm 150 words appear and `profiles.seeded_at` is stamped.
+1. Sign in on a fresh account; confirm the pack's words appear and `profiles.seeded_at` is stamped.
 2. Add a word list, check it, copy the prompt, paste a reply, merge.
 3. Tick a card, reload, confirm the tick survived; open the same account elsewhere and
    confirm it is ticked there too.
@@ -895,7 +895,7 @@ matter. There is no build artefact and nothing to invalidate.
 | `index.legacy.html` | The same file before the shell, kept whole: one sticky toolbar, panels dropping out of it, the ink strip on the cover. Nothing links to it and nothing serves it; it is there to diff against. |
 | `admin.html` | The gateway console. One administrator's page: providers, which provider does which job, the prompt template, the ceilings, and the switches. Never served to readers, and holds no secret of its own. |
 | `tests/` | The harness. A Playwright suite run against `index.html` with the accounts blanked at run time — built each run, never a copy kept in the repo, because a copy goes stale and then passes while testing an app that no longer exists. |
-| `words.json` | The literary starter pack — 150 words, 8 fields, 5 corrections. Kept at the root under its own name so a booklet can still trade files with the original. |
+| `words.json` | The starter pack — six fields and nineteen example words. Until 2026-11-14 it was the author's own booklet: 154 translated words, their register, their Arabic, handed to every new account and badged *Original*. A booklet a stranger is given on first run should demonstrate what a card is, not be somebody else's vocabulary — and at any scale worth publishing at, every gloss in it is one its author has to stand behind. The original is in the history at `4db55f8`. Kept at the root under its own name so a booklet can still trade files with it. |
 | `packs/` | The other starter packs, same shape. A new one is a file; nothing in the app needs changing. |
 | `supabase/schema.sql` | Four tables, four RLS policies, one index, one signup trigger, and three functions for the writes that must happen all at once. Idempotent. |
 | `supabase/functions/speak/` | Spoken words. OpenAI text-to-speech, so the administrator's key never reaches a reader's browser. Reads the `speech` row of `app_capabilities`; writes only `tts_log`. |

@@ -7,6 +7,14 @@
  * that only asserts is deleted by whoever finds it inconvenient.
  */
 import { test, expect } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+
+/* How many words the first pack ships, read from the file rather than written here. It was
+   154 in six places, and every one of them had to be found and changed by hand when the
+   starter pack was replaced — which is exactly the sort of edit that gets half-done. */
+const PACK   = JSON.parse(readFileSync(new URL('../words.json', import.meta.url), 'utf8'));
+const SEED   = PACK.words.length;
+const FIELDS = PACK.fields.length;
 
 const PHONE   = { width: 390, height: 844 };
 const TABLET  = { width: 834, height: 1112 };
@@ -72,9 +80,14 @@ test.describe('the book', () => {
   test('stocks itself and draws the index', async ({ page }) => {
     await page.setViewportSize(DESKTOP);
     await stock(page);
-    await expect(page.locator('.card')).toHaveCount(154);
-    await expect(page.locator('.idxrow')).toHaveCount(8);
-    await expect(page.locator('.sec')).toHaveCount(8);
+    await expect(page.locator('.card')).toHaveCount(SEED);
+    /* One row per field and no more. An extra row means Unfiled has earned one, which it
+       does whenever a word's `f` does not match any field id — and it matches strictly, so
+       a pack that writes "1" where the fields say 1 files every word it has under Unfiled
+       and still looks fine until you count the rows. That is exactly what happened when
+       this pack was written. */
+    await expect(page.locator('.idxrow')).toHaveCount(FIELDS);
+    await expect(page.locator('.sec')).toHaveCount(FIELDS);
   });
 
   /* Was: renderIndex lived inside render(), so setField() could not see it. The book
@@ -87,15 +100,19 @@ test.describe('the book', () => {
     await expect(page.locator('.idxrow[data-field="4"]')).toHaveAttribute('aria-pressed', 'true');
     await expect(page.locator('.sec:visible')).toHaveCount(1);
     await page.locator('.idxrow[data-field="4"]').click();
-    await expect(page.locator('.sec:visible')).toHaveCount(8);
+    await expect(page.locator('.sec:visible')).toHaveCount(FIELDS);
   });
 
+  /* The search term is deliberately a word that appears in a definition and in no head
+     word: "twilight" is how dusk is defined and is not itself in the booklet. A term that
+     merely matched the head word would pass against a search that had stopped reading
+     definitions at all. */
   test('search reaches the meaning, not just the word', async ({ page }) => {
     await page.setViewportSize(DESKTOP);
     await stock(page);
-    await page.locator('#q').fill('loyalty');
+    await page.locator('#q').fill('twilight');
     await expect(page.locator('.card:visible')).toHaveCount(1);
-    await expect(page.locator('.card:visible .word')).toHaveText('fealty');
+    await expect(page.locator('.card:visible .word')).toHaveText('dusk');
   });
 
   /* Was: on a wide screen a card could not open at all — clicking filled a column down the
@@ -398,10 +415,14 @@ test.describe('the add loop', () => {
     await page.setViewportSize(DESKTOP);
     await stock(page);
     await page.locator('.dest[data-dest="add"]').click();
-    await page.locator('#raw').fill('zeugma, apophasis, holdfast, litotes');
+    /* The third is already in the booklet, so the summary has something to report; the
+       word is read from the pack rather than written here, because a word hard-coded into
+       a test is a word that silently stops being a duplicate the day the pack changes. */
+    const dup = PACK.words[0].w;
+    await page.locator('#raw').fill(`zeugma, apophasis, ${dup}, litotes`);
     /* The summary names what was skipped or flagged and nothing else — the count is on the
        button, and saying it twice is saying it once too often. */
-    await expect(page.locator('#report')).toContainText('holdfast');
+    await expect(page.locator('#report')).toContainText(dup);
     await expect(page.locator('#report')).not.toContainText('to enrich');
     await expect(page.locator('#copyp')).toBeEnabled();
     await expect(page.locator('#prompt')).toContainText('JSON');
@@ -506,8 +527,8 @@ test.describe('emptying the booklet', () => {
     await page.locator('#emptybtn').click();
     await expect(page.locator('#emptytype'), 'the typed step should be gone').toHaveCount(0);
     await expect(page.locator('#asksheet')).toBeVisible();
-    await expect(page.locator('#askgo')).toHaveText('Empty 154 words');
-    await expect(page.locator('#ask-d')).toContainText('154 words');
+    await expect(page.locator('#askgo')).toHaveText(`Empty ${SEED} words`);
+    await expect(page.locator('#ask-d')).toContainText(`${SEED} words`);
     await expect(page.locator('#ask-d'), 'it does not say what survives')
       .toContainText('fields, your account');
   });
@@ -520,7 +541,7 @@ test.describe('emptying the booklet', () => {
     await page.locator('#askno').click();
     await expect(page.locator('#asksheet')).toBeHidden();
     await page.locator('.dest[data-dest="book"]').click();
-    await expect(page.locator('.card')).toHaveCount(154);
+    await expect(page.locator('.card')).toHaveCount(SEED);
   });
 
   test('confirming empties it, and asks what you read', async ({ page }) => {
@@ -586,10 +607,10 @@ test.describe('leaving the booklet', () => {
     await page.locator('#wipebtn').click();
 
     await expect(page.locator('#ask-q')).toHaveText('Delete your account?');
-    await expect(page.locator('#ask-d')).toContainText('154 words');
-    await expect(page.locator('#ask-d')).toContainText('8 fields');
+    await expect(page.locator('#ask-d')).toContainText(`${SEED} words`);
+    await expect(page.locator('#ask-d')).toContainText(`${FIELDS} fields`);
     await expect(page.locator('#ask-d2')).toContainText('forgets its copy');
-    await expect(page.locator('#askgo')).toHaveText('Delete my account and 154 words');
+    await expect(page.locator('#askgo')).toHaveText(`Delete my account and ${SEED} words`);
     await expect(page.locator('#askno')).toHaveText('Keep my account');
   });
 

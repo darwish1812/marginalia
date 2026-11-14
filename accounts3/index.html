@@ -3861,8 +3861,17 @@ async function seedAccount(seed, uid){
    README promises a booklet can trade files with the original, and tidiness is not worth
    a promise. It is simply the literary pack, read from the root. */
 const PACKS = [
-  {file:null,                 name:'Literary & historical', badge:'Original',
-   blurb:'Castles, scripture, rhetoric and temperament. Comes with 150 words.'},
+  /* Was "Literary & historical", badged Original, and it shipped 154 of one person's own
+     translated words — their study record, their register, their Arabic. A booklet a
+     stranger is handed on first run should be a demonstration, not somebody else's
+     vocabulary, and at Play-Store scale every gloss in it is a gloss its author has to
+     stand behind. Six fields named for where you meet a word, and sixteen examples to
+     delete once you have seen what a card looks like. The original is kept in
+     my-original-booklet.json and in the history at 4db55f8. */
+  {file:null,                 name:'Reading & conversation',
+   /* No count in the blurb. The old one promised 150 against a file holding 154, and this
+      one was already wrong by three the day it was written. */
+   blurb:'Words you meet in novels, in the news and in talk. Six fields and a handful of examples to delete once you have the idea.'},
   {file:'packs/business.json', name:'Business & professional',
    blurb:'Meetings, negotiation, finance, management. Six fields, no words yet.'},
   {file:'packs/academic.json', name:'Academic & exam',

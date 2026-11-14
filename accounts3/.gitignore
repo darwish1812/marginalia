@@ -18,3 +18,6 @@ shots/
 # design mockups, served locally and never published
 admin.mock*.html
 index.mock*.html
+
+# the original booklet, kept out of the publish
+my-original-booklet.json
