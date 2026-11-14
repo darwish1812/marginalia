@@ -427,9 +427,12 @@ test.describe('the add loop', () => {
     await expect(page.locator('#enrich')).toHaveText('Enrich 3 words');
 
     /* Emptying the box takes the button away again rather than leaving it to be pressed
-       against nothing. */
+       against nothing — and says nothing, rather than summarising nothing. "0 to enrich"
+       had nowhere to appear while this was a press; running live, it appeared the moment a
+       list was deleted. */
     await page.locator('#raw').fill('');
     await expect(page.locator('#enrich')).toBeHidden();
+    await expect(page.locator('#report')).toHaveText('');
   });
 
   /* The fault this guards against is a behaviour change dressed up as a tidy-up. A word

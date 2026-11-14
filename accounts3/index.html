@@ -5038,6 +5038,16 @@ function renderReport(dups, nears, again){
    and rebuilding only when the booklet itself changes. */
 function examineList(){
   const raw=document.getElementById('raw').value;
+  /* An empty box says nothing. Pressing Check list on an empty box was never something
+     anyone did, so "0 to enrich" had nowhere to appear; running on every keystroke, it
+     appears the moment a list is deleted — a summary of nothing, under a box with nothing
+     in it. */
+  if(!raw.trim()){
+    fresh = [];
+    document.getElementById('report').textContent = '';
+    setReady(false);
+    return;
+  }
   /* De-duplicated on norm, not on the raw string. "fealty" and "Fealty!" are two different
      strings and one word, and letting both through sent both to the model, which sent two
      objects back that collide on the unique index. The first spelling typed is the one
