@@ -1731,7 +1731,9 @@
 
       <div class="views">
       <section class="panel" id="panel">
-        <button class="btn back" id="backset">← Settings</button>
+        <!-- Written by openPanel() when this panel opens, because where it goes depends
+             on where you came from. "Settings" is only right if you arrived from there. -->
+        <button class="btn back" id="backset">← Book</button>
         <div class="step">
           <span class="stepno">Step 1 — paste your English words</span>
           <p>Any format: commas, new lines, numbered. Duplicates are removed automatically.</p>
@@ -4645,7 +4647,30 @@ const OPENERS=[[addBtn,panel],[document.getElementById('acctbtn'),acctPanel],
    rest; the account and field editors are rooms inside You rather than destinations of
    their own, so they show its tab as current. */
 const DESTOF = new Map([[panel,'add'],[setPanel,'you'],[acctPanel,'you'],[fldPanel,'you']]);
+
+/* Which destination you are on, asked before anything moves. */
+function hereNow(){
+  if(!fcEl.hidden) return 'study';
+  const on = PANELS.find(p => p.classList.contains('on'));
+  return on ? DESTOF.get(on) : 'book';
+}
+
+/* The way out of Add, and the name on it.
+   Account and Fields are rooms inside You, so their ← Settings is true wherever you came
+   from: there is only one way in. Add is not — it is a destination in the rail, reachable
+   from the book, from Study and from You — and its button said "← Settings" regardless,
+   so arriving from the book and pressing back landed you somewhere you had never been.
+   A control that names a place has to name the right one. */
+const DESTNAME = {book:'Book', study:'Study', you:'You'};
+let addFrom = 'book';
+function paintAddBack(){
+  document.getElementById('backset').textContent = '← ' + (DESTNAME[addFrom] || 'Book');
+}
+
 function openPanel(which){
+  /* Noted before the switch, and only on the way in: reopening Add from inside Add would
+     otherwise rewrite the way out to point at itself. */
+  if(which === panel && hereNow() !== 'add'){ addFrom = hereNow(); paintAddBack(); }
   PANELS.forEach(p=>p.classList.toggle('on', p===which));
   OPENERS.forEach(([b,p])=>{ if(b) b.setAttribute('aria-pressed', String(p===which)); });
   /* The book and the head above it belong to one destination; the others take the page. */
@@ -4701,7 +4726,10 @@ navFold.addEventListener('click',()=>setNavTight(!document.body.classList.contai
 try{ if(localStorage.getItem(NKEY)==='1') setNavTight(true); }catch(e){}
 
 addBtn.addEventListener('click',()=>openPanel(panel));
-document.querySelectorAll('.back').forEach(b=>b.addEventListener('click',()=>openPanel(setPanel)));
+/* Every ← in You's rooms goes back to You. Add's goes wherever Add was opened from. */
+document.querySelectorAll('.back:not(#backset)').forEach(b =>
+  b.addEventListener('click', ()=>openPanel(setPanel)));
+document.getElementById('backset').addEventListener('click', ()=> go(addFrom || 'book'));
 document.getElementById('fldbtn').addEventListener('click',()=>{
   /* a half-typed field does not survive leaving the room */
   editingField=null; fieldMsg(''); renderFields();

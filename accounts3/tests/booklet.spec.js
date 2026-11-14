@@ -577,6 +577,63 @@ test.describe('back', () => {
   });
 });
 
+/* The ← in the Add panel. It said "← Settings" and went to Settings whatever route you
+   took, so the commonest path through the app — open the booklet, tap Add, change your
+   mind — landed you in a room you had never been in. Account and Fields keep that button
+   and that destination, because they genuinely are rooms inside You with one way in. */
+test.describe('the way out of Add', () => {
+  test('from the book it says Book, and goes there', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await stock(page);
+
+    await page.locator('.dest[data-dest="add"]').click();
+    await expect(page.locator('#backset')).toHaveText('← Book');
+
+    await page.locator('#backset').click();
+    await expect(page.locator('#panel')).not.toHaveClass(/on/);
+    await expect(page.locator('#settings'), 'it went to Settings, which is the old fault')
+      .not.toHaveClass(/on/);
+    await expect(page.locator('.dest[data-dest="book"]')).toHaveAttribute('aria-current', 'true');
+  });
+
+  test('from You it says You, and goes there', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await stock(page);
+
+    await page.locator('.dest[data-dest="you"]').click();
+    await page.locator('.dest[data-dest="add"]').click();
+    await expect(page.locator('#backset')).toHaveText('← You');
+
+    await page.locator('#backset').click();
+    await expect(page.locator('#settings')).toHaveClass(/on/);
+  });
+
+  /* The fault this guards against: noting the origin on every openPanel(panel) rather than
+     only on the way in. Anything that reopens Add while Add is open would rewrite the way
+     out to point at Add itself. */
+  test('reopening Add does not make Add its own way out', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await stock(page);
+
+    await page.locator('.dest[data-dest="add"]').click();
+    await page.evaluate(() => openPanel(document.getElementById('panel')));
+    await expect(page.locator('#backset')).toHaveText('← Book');
+  });
+
+  /* Unchanged, and the reason the fix is targeted rather than global. */
+  test('the rooms inside You still go back to You', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await stock(page);
+
+    await page.locator('.dest[data-dest="you"]').click();
+    await page.locator('#fldbtn').click();
+    await expect(page.locator('#fields')).toHaveClass(/on/);
+
+    await page.locator('#fields .back').click();
+    await expect(page.locator('#settings')).toHaveClass(/on/);
+  });
+});
+
 test.describe('the destinations', () => {
   test('each takes the page, and the book comes back', async ({ page }) => {
     await page.setViewportSize(DESKTOP);
