@@ -1930,7 +1930,7 @@
 
           <!-- The only bulk action in the app. Removing words one at a time is right for
                a booklet you are tending; it is cruelty for someone who signed up, got a
-               hundred and fifty words about castles, and wanted none of them. -->
+               pile of words they did not choose, and wanted none of them. -->
           <div class="set set-ask grave">
             <p class="set-t">Empty this booklet</p>
             <p class="set-d" id="emptydesc">Every word goes, and the starting question comes back. No undo.</p>
@@ -2004,8 +2004,11 @@
        only place the email form lives, so there is one sign-in in the app, not two. -->
   <section class="gate" id="gate" hidden>
     <h2 id="gate-h">Your own booklet</h2>
-    <p id="gate-p">Sign in and you get your own copy of these words — a hundred and fifty to
-      begin with, yours to add to, mark up and mangle. Nothing you do to them touches
+    <!-- Said without a number. It promised a hundred and fifty against a file that held
+         154, and both were someone else's words: the booklet a new reader is handed is a
+         few examples of what a card looks like, not a vocabulary. -->
+  <p id="gate-p">Sign in and you get a booklet of your own — a few example words to show
+      what a card holds, and then whatever you put in it. Nothing you do to them touches
       anyone else's.</p>
 
     <!-- Filled from the project's own auth settings, so a button only exists for a
@@ -2120,6 +2123,21 @@ let FIELDS = [], W = [], SEED = null, CORRECTIONS = [];
    There is no build step here, so there is no version to read off one: bump this by hand
    when you publish, or a report cannot tell you which booklet it came from. */
 const VERSION = '2026-08-29';
+
+/* ---------- the offline shell ----------
+   Registered here and nowhere else. Never fatal: a browser without service workers, a page
+   served over file://, a refused registration — all of them leave the booklet exactly as it
+   was, which is a working app that needs the network to open.
+
+   Skipped on the test harnesses. index.local.html is a copy of this file with SUPABASE_URL
+   blanked, so a registration written carelessly here installs a worker into the Playwright
+   run and starts serving it yesterday's HTML — a flaky suite with a cause nobody would look
+   for. The name of the document is the only honest way to tell them apart. */
+if ('serviceWorker' in navigator && !/\.(local|test)\.html$/.test(location.pathname)) {
+  addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
 
 /* What broke, written to the faults table so the person who has to fix it does not wait
    to be told. Signed in only — the anon key is public and a table anyone may write to is
@@ -4199,7 +4217,7 @@ if(ACCOUNTS){
     pw.autocomplete = m==='in' ? 'current-password' : 'new-password';
     if(m==='in'){
       head.textContent='Your own booklet';
-      lede.textContent="Sign in and you get your own copy of these words — a hundred and fifty to begin with, yours to add to, mark up and mangle. Nothing you do to them touches anyone else's.";
+      lede.textContent="Sign in and you get a booklet of your own — a few example words to show what a card holds, and then whatever you put in it. Nothing you do to them touches anyone else's.";
       go.textContent='Continue with email';
       toggle.textContent='New here? Create an account';
       forgot.hidden=false;

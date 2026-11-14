@@ -48,7 +48,7 @@ without being translated on the way, and the only mapping code in the app
 the voice on, OpenAI voices through the `speak` Edge Function, cached in
 Cache Storage per text, voice and rate, with the device voice as the silent
 fallback. No quota; every synthesis is logged in `tts_log` for the day one is wanted. |
-| **Offline** | A hand-rolled cache in `localStorage`. There is no service worker; the app is *installable* via `manifest.json` but not precached. |
+| **Offline** | A hand-rolled cache in `localStorage` for the words, and `sw.js` for the app itself since 2026-11-14. The two are separate on purpose and the distinction was the fault: the words survived losing signal, the *booklet* did not — with no network the browser could not fetch `index.html`, so a reader met the error page while their vocabulary sat in storage with nothing able to read it. The worker precaches the shell and nothing else: it never answers a POST, and never answers anything on another origin bar the one CDN script the page cannot start without. Supabase auth, rows and functions always go to the network, because a cached session is a lie about an account and a cached 401 is worse. Strategy is stale-while-revalidate rather than a version-named cache — there is no build step and nobody to remember to bump a number, so a version key would have gone stale the first time somebody published without touching it, and stayed stale in silence. |
 
 ### The two modes
 

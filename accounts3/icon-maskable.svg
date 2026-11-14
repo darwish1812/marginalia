@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- The same mark as icon.svg, drawn for a launcher that will crop it.
+       Two differences, and only two:
+
+       The background has no rx. A maskable icon is cut to whatever shape the launcher
+       uses — circle, squircle, rounded square, teardrop — so it must reach every edge.
+       Rounded corners of our own would leave transparent wedges under a square mask and
+       be thrown away under a round one.
+
+       The strips are scaled to 0.85 about the centre. Everything that matters has to sit
+       inside a circle 80% of the icon's width: radius 12.8 here. At full size the outer
+       strips' top corners are 13.45 from the centre and would be nibbled; at 0.85 they
+       are 11.43, which clears it with room to spare. -->
+  <rect width="32" height="32" fill="#0B1021"/>
+  <g transform="translate(16,16) scale(0.85) translate(-16,-16)">
+    <rect x="7"  y="6" width="3" height="12" rx="1" fill="#DDA735"/>
+    <rect x="12" y="6" width="3" height="17" rx="1" fill="#3AAFA9"/>
+    <rect x="17" y="6" width="3" height="20" rx="1" fill="#D64550"/>
+    <rect x="22" y="6" width="3" height="14" rx="1" fill="#8B5CF6"/>
+  </g>
+</svg>
