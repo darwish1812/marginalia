@@ -1014,6 +1014,55 @@ worked, which is what a quota would bill when one is wanted; a failure row is al
 broken provider is found. Nothing enforces a limit today, and the text cap in `speak` —
 sentences, not chapters — is what currently bounds one call's spending.
 
+### What exists, in one place
+
+The reasoning for each of these is above; this is the index. Nothing here is a
+second source of truth — if it disagrees with the SQL, the SQL is right and this
+is stale.
+
+**Tables.** `schema.sql` holds the booklet's own and every one of them is per
+reader, behind row level security keyed on `user_id`:
+
+| table | what it is |
+|---|---|
+| `words` | the booklet itself, one row per word |
+| `fields` | the inks down the side of the page |
+| `corrections` | a misspelling and what supersedes it |
+| `profiles` | one row per reader; `seeded_at` and `auto_merge` |
+| `faults` | writes that failed, so a card can say so where it failed |
+
+`gateway.sql` holds the gateway's, and four of them carry **no RLS policy at
+all** — row level security with zero policies denies everyone except the service
+role, which exists only inside an Edge Function:
+
+| table | what it is | readable by a reader |
+|---|---|---|
+| `providers` | endpoint, body shape, `model`, `voice_model`, last four of the key | no |
+| `provider_secrets` | the keys themselves, shared or per reader (F4) | no |
+| `admins` | who may reach `/admin` | no |
+| `app_config` | the prompt, the ceilings, and how the voice sounds | select only |
+| `app_capabilities` | which provider does which job — `translate`, `speech` | select only |
+| `quota_overrides` | a raised monthly allowance for one reader | no |
+| `runs` | quota accounting. Never prompts or replies | no |
+
+`tts-voice.sql` holds `tts_log` — what each synthesis cost and whether it
+worked. No policies, same reasoning.
+
+**Edge functions.** Three, each deployed separately:
+
+| function | routes | who |
+|---|---|---|
+| `enrich` | `GET/POST /me`, `POST /run` | any reader |
+| | `GET/POST /admin/config`, `POST /admin/capability`, `GET /admin/errors`, `POST /admin/provider/{delete,models,forget-key}` | administrators |
+| `speak` | `POST /` — MP3 bytes for a word or a sentence | any reader |
+| | `POST /test` — the same, and marks the voice tested | administrators |
+| `delete-account` | the one irreversible thing a reader can do to themselves | the reader |
+
+**Everything else is a file.** No build step, no bundler: `index.html` is the
+booklet, `admin.html` is the console, `words.json` is the starter pack, and
+`packs/` holds the others. The test harness in `tests/` is the only thing npm is
+used for.
+
 ## 6. Data shape
 
 A word, in all three of its homes:
