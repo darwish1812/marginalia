@@ -399,8 +399,10 @@ test.describe('the add loop', () => {
     await stock(page);
     await page.locator('.dest[data-dest="add"]').click();
     await page.locator('#raw').fill('zeugma, apophasis, holdfast, litotes');
-    await expect(page.locator('#report')).toContainText('3 to enrich');
+    /* The summary names what was skipped or flagged and nothing else — the count is on the
+       button, and saying it twice is saying it once too often. */
     await expect(page.locator('#report')).toContainText('holdfast');
+    await expect(page.locator('#report')).not.toContainText('to enrich');
     await expect(page.locator('#copyp')).toBeEnabled();
     await expect(page.locator('#prompt')).toContainText('JSON');
   });
@@ -416,8 +418,9 @@ test.describe('the add loop', () => {
 
     /* The harness has no gateway, so the booklet is in manual mode and the button stays
        away whatever is typed. What must still happen is the summary and the prompt. */
+    /* Nothing is wrong with this list, so there is nothing to say about it. */
     await page.locator('#raw').fill('zeugma');
-    await expect(page.locator('#report')).toContainText('1 to enrich');
+    await expect(page.locator('#report')).toHaveText('');
 
     await page.evaluate(() => { setEnrichMode('auto'); });
     await expect(page.locator('#enrich')).toBeVisible();
@@ -435,6 +438,25 @@ test.describe('the add loop', () => {
     await expect(page.locator('#report')).toHaveText('');
   });
 
+  /* The fault: the summary described a list that had already been sent and answered. It
+     read "2 to enrich" above two enriched words waiting to be kept — a sentence about work
+     already done, contradicted by the cards beneath it. */
+  test('a list that has come back is no longer a list waiting to go', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await stock(page);
+    await page.locator('.dest[data-dest="add"]').click();
+
+    const have = await page.evaluate(() => W.filter(x => x.d).slice(0, 1).map(x => x.w)[0]);
+    await page.locator('#raw').fill(`${have}, zeugma`);
+    await expect(page.locator('#report')).toContainText(have);
+
+    /* The reply, without a gateway to ask: showPreview is what the enrich handler calls
+       once the words are back, and it is the moment the summary goes stale. */
+    await page.evaluate(() => showPreview([{w:'zeugma', f:null, d:'A figure of speech.', e:'a *zeugma*'}], 0));
+    await expect(page.locator('#s2b')).toBeVisible();
+    await expect(page.locator('#report')).toHaveText('');
+  });
+
   /* The fault this guards against is a behaviour change dressed up as a tidy-up. A word
      that merely resembles one you have is a warning, not a filter: it is still sent. Only
      an exact duplicate is withheld. The report lists both under headings that read like
@@ -449,6 +471,7 @@ test.describe('the add loop', () => {
 
     const state = await page.evaluate(() => ({ fresh: fresh.slice(), report: document.getElementById('report').textContent }));
     expect(state.report, 'the duplicate is not named').toContain(have);
+    expect(state.report, 'the count is being said twice').not.toContain('to enrich');
     expect(state.fresh, 'the exact duplicate was sent anyway').not.toContain(have);
     expect(state.fresh, 'the near-match was silently dropped').toContain(`${have}s`);
     expect(state.fresh).toContain('zeugma');

@@ -5012,15 +5012,21 @@ function renderReport(dups, nears, again){
     const shown = list.slice(0, 4).join(', ');
     return list.length > 4 ? `${shown} and ${list.length-4} more` : shown;
   };
-  const bits=[`${fresh.length} to enrich`];
+  /* Exceptions only. The count used to lead this line — "2 to enrich · already here:
+     welfare" — which said the same number as the button directly beneath it, Enrich 2
+     words. A row and its control saying the same thing twice is one of them too many, and
+     the one to drop is the one that cannot be pressed. A clean list now says nothing at
+     all, which is the honest summary of nothing worth mentioning. */
+  const bits=[];
   if(again.length) bits.push(`already waiting for detail: ${name(again)}`);
   if(dups.length)  bits.push(`already here: ${name(dups)}`);
   if(nears.length) bits.push(`close to one you have: ${name(nears.map(n=>n.t))}`);
 
   const el = document.getElementById('report');
   el.textContent = '';
+  if(!bits.length){ setReady(!!fresh.length); if(fresh.length) buildPrompt(); return; }
   const p = document.createElement('p');
-  p.className = 'note'+(fresh.length?' good':'');
+  p.className = 'note';
   /* textContent, because every one of these words is whatever was typed into the box */
   p.textContent = bits.join(' · ');
   el.appendChild(p);
@@ -5330,6 +5336,10 @@ function paintKeep(){
 
 function showPreview(arr, madeFields){
   PENDING = {arr, madeFields, takeBad:false};
+  /* The summary described a list that has now been sent and answered. Left standing it
+     read "2 to enrich" above two enriched words waiting to be kept — a sentence about
+     work already done, contradicted by the cards under it. */
+  document.getElementById('report').textContent = '';
   renderPreview(arr);
   paintKeep();
   document.getElementById('s2b').hidden = false;
