@@ -151,6 +151,13 @@
   .mdl .idle{color:var(--dim)}
 
   /* ---- what is on ----
+     `.jobrow`, not `.job`, and the clumsiness is deliberate. table.prov already had
+     th.job / td.job for the Text and Voice radio columns, and a bare `.job{display:grid}`
+     added here turned every one of those cells into a three-column grid with a border on
+     top — the providers table rendered with its two radios stacked and its headings in a
+     column. Nothing failed; it just looked wrong, two sections above the block being
+     worked on, which is why it survived a commit. Second time a generic class name has
+     done this here: see `.bar` and the swatches.
      One row per job the gateway can run. Both switches used to be 823px apart — enrichment's
      at the foot of Enrichment, the voice's at the foot of Voice, with Template and Limits
      between them — so there was no scroll position that answered "what is on?". Giving them
@@ -158,9 +165,9 @@
      job is, who is about to be billed for it, how it last went, and carries the test that
      earns the switch beside it. */
   .jobs{display:grid}
-  .job{display:grid; grid-template-columns:126px minmax(0,1fr) auto; gap:18px;
+  .jobrow{display:grid; grid-template-columns:126px minmax(0,1fr) auto; gap:18px;
        align-items:start; padding:14px 0; border-top:1px solid var(--rule)}
-  .job:first-child{border-top:0}
+  .jobrow:first-child{border-top:0}
   /* Name and state on one line. They were stacked, which gave the first column two lines
      against the other columns' one or two and left the row looking bottom-heavy, and made
      the two rows different heights depending on what each had to say. */
@@ -168,7 +175,7 @@
   /* A floor, not a width: "Voice" is wider than "Text", so without one the two badges
      start at different x and the column reads ragged. Wide enough for the longer name,
      and it still grows if a third job ever needs a longer one. */
-  .job .what{font-size:13.5px; font-weight:600; min-width:40px}
+  .jobrow .what{font-size:13.5px; font-weight:600; min-width:40px}
   /* The state is written out, not implied by the colour of a dot: a reader who cannot tell
      the green from the grey still gets the word. */
   .state{flex:none; font-size:10px; font-weight:700;
@@ -178,18 +185,18 @@
   .state.off{color:var(--dimmer); border-color:var(--rule)}
   /* Every column starts on the same baseline as the name, so the three read as one line
      across before any of them wraps. */
-  .job .by{font-size:12.5px; color:var(--dim); min-height:21px; display:flex;
+  .jobrow .by{font-size:12.5px; color:var(--dim); min-height:21px; display:flex;
            flex-direction:column; justify-content:center}
-  .job .by b{color:var(--paper); font-weight:600}
-  .job .by .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11.5px}
-  .job .by .note{margin-top:3px}
-  .job .acts{display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;
+  .jobrow .by b{color:var(--paper); font-weight:600}
+  .jobrow .by .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11.5px}
+  .jobrow .by .note{margin-top:3px}
+  .jobrow .acts{display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;
              min-height:21px}
   /* A floor wide enough for the longest thing a switch ever says — Disabling… — so the
      button does not change size under the cursor mid-press, and so the button to its left
      lands in the same column on both rows. The group is right-aligned, so without this the
      wider word on one row pushes that row's other button out of line with its neighbour. */
-  .job .acts .switch{min-width:112px}
+  .jobrow .acts .switch{min-width:112px}
   /* The unfolded tester, spanning the row it belongs to so it reads as that row's
      business and not as a new section of the page. */
   .tester{grid-column:1 / -1; margin-top:14px; padding:14px 16px 16px;
@@ -201,9 +208,9 @@
   /* On a phone the three columns become three stacked lines in the same order, so the row
      still reads name, state, who, then what you can do about it. */
   @media (max-width:640px){
-    .job{grid-template-columns:1fr; gap:8px}
-    .job .by, .job .acts{min-height:0}
-    .job .acts{justify-content:flex-start}
+    .jobrow{grid-template-columns:1fr; gap:8px}
+    .jobrow .by, .jobrow .acts{min-height:0}
+    .jobrow .acts{justify-content:flex-start}
     .tester input{max-width:none}
   }
 
@@ -370,7 +377,7 @@ on conflict do nothing;</div>
     <section>
       <h2>What is on</h2>
       <div class="jobs">
-        <div class="job">
+        <div class="jobrow">
           <div class="jobname">
             <span class="what">Text</span>
             <span class="state off" id="textstate">Off</span>
@@ -385,7 +392,7 @@ on conflict do nothing;</div>
           </div>
         </div>
 
-        <div class="job">
+        <div class="jobrow">
           <div class="jobname">
             <span class="what">Voice</span>
             <span class="state off" id="ttsstate">Off</span>

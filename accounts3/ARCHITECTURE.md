@@ -1012,6 +1012,15 @@ absorbed them into the capability row and dropped them, which would have taken t
 from every reader and emptied the console's Voice block. The table routes; it does not
 describe the job.
 
+**A note on class names.** The rows are `.jobrow`, which is clumsy, because `.job` was
+already taken: `table.prov` uses `th.job` / `td.job` for the Text and Voice radio columns.
+A bare `.job{display:grid}` added for this block turned every one of those table cells into
+a three-column grid with a border on top, and the providers table rendered with its
+headings and its radios stacked. Nothing errored, and it shipped — the block being worked on
+looked right, and the table two sections above it was never looked at. That is the second
+time a short class name has done this here; see `.bar` and the swatches. `tests/admin.spec.js`
+now pins both the rendered table and the absence of a bare `.job` rule.
+
 **What is on.** The console has two jobs it can turn on, and until 2026-11-14 they were
 turned on by two different kinds of control in two different places: enrichment by an
 **Enable** button at the foot of the page, the voice by a select labelled *Engine* offering
