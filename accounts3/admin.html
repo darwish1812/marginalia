@@ -132,6 +132,23 @@
   .radio:checked{border-color:var(--verd); box-shadow:inset 0 0 0 3.5px var(--verd)}
   button.mini{font-size:10.5px; padding:6px 9px; letter-spacing:.06em}
   .keyset{color:var(--verd); font:12px/1 ui-monospace,Menlo,monospace}
+
+  /* ---- readers ----
+     Deliberately plain. Every column here is about an account and what it has cost; none of
+     it is about anybody's vocabulary, and the table should not grow a column that is. */
+  .who{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap}
+  .who .mail{font-size:13px}
+  .who .you{font-size:9.5px; font-weight:700; letter-spacing:.09em; text-transform:uppercase;
+            color:var(--ochre); border:1px solid rgba(201,146,47,.45);
+            border-radius:99px; padding:1px 6px}
+  .who .via{font-size:10.5px; color:var(--dimmer); letter-spacing:.04em; text-transform:uppercase}
+  .ago{font-size:12px}
+  .ago .exact{display:block; font-size:10.5px; color:var(--dimmer);
+              font-family:ui-monospace,Menlo,monospace}
+  .num{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px}
+  .num .nil{color:var(--dimmer)}
+  .num .bad{color:var(--ox)}
+  .quiet{color:var(--dimmer)}
   .keynone{color:var(--dimmer); font-size:11.5px}
   .shape{font-size:11px; color:var(--dim); border:1px solid var(--rule); border-radius:99px;
          padding:2px 8px; display:inline-block}
@@ -504,6 +521,31 @@ on conflict do nothing;</div>
       <p class="msg" id="savemsg"></p>
     </section>
 
+    <!-- readers: who is spending the budget the dashboard at the top totals -->
+    <section>
+      <h2>Readers</h2>
+      <div class="row" style="margin-bottom:12px">
+        <button class="mini" id="rdr-refresh">Refresh</button>
+        <input id="rdrq" type="search" autocomplete="off" placeholder="Find a reader"
+               aria-label="Find a reader" style="flex:1; max-width:260px">
+        <!-- The count sits beside the search rather than under the table, because what it
+             answers changes as you type: how many there are, and how many you are looking
+             at. A total printed once would be wrong the moment the box had anything in it. -->
+        <span class="note" id="rdrcount" style="margin:0; margin-left:auto"></span>
+      </div>
+      <div class="tablewrap">
+        <table class="prov">
+          <thead>
+            <tr><th>Reader</th><th>Joined</th><th>Last seen</th>
+                <th>Words</th><th>This month</th></tr>
+          </thead>
+          <tbody id="rdrrows"></tbody>
+        </table>
+      </div>
+      <p class="note" id="rdrnote">Counts only. Nothing anybody wrote is read here — not a
+        word, not a definition. The booklet is theirs; the bill is yours.</p>
+    </section>
+
     <!-- error log: last, so status and controls stay on top -->
     <section>
       <h2>Error log</h2>
@@ -747,6 +789,10 @@ function paint(d){
   $('budget').value   = c.app_budget;
   $('template').value = c.template || '';
   paintVoice(c);
+  /* Painted with nothing, on purpose: READERS is still null, so the table says to press
+     Refresh rather than sitting blank. An empty table with no explanation reads like a
+     list of nobody. Calling it with no argument keeps whatever has already been loaded. */
+  paintReaders();
 }
 
 /* ---------- the providers table ----------
@@ -1600,6 +1646,102 @@ $('err-all').addEventListener('click', ()=>{ ERRSRC='all'; loadErrors(); });
 $('err-enrich').addEventListener('click', ()=>{ ERRSRC='enrichment'; loadErrors(); });
 $('err-voice').addEventListener('click', ()=>{ ERRSRC='voice'; loadErrors(); });
 $('err-refresh').addEventListener('click', loadErrors);
+
+/* ---------- readers ----------
+   Who has signed in, and what each has cost. It answers the question the "3 readers" tile
+   raises and cannot answer: three *who*, since when, and which of them is spending it.
+
+   Loaded on its own press rather than with the rest of the console. It costs a listUsers
+   call and one head count per reader, and most visits here are about a provider or a
+   switch, not about who signed up. */
+function ago(iso){
+  if(!iso) return '';
+  const d = new Date(iso), secs = (Date.now() - d.getTime()) / 1000;
+  if(secs < 90) return 'just now';
+  const mins = secs/60, hours = mins/60, days = hours/24;
+  if(mins  < 90) return Math.round(mins)  + ' minutes ago';
+  if(hours < 36) return Math.round(hours) + ' hours ago';
+  if(days  < 60) return Math.round(days)  + ' days ago';
+  return Math.round(days/30) + ' months ago';
+}
+
+/* Held so the search can filter without asking the gateway again. A reader list is small
+   and already paid for; re-fetching on every keystroke would cost a listUsers call and a
+   head count per reader to answer a question the browser can answer itself. */
+let READERS = null;
+
+function paintReaders(d){
+  if(d) READERS = d;
+  d = READERS || {readers:[]};
+
+  /* Matched on what is shown — the address and how they signed in — and nothing else. The
+     search cannot reach anything the table does not already display. */
+  const q = (document.getElementById('rdrq').value || '').trim().toLowerCase();
+  const all = d.readers || [];
+  const shown = q ? all.filter(r =>
+        String(r.email||'').toLowerCase().includes(q)
+     || String(r.via||'').toLowerCase().includes(q)
+     || (q === 'admin' && r.admin)
+     || (q === 'not started' && !r.stocked)) : all;
+
+  const rows = shown.map(r=>{
+    /* The signed-in administrator is in this list like everybody else, and is marked rather
+       than hidden: their own usage comes out of the same budget. */
+    const you = r.admin ? '<span class="you">admin</span>' : '';
+    const num = (v, bad) => v
+      ? '<span class="'+(bad?'bad':'')+'">'+v+'</span>'
+      : '<span class="nil">0</span>';
+    const when = iso => iso
+      ? '<span class="ago">'+esc(ago(iso))
+        + '<span class="exact">'+esc(new Date(iso).toLocaleDateString())+'</span></span>'
+      : '<span class="quiet">never</span>';
+    return '<tr>'
+      + '<td><div class="who"><span class="mail">'+esc(r.email||'(no address)')+'</span>'
+        + you + '<span class="via">'+esc(r.via||'email')+'</span></div></td>'
+      + '<td>'+when(r.joined)+'</td>'
+      + '<td>'+when(r.last_seen)+'</td>'
+      /* A reader who signed in and never stocked a booklet is worth seeing: it usually
+         means they got as far as the first question and stopped. */
+      + '<td class="num">'+(r.stocked ? num(r.words) : '<span class="nil">not started</span>')+'</td>'
+      + '<td class="num">'+num(r.month && r.month.words)
+        + (r.month && r.month.failed ? ' <span class="bad">'+r.month.failed+' failed</span>' : '')
+        + '</td>'
+      + '</tr>';
+  });
+  /* Three different nothings, and they mean different things: nobody has signed in, the
+     list has not been asked for yet, or the search matched none of it. */
+  const empty = !READERS ? 'Press Refresh to see who has signed in.'
+    : !all.length        ? 'Nobody has signed in yet.'
+    :                      'No reader matches \u201c' + esc(q) + '\u201d.';
+  document.getElementById('rdrrows').innerHTML = rows.length ? rows.join('')
+    : '<tr><td colspan="5" style="color:var(--dim); font-size:12.5px">' + empty + '</td></tr>';
+
+  const total = all.length, here = shown.length;
+  const word = n => n + (n === 1 ? ' reader' : ' readers');
+  say('rdrcount', !READERS ? ''
+      : q ? here + ' of ' + word(total)
+          : word(total) + (d.more ? ' (more on the next page)' : ''), '');
+}
+
+/* Live, like the booklet's own list: a search you have to submit is a search you press
+   twice. */
+document.getElementById('rdrq').addEventListener('input', ()=>paintReaders());
+document.getElementById('rdrq').addEventListener('keydown', e=>{
+  if(e.key === 'Escape'){ e.target.value = ''; paintReaders(); }
+});
+
+async function loadReaders(){
+  const btn = document.getElementById('rdr-refresh');
+  btn.disabled = true; const label = btn.textContent; btn.textContent = 'Asking…';
+  try{
+    paintReaders(await api('/admin/readers'));
+  }catch(e){
+    document.getElementById('rdrrows').innerHTML =
+      '<tr><td colspan="5" style="color:var(--ox); font-size:12.5px">Could not read the list — '
+      + esc(e.message) + '</td></tr>';
+  }finally{ btn.disabled = false; btn.textContent = label; }
+}
+document.getElementById('rdr-refresh').addEventListener('click', loadReaders);
 
 /* ---------- boot ---------- */
 async function refresh(){ paint(await api('/admin/config')); loadErrors(); }

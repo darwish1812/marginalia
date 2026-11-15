@@ -762,6 +762,92 @@ Deno.serve(async (req) => {
     // Recent failures from both gateways, newest first. Successes are not
     // listed. Reads runs + tts_log through the service role — neither table
     // has RLS policies, so only this function (admin-checked above) can see them.
+    // ---- GET /admin/readers -------------------------------------------
+    // Who has signed in, and what it has cost. The administrator is paying for every one
+    // of these people out of one budget, and until now the only number on the page was
+    // "3 readers" — a count with no way to see who, when, or who is spending it.
+    //
+    // auth.users is reachable from here and from nowhere else: it is not in the public
+    // schema, no row level security policy can expose it, and the anon key cannot see it
+    // at all. That is why this is a route on the gateway rather than a query in the
+    // console, and why it is behind the same administrator check as everything else above.
+    //
+    // What it does NOT return: anything a reader wrote. Not their words, not their fields,
+    // not a single definition. The administrator pays the bill and can see the bill; the
+    // booklet is still theirs. Counting is the most this says about anybody's vocabulary.
+    if (route === '/admin/readers' && req.method === 'GET') {
+      const q = new URL(req.url).searchParams;
+      const perPage = Math.min(200, Math.max(1, Number(q.get('limit')) || 100));
+      const page = Math.max(1, Number(q.get('page')) || 1);
+
+      const listed = await db.auth.admin.listUsers({ page, perPage });
+      if (listed.error) {
+        return json({ error: 'readers', message: listed.error.message }, 502);
+      }
+      const users = listed.data?.users ?? [];
+      const ids = users.map((u) => u.id);
+
+      // This month's spend, in one query rather than one per reader, summed here. The row
+      // count is bounded by runs in a month, which is the same set the dashboard above
+      // already totals.
+      const since = monthStart();
+      const runs = await db.from('runs')
+        .select('subject, requested, error')
+        .eq('app_id', APP_ID)
+        .gte('started_at', since);
+
+      const spent = new Map<string, { words: number; runs: number; failed: number }>();
+      for (const r of (runs.data ?? []) as any[]) {
+        if (!r.subject) continue;
+        const e = spent.get(r.subject) ?? { words: 0, runs: 0, failed: 0 };
+        e.words += r.requested ?? 0;
+        e.runs += 1;
+        if (r.error) e.failed += 1;
+        spent.set(r.subject, e);
+      }
+
+      // How many words each booklet holds. A head count per reader, because asking for the
+      // rows themselves would pull every word in the system across the wire to count them —
+      // and those words are the one thing this route exists not to read.
+      const counted = await Promise.all(ids.map(async (id) => {
+        const { count } = await db.from('words')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', id);
+        return [id, count ?? 0] as const;
+      }));
+      const words = new Map(counted);
+
+      const profiles = await db.from('profiles').select('id, seeded_at, auto_merge').in('id', ids.length ? ids : ['00000000-0000-0000-0000-000000000000']);
+      const prof = new Map((profiles.data ?? []).map((r: any) => [r.id, r]));
+
+      const admins = await db.from('admins').select('subject');
+      const isAdmin = new Set((admins.data ?? []).map((r: any) => r.subject));
+
+      return json({
+        page,
+        perPage,
+        more: users.length === perPage,
+        readers: users.map((u) => {
+          const s = spent.get(u.id) ?? { words: 0, runs: 0, failed: 0 };
+          const p: any = prof.get(u.id) ?? {};
+          return {
+            id: u.id,
+            email: u.email ?? null,
+            // How they got in, which is worth seeing when a sign-in stops working.
+            via: (u.app_metadata as any)?.provider ?? 'email',
+            joined: u.created_at ?? null,
+            last_seen: (u as any).last_sign_in_at ?? null,
+            confirmed: !!(u as any).email_confirmed_at,
+            admin: isAdmin.has(u.id),
+            stocked: !!p.seeded_at,
+            auto_merge: !!p.auto_merge,
+            words: words.get(u.id) ?? 0,
+            month: s,
+          };
+        }),
+      });
+    }
+
     if (route === '/admin/errors' && req.method === 'GET') {
       const q = new URL(req.url).searchParams;
       const source = q.get('source') || 'all';

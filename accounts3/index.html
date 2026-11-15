@@ -5082,10 +5082,21 @@ async function loadGateway(){
   gatewayAt = Date.now();
 }
 
-/* Live settings: admin changes (voice engine, provider, limits) reach open
-   clients without a reload. Realtime on app_config is the instant path;
-   visibility/focus re-fetch is the safety net for missed events (offline,
-   paused project, dropped socket). */
+/* Live settings: admin changes reach open booklets without a reload. Realtime is the
+   instant path; the visibility/focus re-fetch below is the safety net for missed events —
+   offline, a paused project, a dropped socket.
+
+   Both tables, because the two switches live in different ones. app_config carries whether
+   the voice is on and how it sounds; app_capabilities carries whether the words are on and
+   which provider does each job. Watching only app_config, which is what this did, left the
+   enrichment switch silent.
+
+   And neither delivered anything at all until 2026-11-15, because Supabase only sends
+   postgres_changes for tables inside the supabase_realtime publication and no table here
+   had ever been added to it. The channel connected, reported subscribed, and received
+   nothing — so an admin turning the voice on reached an open booklet only when its reader
+   closed the app and opened it again. See the live settings block at the end of
+   gateway.sql; without that migration this code is decoration. */
 let gatewayAt = 0, gatewayCh = null, gatewayPending = false;
 async function refreshGatewaySoon(){
   if(gatewayPending) return;
@@ -5096,8 +5107,14 @@ async function refreshGatewaySoon(){
 function subscribeGateway(){
   if(!ACCOUNTS || !sb || gatewayCh) return;
   try{
-    gatewayCh = sb.channel('app_config_live')
-      .on('postgres_changes', {event:'UPDATE', schema:'public', table:'app_config'}, ()=>{ refreshGatewaySoon(); })
+    gatewayCh = sb.channel('gateway_live')
+      .on('postgres_changes', {event:'*', schema:'public', table:'app_config'},
+          ()=>{ refreshGatewaySoon(); })
+      /* `*`, not UPDATE: a capability row is inserted the first time a job is given a
+         provider, and an insert is the one event that matters most — it is a job being
+         switched on for the first time. */
+      .on('postgres_changes', {event:'*', schema:'public', table:'app_capabilities'},
+          ()=>{ refreshGatewaySoon(); })
       .subscribe();
   }catch(e){ gatewayCh = null; }
 }

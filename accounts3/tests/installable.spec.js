@@ -73,3 +73,27 @@ test('the worker stays out of the test harnesses', async ({ page }) => {
     !!navigator.serviceWorker && (await navigator.serviceWorker.getRegistrations()).length > 0);
   expect(controlled, 'the harness registered a service worker').toBe(false);
 });
+
+/* The fault: the worker's scope is the whole origin, so it cached admin.html like anything
+   else and served the gateway console from disk — a page whose entire job is to show the
+   live state of the providers, the switches and the budget, handed back a version behind.
+   It is also useless offline: every control on it is a call to the gateway. */
+test('the service worker never serves the gateway console', () => {
+  expect(SW, 'nothing excludes the console').toContain('isConsole');
+  expect(SW, 'the console is precached').not.toContain("'admin.html'");
+
+  /* And that the fetch handler actually consults it. An earlier version of this test only
+     proved isConsole existed and behaved, so deleting the one line that calls it left every
+     assertion green while the console went back to being served from cache. */
+  expect(SW, 'isConsole is defined but never used in the fetch handler')
+    .toMatch(/if\s*\([^)]*isConsole\(url\)[^)]*\)\s*return;/);
+
+  /* The rule itself, exercised rather than read. */
+  const m = SW.match(/const isConsole = url => (.+);/);
+  expect(m, 'isConsole is gone or renamed').not.toBeNull();
+  const isConsole = eval('url => ' + m[1].replace(/^url => /, ''));
+  for (const p of ['/admin.html', '/marginalia/accounts3/admin.html'])
+    expect(isConsole({ pathname: p }), `${p} would be cached`).toBe(true);
+  for (const p of ['/index.html', '/', '/packs/business.json', '/words.json'])
+    expect(isConsole({ pathname: p }), `${p} would stop being cached`).toBe(false);
+});

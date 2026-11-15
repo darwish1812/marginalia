@@ -391,3 +391,39 @@ alter table public.app_config drop column if exists tts_provider_id;
 alter table public.app_config drop column if exists tts_model;
 
 notify pgrst, 'reload schema';
+
+-- ---------------------------------------------------------------- live settings
+--
+-- The booklet has subscribed to app_config since live settings were written, and the
+-- comment above that subscription calls Realtime "the instant path". It never was. Supabase
+-- only delivers postgres_changes for tables inside the supabase_realtime publication, and
+-- no table here was ever added to it — so the channel connected, reported success, and
+-- received nothing. The symptom was that enabling the voice reached an open booklet only
+-- when the reader closed the app and opened it again, which reads like a caching bug and is
+-- not one.
+--
+-- Both tables, because both carry switches. app_config holds whether the voice is on and
+-- how it sounds; app_capabilities holds whether the words are on and which provider does
+-- each job. Adding only the first would have left the enrichment switch exactly as silent.
+--
+-- Nothing is exposed that a reader could not already fetch: both are select-able by any
+-- signed-in reader, Realtime enforces the same row level security as a query, and the
+-- payload is the row. The secrets live in provider_secrets, which is not here and must
+-- never be.
+do $$
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    if not exists (select 1 from pg_publication_tables
+                    where pubname = 'supabase_realtime'
+                      and schemaname = 'public' and tablename = 'app_config') then
+      execute 'alter publication supabase_realtime add table public.app_config';
+    end if;
+    if not exists (select 1 from pg_publication_tables
+                    where pubname = 'supabase_realtime'
+                      and schemaname = 'public' and tablename = 'app_capabilities') then
+      execute 'alter publication supabase_realtime add table public.app_capabilities';
+    end if;
+  end if;
+end $$;
+
+notify pgrst, 'reload schema';

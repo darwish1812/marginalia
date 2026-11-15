@@ -1063,6 +1063,38 @@ deployed. `/admin/capability` refuses `enabled` for the `speech` job rather than
 into a second flag nothing reads, which is how you end up with two answers to "is the voice
 on" and someone finding them disagreeing. The row does not care which it reads.
 
+**Live settings never worked.** The booklet has subscribed to `app_config` since live
+settings were written, and the comment above that subscription called Realtime "the instant
+path". It was not: Supabase only delivers `postgres_changes` for tables inside the
+`supabase_realtime` publication, and no table here had ever been added to it. The channel
+connected, reported subscribed, and received nothing — so an administrator turning the voice
+on reached an open booklet only when its reader closed the app and opened it again, which
+reads like a caching bug and is not one. Fixed in the *live settings* block at the end of
+`gateway.sql`, which must be run; without it the client code is decoration. Both tables are
+published, because both carry switches — `app_config` holds whether the voice is on,
+`app_capabilities` whether the words are, and watching only the first left the enrichment
+switch exactly as silent. The client watches `*` rather than UPDATE, since a capability row
+is *inserted* the first time a job is given a provider, and that insert is a job being
+switched on for the first time.
+
+**Readers.** `GET /admin/readers` and the table under it. The dashboard had said "3 readers"
+since the gateway existed and could never say which three, since when, or which of them was
+spending the budget. `auth.users` is reachable from the Edge Function and from nowhere else
+— it is not in the public schema and no policy can expose it — which is why this is a route
+rather than a query in the console. It **counts and does not read**: a head count per reader
+for the size of their booklet, the month's `runs` summed for what they have spent, and not
+one word, definition or gloss. A test reads the route's source and fails if it ever selects
+a column that holds what somebody wrote. The administrator appears in the list like everyone
+else and is marked rather than hidden, because their own usage comes out of the same budget.
+Filtering is the browser's job: the list costs a `listUsers` call and one head count per
+reader, so a search that re-fetched on every keystroke would pay that over and over.
+
+**The console is never served from the worker.** `sw.js` has the whole origin for scope, so
+it cached `admin.html` like anything else and handed back a version behind — a page whose
+entire job is to show the live state of the providers, the switches and the budget. It is
+also useless offline, since every control on it is a call to the gateway. `isConsole()`
+excludes it, and `activate` evicts any copy an earlier worker left behind.
+
 **There are no character ceilings.** `tts_log` records what each call cost and whether it
 worked, which is what a quota would bill when one is wanted; a failure row is also how a
 broken provider is found. Nothing enforces a limit today, and the text cap in `speak` —

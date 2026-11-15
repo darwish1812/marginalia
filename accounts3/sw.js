@@ -50,6 +50,13 @@ const SHELL = [
    cannot be read here, only handed back, which is all that is wanted. */
 const VENDOR = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 
+/* The gateway console is not the booklet and must never be served from here. Its scope is
+   the whole origin, so without this it cached admin.html like anything else and handed back
+   yesterday's copy on every first load — a page whose whole job is to show the live state
+   of the providers, the switches and the budget, a version behind. It is also useless
+   offline: every control on it is a call to the gateway. Always network. */
+const isConsole = url => /(^|\/)admin\.html$/.test(url.pathname);
+
 self.addEventListener('install', e => {
   e.waitUntil((async () => {
     const cache = await caches.open(CACHE);
@@ -71,6 +78,12 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil((async () => {
     await Promise.all((await caches.keys()).filter(k => k !== CACHE).map(k => caches.delete(k)));
+    /* Evict anything the earlier version of this worker cached that it should not have.
+       The cache name has not changed, so nothing above would have removed it. */
+    const cache = await caches.open(CACHE);
+    for (const req of await cache.keys()) {
+      if (isConsole(new URL(req.url))) await cache.delete(req);
+    }
     await self.clients.claim();
   })());
 });
@@ -82,6 +95,7 @@ self.addEventListener('fetch', e => {
   const url = new URL(req.url);
   const mine = url.origin === self.location.origin;
   if (!mine && req.url !== VENDOR) return;      // Supabase, and anything else, goes out.
+  if (mine && isConsole(url)) return;           // the console is always live
 
   e.respondWith((async () => {
     const cache = await caches.open(CACHE);

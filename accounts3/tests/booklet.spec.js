@@ -634,6 +634,41 @@ test.describe('the way out of Add', () => {
   });
 });
 
+/* Live settings. The fault had two halves and no symptom beyond "I had to close the app
+   and open it again": the booklet watched app_config only, while the enrichment switch and
+   the provider choice write app_capabilities — and neither table was in the
+   supabase_realtime publication, so nothing was ever delivered at all.
+
+   The publication is SQL and cannot be reached from here. What can be pinned is the half
+   that lives in this file, read off the live function rather than the source text. */
+test.describe('live settings', () => {
+  test('the booklet watches both tables that carry a switch', async ({ page }) => {
+    await stock(page);
+    const src = await page.evaluate(() => subscribeGateway.toString());
+
+    expect(src, 'app_config is not watched — the voice switch writes there')
+      .toContain("table:'app_config'");
+    expect(src, 'app_capabilities is not watched — the words switch writes there')
+      .toContain("table:'app_capabilities'");
+    /* A capability row is inserted the first time a job is given a provider, and an insert
+       is a job being switched on for the first time. Listening for UPDATE alone misses it. */
+    expect(src, 'only updates are watched, so a first-time switch-on is missed')
+      .not.toContain("event:'UPDATE'");
+  });
+
+  /* The safety net, for when the socket is not there: coming back to a stale booklet
+     re-asks. Without it a missed event is permanent. */
+  test('coming back after a while re-asks the gateway', async ({ page }) => {
+    await stock(page);
+    const wired = await page.evaluate(() => ({
+      stale: typeof gatewayStale === 'function' && gatewayStale.toString().includes('gatewayAt'),
+      refresh: typeof refreshGatewaySoon === 'function',
+    }));
+    expect(wired.stale).toBe(true);
+    expect(wired.refresh).toBe(true);
+  });
+});
+
 test.describe('the destinations', () => {
   test('each takes the page, and the book comes back', async ({ page }) => {
     await page.setViewportSize(DESKTOP);
